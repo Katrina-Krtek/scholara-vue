@@ -1,5 +1,5 @@
 import { ref, watch } from 'vue'
-import { getFullWidth, setFullWidth } from '@/lib/userpreferences'
+import { getFullWidth, setFullWidth } from '@/lib/userPreferences'
 
 // Singleton shared across the app
 const isFullWidth = ref(getFullWidth())
