@@ -39,30 +39,42 @@
       <RouterLink to="/assignments" class="nav-item child-item">📝 Assignments</RouterLink>
 
       <RouterLink to="/research" class="nav-item hub-item">🔎 Resource Hub</RouterLink>
-      <RouterLink to="/research/books" class="nav-item child-item">📘 Books</RouterLink>
-      <RouterLink to="/research/articles" class="nav-item child-item">📰 Articles</RouterLink>
-      <RouterLink to="/research/dissertations" class="nav-item child-item">🎓 Dissertations</RouterLink>
-      <RouterLink to="/research/thesis" class="nav-item child-item">📄 Thesis</RouterLink>
-      <RouterLink to="/research/webpages" class="nav-item child-item">🌐 Webpages</RouterLink>
-      <RouterLink to="/research/blogs" class="nav-item child-item">✍️ Blogs</RouterLink>
-      <RouterLink to="/research/video-media" class="nav-item child-item">🎥 Video & Media</RouterLink>
-      <RouterLink to="/research/communications" class="nav-item child-item">💬 Communications</RouterLink>
+      <RouterLink to="/research/type/book" class="nav-item child-item">📘 Books</RouterLink>
+      <RouterLink to="/research/type/article" class="nav-item child-item">📰 Articles</RouterLink>
+      <RouterLink to="/research/type/dissertation" class="nav-item child-item">🎓 Dissertations</RouterLink>
+      <RouterLink to="/research/type/thesis" class="nav-item child-item">📄 Thesis</RouterLink>
+      <RouterLink to="/research/type/website" class="nav-item child-item">🌐 Webpages</RouterLink>
+      <RouterLink to="/research/type/blog" class="nav-item child-item">✍️ Blogs</RouterLink>
+      <RouterLink to="/research/type/video" class="nav-item child-item">🎥 Video & Media</RouterLink>
+      <RouterLink to="/research/type/communication" class="nav-item child-item">💬 Communications</RouterLink>
 
       <RouterLink to="/writing" class="nav-item hub-item">✍️ Writing Hub</RouterLink>
+
+      <div v-if="!isCollapsed" class="nav-section-label">Knowledge Graph</div>
+
+      <RouterLink to="/knowledge-tags" class="nav-item hub-item">🏷️ Knowledge Tags</RouterLink>
+      <RouterLink to="/knowledge-graph" class="nav-item child-item">🕸️ Graph View</RouterLink>
     </nav>
 
     <div class="sidebar-bottom">
+      <div v-if="!isCollapsed" class="citation-box">
+        <label for="citation-style">Citation Style</label>
+
+        <select
+          id="citation-style"
+          class="sidebar-select"
+          :value="selectedCitationStyle"
+          @change="updateCitationStyle"
+        >
+          <option v-for="style in citationStyles" :key="style.id" :value="style.id">
+            {{ style.name }}
+          </option>
+        </select>
+      </div>
+
       <button class="bottom-btn">⚙️ Settings</button>
       <button class="bottom-btn">❔ Help</button>
-
-      <button
-        v-if="!isCollapsed"
-        class="fw-btn"
-        @click="isFullWidth = !isFullWidth"
-        :title="isFullWidth ? 'Exit full width' : 'Full width'"
-      >
-        <span>{{ isFullWidth ? '⇥⇤ Collapse' : '⇤⇥ Full Width' }}</span>
-      </button>
+      <button class="bottom-btn logout-btn" @click="handleLogout">🚪 Log Out</button>
 
       <div class="user-row">
         <div class="user-avatar">{{ usernameInitial }}</div>
@@ -77,18 +89,45 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import JotModal from './JotModal.vue'
-import { getStoredUsername } from '@/lib/userPreferences'
-import { useFullWidth } from '@/composables/useFullWidth'
+import { useRouter } from 'vue-router'
 
-const { isFullWidth } = useFullWidth()
+import JotModal from './JotModal.vue'
+import { citationStyles } from '../data/citationStyles'
+import {
+  getStoredUsername,
+  getCitationStyle,
+  setCitationStyle
+} from '../lib/userPreferences.js'
+import { useAuth } from '../composables/useAuth'
+
+const router = useRouter()
+
+const { user, signOut } = useAuth()
 
 const isCollapsed = ref(false)
 const searchQuery = ref('')
 const jotOpen = ref(false)
 
-const username = getStoredUsername() || 'Student'
-const usernameInitial = computed(() => username.charAt(0).toUpperCase())
+const selectedCitationStyle = ref(getCitationStyle())
+
+const username = computed(() => {
+  return user.value?.email || getStoredUsername() || 'Student'
+})
+
+const usernameInitial = computed(() => {
+  return username.value.charAt(0).toUpperCase()
+})
+
+function updateCitationStyle(event) {
+  const style = event.target.value
+  selectedCitationStyle.value = style
+  setCitationStyle(style)
+}
+
+async function handleLogout() {
+  await signOut()
+  router.push('/auth')
+}
 
 function onJotSaved(text) {
   console.log('Jot saved:', text)
@@ -240,6 +279,28 @@ function onJotSaved(text) {
   width: 100%;
 }
 
+.citation-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.4rem 0.6rem 0.6rem;
+}
+
+.citation-box label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.sidebar-select {
+  width: 100%;
+  background: var(--btn-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.55rem;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+}
+
 .bottom-btn {
   background: none;
   border: none;
@@ -256,19 +317,8 @@ function onJotSaved(text) {
   color: var(--text-primary);
 }
 
-.fw-btn {
-  background: var(--btn-bg);
-  border: 1px solid var(--border-color);
+.logout-btn {
   color: var(--text-secondary);
-  border-radius: 6px;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.75rem;
-  cursor: pointer;
-}
-
-.fw-btn:hover {
-  background: var(--btn-hover);
-  color: var(--text-primary);
 }
 
 .user-row {
@@ -298,6 +348,8 @@ function onJotSaved(text) {
   font-size: 0.8rem;
   color: var(--text-secondary);
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .faq-btn {
@@ -324,7 +376,7 @@ function onJotSaved(text) {
 .sidebar.collapsed .sidebar-actions,
 .sidebar.collapsed .nav-section-label,
 .sidebar.collapsed .bottom-btn,
-.sidebar.collapsed .fw-btn {
+.sidebar.collapsed .citation-box {
   display: none;
 }
 
