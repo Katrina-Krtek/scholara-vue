@@ -14,10 +14,7 @@
         </button>
       </header>
 
-      <section
-        class="app-content"
-        :class="{ 'full-width': isFullWidth }"
-      >
+      <section class="app-content" :class="{ 'full-width': isFullWidth }">
         <slot />
       </section>
     </main>
@@ -29,22 +26,10 @@ import { ref, onMounted } from 'vue'
 import AppSidebar from './AppSidebar.vue'
 
 defineProps({
-  title: {
-    type: String,
-    default: ''
-  },
-  subtitle: {
-    type: String,
-    default: ''
-  },
-  bannerKey: {
-    type: String,
-    default: ''
-  },
-  defaultIcon: {
-    type: String,
-    default: '📄'
-  }
+  title: { type: String, default: '' },
+  subtitle: { type: String, default: '' },
+  bannerKey: { type: String, default: '' },
+  defaultIcon: { type: String, default: '📄' }
 })
 
 const STORAGE_KEY = 'scholarory_full_width'
@@ -122,6 +107,17 @@ function toggleFullWidth() {
 
 .app-content.full-width {
   max-width: none;
+  width: 100%;
   margin: 0;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+.app-content.full-width :deep(.notion-page),
+.app-content.full-width :deep(.knowledge-page),
+.app-content.full-width :deep(.tag-detail-page),
+.app-content.full-width :deep(.graph-page) {
+  max-width: none;
+  width: 100%;
 }
 </style>

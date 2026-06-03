@@ -22,7 +22,7 @@ import ResearchTypeView from '../views/ResearchTypeView.vue'
 
 import KnowledgeTagsView from '../views/KnowledgeTagsView.vue'
 import KnowledgeTagDetail from '../views/KnowledgeTagDetail.vue'
-import GraphView from '../views/GraphView.vue'
+import KnowledgeGraphView from '../views/KnowledgeGraphView.vue'
 
 const routes = [
   { path: '/auth', name: 'Auth', component: AuthView },
@@ -48,7 +48,7 @@ const routes = [
   { path: '/calendar', name: 'CalendarHub', component: CalendarHub },
   { path: '/writing', name: 'WritingHub', component: WritingHub },
 
-  { path: '/knowledge-graph', name: 'GraphView', component: GraphView },
+  { path: '/knowledge-graph', name: 'KnowledgeGraphView', component: KnowledgeGraphView },
   { path: '/knowledge-tags/:id', name: 'KnowledgeTagDetail', component: KnowledgeTagDetail },
   { path: '/knowledge-tags', name: 'KnowledgeTagsView', component: KnowledgeTagsView },
 
