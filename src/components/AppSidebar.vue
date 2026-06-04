@@ -31,6 +31,7 @@
       <RouterLink to="/inbox" class="nav-item">📥 Inbox</RouterLink>
       <RouterLink to="/notes" class="nav-item">📓 Notes</RouterLink>
       <RouterLink to="/calendar" class="nav-item">📅 Calendar</RouterLink>
+      <RouterLink to="/daily-pages" class="nav-item">🗓️ Daily Pages</RouterLink>
 
       <div v-if="!isCollapsed" class="nav-section-label">Hubs</div>
 

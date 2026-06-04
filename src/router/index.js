@@ -13,6 +13,7 @@ import AssignmentsHub from '../views/AssignmentsHub.vue'
 
 import NotesHub from '../views/NotesHub.vue'
 import CalendarHub from '../views/CalendarHub.vue'
+import DailyPagesView from '../views/DailyPagesView.vue'
 import AcademicHub from '../views/AcademicHub.vue'
 import WritingHub from '../views/WritingHub.vue'
 
@@ -46,6 +47,7 @@ const routes = [
 
   { path: '/notes', name: 'NotesHub', component: NotesHub },
   { path: '/calendar', name: 'CalendarHub', component: CalendarHub },
+  { path: '/daily-pages', name: 'DailyPagesView', component: DailyPagesView },
   { path: '/writing', name: 'WritingHub', component: WritingHub },
 
   { path: '/knowledge-graph', name: 'KnowledgeGraphView', component: KnowledgeGraphView },

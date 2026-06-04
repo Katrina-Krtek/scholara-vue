@@ -2,8 +2,10 @@
   <div class="graph-filters">
     <div class="filter-header">
       <h3>Graph Filters</h3>
+
       <button
         class="reset-btn"
+        type="button"
         @click="resetFilters"
       >
         Reset
@@ -12,6 +14,7 @@
 
     <div class="filter-section">
       <label>Search</label>
+
       <input
         v-model="localSearch"
         type="text"
@@ -22,11 +25,13 @@
 
     <div class="filter-section">
       <label>Node Type</label>
+
       <select
         v-model="localType"
         class="filter-select"
       >
         <option value="all">All Types</option>
+
         <option
           v-for="type in nodeTypes"
           :key="type"
@@ -39,6 +44,7 @@
 
     <div class="filter-section">
       <label>Tag</label>
+
       <select
         v-model="localTag"
         class="filter-select"
@@ -57,6 +63,7 @@
 
     <div class="filter-section">
       <label>Course</label>
+
       <select
         v-model="localCourse"
         class="filter-select"
@@ -95,8 +102,24 @@
           v-model="showTodayOnly"
           type="checkbox"
         />
+
         Show Today's Learning Map
       </label>
+    </div>
+
+    <div class="filter-section">
+      <label class="checkbox-label">
+        <input
+          v-model="showConnectedContext"
+          type="checkbox"
+        />
+
+        Show Connected Context
+      </label>
+
+      <p class="filter-help">
+        Include directly related nodes when searching or filtering.
+      </p>
     </div>
 
     <div class="filter-summary">
@@ -143,6 +166,7 @@ const emit = defineEmits([
   'update:course',
   'update:density',
   'update:todayOnly',
+  'update:connectedContext',
 ])
 
 const localSearch = ref('')
@@ -151,6 +175,7 @@ const localTag = ref('all')
 const localCourse = ref('all')
 const localDensity = ref(5)
 const showTodayOnly = ref(false)
+const showConnectedContext = ref(false)
 
 const availableTags = computed(() => {
   const tags = new Set()
@@ -163,9 +188,7 @@ const availableTags = computed(() => {
 })
 
 const courses = computed(() => {
-  return props.nodes.filter(
-    (node) => node.type === 'course'
-  )
+  return props.nodes.filter((node) => node.type === 'course')
 })
 
 watch(localSearch, (value) => {
@@ -192,6 +215,10 @@ watch(showTodayOnly, (value) => {
   emit('update:todayOnly', value)
 })
 
+watch(showConnectedContext, (value) => {
+  emit('update:connectedContext', value)
+})
+
 function resetFilters() {
   localSearch.value = ''
   localType.value = 'all'
@@ -199,6 +226,7 @@ function resetFilters() {
   localCourse.value = 'all'
   localDensity.value = 5
   showTodayOnly.value = false
+  showConnectedContext.value = false
 }
 
 function formatLabel(value) {
@@ -231,12 +259,17 @@ function formatLabel(value) {
 }
 
 .reset-btn {
-  border: none;
+  border: 1px solid var(--border-color);
   cursor: pointer;
   padding: 0.45rem 0.8rem;
   border-radius: 8px;
-  background: var(--accent-color);
-  color: white;
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.reset-btn:hover {
+  border-color: var(--accent);
 }
 
 .filter-section {
@@ -273,6 +306,13 @@ function formatLabel(value) {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+}
+
+.filter-help {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .filter-summary {

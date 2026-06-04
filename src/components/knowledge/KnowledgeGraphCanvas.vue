@@ -1,23 +1,25 @@
 <template>
-  <div class="graph-canvas">
+  <div class="graph-canvas" :class="viewMode">
     <VueFlow
-      v-model:nodes="nodes"
-      v-model:edges="edges"
+      v-model:nodes="flowNodes"
+      v-model:edges="flowEdges"
       fit-view-on-init
       :min-zoom="0.2"
       :max-zoom="2"
       class="vue-flow-container"
+      @node-drag-stop="handleNodeDragStop"
     >
       <Background />
-
       <MiniMap />
-
       <Controls />
 
       <template #node-default="nodeProps">
         <div
           class="custom-node"
-          :class="nodeProps.data.type"
+          :class="[
+            nodeProps.data.type,
+            getNodeHighlightClass(nodeProps.data.id)
+          ]"
           @click.stop="handleNodeClick(nodeProps)"
         >
           <div class="node-title">
@@ -34,71 +36,203 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-import {
-  VueFlow,
-} from '@vue-flow/core'
-
-import {
-  MiniMap,
-} from '@vue-flow/minimap'
-
-import {
-  Controls,
-} from '@vue-flow/controls'
-
-import {
-  Background,
-} from '@vue-flow/background'
+import { VueFlow } from '@vue-flow/core'
+import { MiniMap } from '@vue-flow/minimap'
+import { Controls } from '@vue-flow/controls'
+import { Background } from '@vue-flow/background'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/minimap/dist/style.css'
 import '@vue-flow/controls/dist/style.css'
 
-import {
-  mockKnowledgeGraphNodes,
-  mockKnowledgeGraphLinks,
-} from '../../data/mockKnowledgeGraph'
+const STORAGE_KEY = 'scholarory-knowledge-graph-node-positions'
 
-const emit = defineEmits([
-  'select-node',
-])
+const clusterPositions = {
+  'daily-page': { x: 0, y: 0 },
+  'planner-block': { x: 0, y: 190 },
+  course: { x: 360, y: 0 },
+  assignment: { x: 360, y: 190 },
+  'research-source': { x: 720, y: 0 },
+  note: { x: 360, y: 420 },
+  tag: { x: 720, y: 420 },
+}
 
-const nodes = computed(() => {
-  return mockKnowledgeGraphNodes.map((node, index) => ({
-    id: node.id,
+const props = defineProps({
+  graphNodes: {
+    type: Array,
+    default: () => [],
+  },
 
-    type: 'default',
+  graphLinks: {
+    type: Array,
+    default: () => [],
+  },
 
-    position: {
-      x: (index % 4) * 280,
-      y: Math.floor(index / 4) * 180,
-    },
+  selectedNodeId: {
+    type: String,
+    default: null,
+  },
 
-    data: {
-      ...node,
-    },
-  }))
+  viewMode: {
+    type: String,
+    default: 'card',
+  },
 })
 
-const edges = computed(() => {
-  return mockKnowledgeGraphLinks.map((link) => ({
-    id: link.id,
+const emit = defineEmits(['select-node', 'reset-layout'])
 
-    source: link.source,
+const flowNodes = ref([])
 
-    target: link.target,
+const connectedNodeIds = computed(() => {
+  if (!props.selectedNodeId) return new Set()
 
-    label: link.label,
+  const ids = new Set([props.selectedNodeId])
 
-    animated: false,
-  }))
+  props.graphLinks.forEach((link) => {
+    if (link.source === props.selectedNodeId) {
+      ids.add(link.target)
+    }
+
+    if (link.target === props.selectedNodeId) {
+      ids.add(link.source)
+    }
+  })
+
+  return ids
 })
+
+const flowEdges = computed(() => {
+  const visibleNodeIds = new Set(props.graphNodes.map((node) => node.id))
+
+  return props.graphLinks
+    .filter(
+      (link) =>
+        visibleNodeIds.has(link.source) &&
+        visibleNodeIds.has(link.target)
+    )
+    .map((link) => {
+      const isSelectedEdge =
+        props.selectedNodeId &&
+        (link.source === props.selectedNodeId ||
+          link.target === props.selectedNodeId)
+
+      return {
+        id: link.id,
+        source: link.source,
+        target: link.target,
+        label: props.viewMode === 'brain' ? '' : link.label,
+        animated: isSelectedEdge,
+        class: isSelectedEdge ? 'highlighted-edge' : 'dimmed-edge',
+        style: {
+          strokeWidth: getEdgeWidth(link.strength),
+        },
+      }
+    })
+})
+
+watch(
+  () => [props.graphNodes, props.viewMode],
+  () => {
+    flowNodes.value = buildFlowNodes()
+  },
+  {
+    immediate: true,
+    deep: true,
+  }
+)
+
+function buildFlowNodes() {
+  const savedPositions = loadSavedPositions()
+  const typeCounts = {}
+
+  return props.graphNodes.map((node) => {
+    const type = node.type || 'note'
+    const typeIndex = typeCounts[type] || 0
+    typeCounts[type] = typeIndex + 1
+
+    return {
+      id: node.id,
+      type: 'default',
+      position: savedPositions[node.id] || getClusteredPosition(type, typeIndex),
+      data: {
+        ...node,
+      },
+    }
+  })
+}
+
+function getClusteredPosition(type, index) {
+  const base = clusterPositions[type] || { x: 0, y: 0 }
+
+  const columnOffset = (index % 2) * 250
+  const rowOffset = Math.floor(index / 2) * 140
+
+  return {
+    x: base.x + columnOffset,
+    y: base.y + rowOffset,
+  }
+}
+
+function getEdgeWidth(strength = 3) {
+  if (strength >= 5) return 3
+  if (strength === 4) return 2.5
+  if (strength === 3) return 2
+  if (strength === 2) return 1.5
+  return 1
+}
 
 function handleNodeClick(nodeProps) {
   emit('select-node', nodeProps.data)
+}
+
+function handleNodeDragStop(event) {
+  const draggedNode = event?.node || event
+
+  if (!draggedNode?.id || !draggedNode?.position) return
+
+  const savedPositions = loadSavedPositions()
+
+  savedPositions[draggedNode.id] = {
+    x: draggedNode.position.x,
+    y: draggedNode.position.y,
+  }
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(savedPositions))
+}
+
+function resetLayout() {
+  localStorage.removeItem(STORAGE_KEY)
+  flowNodes.value = buildFlowNodes()
+  emit('reset-layout')
+}
+
+defineExpose({
+  resetLayout,
+})
+
+function loadSavedPositions() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}
+  } catch {
+    return {}
+  }
+}
+
+function getNodeHighlightClass(nodeId) {
+  if (!props.selectedNodeId) return ''
+
+  if (nodeId === props.selectedNodeId) {
+    return 'selected-node'
+  }
+
+  if (connectedNodeIds.value.has(nodeId)) {
+    return 'connected-node'
+  }
+
+  return 'dimmed-node'
 }
 
 function formatLabel(value) {
@@ -123,24 +257,58 @@ function formatLabel(value) {
 .custom-node {
   min-width: 180px;
   max-width: 220px;
-
   background: var(--bg-card);
-
   border: 1px solid var(--border-color);
-
   border-radius: 12px;
-
   padding: 0.75rem;
-
   cursor: pointer;
-
   color: var(--text-primary);
-
   box-shadow: var(--shadow);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.brain .custom-node {
+  min-width: 72px;
+  max-width: 110px;
+  min-height: 72px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 0.55rem;
+}
+
+.brain .node-title {
+  font-size: 0.68rem;
+  line-height: 1.15;
+  margin-bottom: 0;
+}
+
+.brain .node-type {
+  display: none;
 }
 
 .custom-node:hover {
   border-color: var(--accent);
+}
+
+.selected-node {
+  transform: scale(1.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18), var(--shadow);
+}
+
+.connected-node {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12), var(--shadow);
+}
+
+.dimmed-node {
+  opacity: 0.28;
 }
 
 .node-title {
@@ -179,5 +347,52 @@ function formatLabel(value) {
 
 .custom-node.planner-block {
   border-left: 4px solid #f97316;
+}
+
+.brain .custom-node.note,
+.brain .custom-node.tag,
+.brain .custom-node.assignment,
+.brain .custom-node.course,
+.brain .custom-node.research-source,
+.brain .custom-node.daily-page,
+.brain .custom-node.planner-block {
+  border-left-width: 1px;
+}
+
+.brain .custom-node.note {
+  box-shadow: inset 0 0 0 4px rgba(59, 130, 246, 0.18), var(--shadow);
+}
+
+.brain .custom-node.tag {
+  box-shadow: inset 0 0 0 4px rgba(16, 185, 129, 0.18), var(--shadow);
+}
+
+.brain .custom-node.assignment {
+  box-shadow: inset 0 0 0 4px rgba(245, 158, 11, 0.18), var(--shadow);
+}
+
+.brain .custom-node.course {
+  box-shadow: inset 0 0 0 4px rgba(239, 68, 68, 0.18), var(--shadow);
+}
+
+.brain .custom-node.research-source {
+  box-shadow: inset 0 0 0 4px rgba(139, 92, 246, 0.18), var(--shadow);
+}
+
+.brain .custom-node.daily-page {
+  box-shadow: inset 0 0 0 4px rgba(6, 182, 212, 0.18), var(--shadow);
+}
+
+.brain .custom-node.planner-block {
+  box-shadow: inset 0 0 0 4px rgba(249, 115, 22, 0.18), var(--shadow);
+}
+
+:deep(.highlighted-edge .vue-flow__edge-path) {
+  stroke-width: 3;
+  stroke: var(--accent);
+}
+
+:deep(.dimmed-edge .vue-flow__edge-path) {
+  opacity: 0.35;
 }
 </style>

@@ -382,17 +382,38 @@ function formatLabel(value) {
 }
 
 .primary-btn {
-  border: none;
-  background: var(--accent-color);
-  color: white;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.primary-btn:hover {
+  border-color: var(--accent);
+  background: var(--btn-bg);
 }
 
 .secondary-btn {
+  width: 100%;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
-  background: var(--bg-primary);
+  background: var(--bg-card);
   color: var(--text-primary);
+  font-weight: 600;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
+.secondary-btn:hover {
+  border-color: var(--accent);
+  background: var(--btn-bg);
+}
 .rory-insights {
   margin-top: 1.25rem;
   padding: 1rem;

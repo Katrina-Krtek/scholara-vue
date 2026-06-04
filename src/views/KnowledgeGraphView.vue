@@ -18,6 +18,7 @@
             @update:course="selectedCourse = $event"
             @update:density="graphDensity = $event"
             @update:todayOnly="todayOnly = $event"
+            @update:connectedContext="showConnectedContext = $event"
           />
 
           <GraphDiscoveryPanel
@@ -30,10 +31,54 @@
           <section class="graph-card">
             <div class="graph-toolbar">
               <span>{{ filteredNodes.length }} Nodes</span>
-              <span>{{ mockKnowledgeGraphLinks.length }} Relationships</span>
+              <span>{{ visibleRelationshipCount }} Relationships</span>
+            </div>
+
+            <div class="graph-actions">
+              <div class="view-toggle">
+                <button
+                  class="view-toggle-btn"
+                  :class="{ active: graphViewMode === 'card' }"
+                  type="button"
+                  @click="graphViewMode = 'card'"
+                >
+                  Card View
+                </button>
+
+                <button
+                  class="view-toggle-btn"
+                  :class="{ active: graphViewMode === 'brain' }"
+                  type="button"
+                  @click="graphViewMode = 'brain'"
+                >
+                  Brain Map
+                </button>
+
+                <button
+                  class="view-toggle-btn"
+                  :class="{ active: focusMode }"
+                  type="button"
+                  @click="focusMode = !focusMode"
+                >
+                  Focus Mode
+                </button>
+              </div>
+
+              <button
+                class="reset-layout-btn"
+                type="button"
+                @click="resetGraphLayout"
+              >
+                Reset Layout
+              </button>
             </div>
 
             <KnowledgeGraphCanvas
+              ref="graphCanvasRef"
+              :graph-nodes="filteredNodes"
+              :graph-links="mockKnowledgeGraphLinks"
+              :selected-node-id="selectedNode?.id"
+              :view-mode="graphViewMode"
               @select-node="selectNode"
             />
           </section>
@@ -46,6 +91,9 @@
             :all-nodes="mockKnowledgeGraphNodes"
             @close="selectedNode = null"
             @select-node="selectNode"
+            @open-node="openNode"
+            @attach-node="attachNodeToDailyPage"
+            @link-note="createLinkedNote"
           />
 
           <GraphRelatedItems
@@ -61,6 +109,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import AppLayout from '../components/AppLayout.vue'
 import GraphFilters from '../components/knowledge/GraphFilters.vue'
@@ -79,14 +128,19 @@ import {
   getRelatedNodes
 } from '../data/mockKnowledgeGraph'
 
+const router = useRouter()
+
 const searchQuery = ref('')
 const selectedType = ref('all')
 const selectedTag = ref('all')
 const selectedCourse = ref('all')
 const graphDensity = ref(5)
 const todayOnly = ref(false)
-
+const showConnectedContext = ref(false)
+const graphViewMode = ref('card')
+const focusMode = ref(false)
 const selectedNode = ref(null)
+const graphCanvasRef = ref(null)
 
 const stats = getGraphStats()
 
@@ -119,20 +173,53 @@ const filteredNodes = computed(() => {
     nodes = nodes.filter(
       (node) =>
         node.title.toLowerCase().includes(query) ||
-        node.description?.toLowerCase().includes(query)
+        node.description?.toLowerCase().includes(query) ||
+        node.type.toLowerCase().includes(query) ||
+        node.status?.toLowerCase().includes(query) ||
+        node.tags?.some((tag) => tag.toLowerCase().includes(query))
+    )
+  }
+
+  if (showConnectedContext.value && nodes.length > 0) {
+    const visibleIds = new Set(nodes.map((node) => node.id))
+
+    mockKnowledgeGraphLinks.forEach((link) => {
+      if (
+        visibleIds.has(link.source) ||
+        visibleIds.has(link.target)
+      ) {
+        visibleIds.add(link.source)
+        visibleIds.add(link.target)
+      }
+    })
+
+    nodes = mockKnowledgeGraphNodes.filter((node) =>
+      visibleIds.has(node.id)
     )
   }
 
   return nodes
 })
 
+const visibleRelationshipCount = computed(() => {
+  const visibleNodeIds = new Set(filteredNodes.value.map((node) => node.id))
+
+  return mockKnowledgeGraphLinks.filter(
+    (link) =>
+      visibleNodeIds.has(link.source) &&
+      visibleNodeIds.has(link.target)
+  ).length
+})
+
 const selectedRelationships = computed(() => {
   if (!selectedNode.value) return []
+
   return getLinksForNode(selectedNode.value.id)
 })
 
 const selectedRelatedNodes = computed(() => {
   if (!selectedNode.value) return []
+
   return getRelatedNodes(selectedNode.value.id)
 })
 
@@ -148,6 +235,37 @@ function handleDiscoveryClick(discovery) {
   if (node) {
     selectedNode.value = node
   }
+}
+
+function resetGraphLayout() {
+  graphCanvasRef.value?.resetLayout()
+}
+
+function openNode(node) {
+  if (!node) return
+
+  if (!node.route) {
+    window.alert('This node type does not have a full page yet.')
+    return
+  }
+
+  router.push(node.route)
+}
+
+function attachNodeToDailyPage(node) {
+  if (!node) return
+
+  window.alert(
+    `${node.title} will be attached to today's Daily Page once Daily Pages are built.`
+  )
+}
+
+function createLinkedNote(node) {
+  if (!node) return
+
+  window.alert(
+    `Linked note creation for "${node.title}" will be added when the Notes editor is connected.`
+  )
 }
 </script>
 
@@ -191,9 +309,61 @@ function handleDiscoveryClick(discovery) {
   font-weight: 600;
 }
 
+.graph-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.view-toggle-btn,
+.reset-layout-btn {
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.view-toggle-btn:hover,
+.reset-layout-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.view-toggle-btn.active {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
+
 @media (max-width: 1300px) {
   .graph-layout {
     grid-template-columns: 1fr;
+  }
+
+  .graph-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .view-toggle {
+    width: 100%;
+  }
+
+  .view-toggle-btn,
+  .reset-layout-btn {
+    width: 100%;
   }
 }
 </style>
