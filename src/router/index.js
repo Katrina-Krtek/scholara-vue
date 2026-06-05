@@ -6,6 +6,7 @@ import AuthView from '../views/AuthView.vue'
 import StudentDashboard from '../views/StudentDashboard.vue'
 import InboxView from '../views/InboxView.vue'
 
+
 import CoursesHub from '../views/CoursesHub.vue'
 import CourseDetail from '../views/CourseDetail.vue'
 import AssignmentDetail from '../views/AssignmentDetail.vue'
@@ -14,6 +15,7 @@ import AssignmentsHub from '../views/AssignmentsHub.vue'
 import NotesHub from '../views/NotesHub.vue'
 import CalendarHub from '../views/CalendarHub.vue'
 import DailyPagesView from '../views/DailyPagesView.vue'
+import PlannerView from '../views/planner/PlannerView.vue'
 import AcademicHub from '../views/AcademicHub.vue'
 import WritingHub from '../views/WritingHub.vue'
 
@@ -23,16 +25,21 @@ import ResearchTypeView from '../views/ResearchTypeView.vue'
 
 import KnowledgeTagsView from '../views/KnowledgeTagsView.vue'
 import KnowledgeTagDetail from '../views/KnowledgeTagDetail.vue'
-import KnowledgeGraphView from '../views/KnowledgeGraphView.vue'
+import KnowledgeGraphView from '../views/graph/KnowledgeGraphView.vue'
 
 const routes = [
   { path: '/auth', name: 'Auth', component: AuthView },
+  {
+  path: '/tools/pomodoro',
+  name: 'pomodoro',
+  component: () => import('@/views/tools/PomodoroView.vue'),
+},
 
   { path: '/', name: 'StudentDashboard', component: StudentDashboard },
   { path: '/student-dashboard', redirect: '/' },
 
   { path: '/inbox', name: 'Inbox', component: InboxView },
-
+  
   { path: '/academic', name: 'AcademicHub', component: AcademicHub },
 
   { path: '/courses', name: 'CoursesHub', component: CoursesHub },
@@ -48,6 +55,7 @@ const routes = [
   { path: '/notes', name: 'NotesHub', component: NotesHub },
   { path: '/calendar', name: 'CalendarHub', component: CalendarHub },
   { path: '/daily-pages', name: 'DailyPagesView', component: DailyPagesView },
+  { path: '/planner', name: 'Planner', component: PlannerView },
   { path: '/writing', name: 'WritingHub', component: WritingHub },
 
   { path: '/knowledge-graph', name: 'KnowledgeGraphView', component: KnowledgeGraphView },

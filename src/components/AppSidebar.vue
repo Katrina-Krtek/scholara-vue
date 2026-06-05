@@ -32,6 +32,8 @@
       <RouterLink to="/notes" class="nav-item">📓 Notes</RouterLink>
       <RouterLink to="/calendar" class="nav-item">📅 Calendar</RouterLink>
       <RouterLink to="/daily-pages" class="nav-item">🗓️ Daily Pages</RouterLink>
+      <RouterLink to="/planner" class="nav-item">🗒️ Planner</RouterLink>
+      <RouterLink to="/tools/pomodoro" class="nav-item">⏱️ Pomodoro</RouterLink>
 
       <div v-if="!isCollapsed" class="nav-section-label">Hubs</div>
 
@@ -51,10 +53,15 @@
 
       <RouterLink to="/writing" class="nav-item hub-item">✍️ Writing Hub</RouterLink>
 
-      <div v-if="!isCollapsed" class="nav-section-label">Knowledge Graph</div>
+      <div v-if="!isCollapsed" class="nav-section-label">Knowledge</div>
 
-      <RouterLink to="/knowledge-tags" class="nav-item hub-item">🏷️ Knowledge Tags</RouterLink>
-      <RouterLink to="/knowledge-graph" class="nav-item child-item">🕸️ Graph View</RouterLink>
+      <RouterLink to="/knowledge-tags" class="nav-item hub-item">
+        🏷️ Knowledge Tags
+      </RouterLink>
+
+      <RouterLink to="/knowledge-graph" class="nav-item child-item">
+        🕸️ Knowledge Graph
+      </RouterLink>
     </nav>
 
     <div class="sidebar-bottom">
