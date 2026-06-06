@@ -4,7 +4,7 @@
       {{ isCollapsed ? '☰' : '◀' }}
     </button>
 
-    <RouterLink to="/" class="sidebar-logo">
+    <RouterLink to="/" class="sidebar-logo" aria-label="Scholarory Home">
       <img src="/scholarory-logo.png" alt="Scholarory logo" class="logo-img" />
     </RouterLink>
 
@@ -31,7 +31,8 @@
       <RouterLink to="/inbox" class="nav-item">📥 Inbox</RouterLink>
       <RouterLink to="/notes" class="nav-item">📓 Notes</RouterLink>
       <RouterLink to="/calendar" class="nav-item">📅 Calendar</RouterLink>
-      <RouterLink to="/daily-pages" class="nav-item">🗓️ Daily Pages</RouterLink>
+      <RouterLink to="/daily" class="nav-item">📖 Daily Page</RouterLink>
+      <RouterLink to="/tasks" class="nav-item">✅ Tasks</RouterLink>
       <RouterLink to="/planner" class="nav-item">🗒️ Planner</RouterLink>
       <RouterLink to="/tools/pomodoro" class="nav-item">⏱️ Pomodoro</RouterLink>
 
@@ -104,12 +105,11 @@ import { citationStyles } from '../data/citationStyles'
 import {
   getStoredUsername,
   getCitationStyle,
-  setCitationStyle
+  setCitationStyle,
 } from '../lib/userPreferences.js'
 import { useAuth } from '../composables/useAuth'
 
 const router = useRouter()
-
 const { user, signOut } = useAuth()
 
 const isCollapsed = ref(false)
@@ -144,13 +144,13 @@ function onJotSaved(text) {
 
 <style scoped>
 .sidebar {
-  width: 240px;
+  width: 260px;
   min-height: 100vh;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
-  padding: 1rem 0.75rem;
+  padding: 0.85rem 0.75rem 1rem;
   gap: 0.75rem;
   transition: width 0.2s ease;
   flex-shrink: 0;
@@ -158,8 +158,8 @@ function onJotSaved(text) {
 }
 
 .sidebar.collapsed {
-  width: 52px;
-  padding: 1rem 0.25rem;
+  width: 64px;
+  padding: 0.85rem 0.35rem 1rem;
   align-items: center;
 }
 
@@ -181,12 +181,30 @@ function onJotSaved(text) {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 82px;
+  width: 100%;
+  padding: 0.25rem 0;
+  border-radius: 12px;
+  overflow: visible;
+  text-decoration: none;
 }
 
 .logo-img {
-  height: 36px;
-  width: auto;
+  display: block;
+  width: min(170px, 100%);
+  max-height: 74px;
+  height: auto;
   object-fit: contain;
+}
+
+.sidebar.collapsed .sidebar-logo {
+  min-height: 54px;
+  padding: 0;
+}
+
+.sidebar.collapsed .logo-img {
+  width: 42px;
+  max-height: 42px;
 }
 
 .sidebar-search input {
@@ -395,7 +413,7 @@ function onJotSaved(text) {
 }
 
 .sidebar.collapsed .nav-item::first-letter {
-  font-size: 1rem;
+  font-size: 1.05rem;
 }
 
 .sidebar.collapsed .child-item {

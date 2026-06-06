@@ -1,125 +1,121 @@
 <template>
-  <AppLayout>
-    <template #header>
-      <div>
-        <h1 class="dashboard-title">📚 Courses</h1>
-        <p class="dashboard-date">{{ activeCourses.length }} active</p>
-      </div>
-    </template>
+  <div class="dashboard-shell">
+    <AppSidebar />
 
-    <template #actions>
-      <button class="header-btn" @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'">
-        {{ viewMode === 'grid' ? '☰ List' : '⊞ Grid' }}
-      </button>
-
-      <button class="header-btn" @click="showProgramManager = true">
-        🎓 Programs
-      </button>
-
-      <button class="header-btn primary" @click="showAddCourse = true">
-        + Add Course
-      </button>
-    </template>
-
-    <section class="hub-content">
-      <div v-if="programs.length" class="gpa-bar">
-        <div v-for="program in programs" :key="program.id" class="gpa-chip">
-          <span class="gpa-label">{{ program.name }}</span>
-          <span class="gpa-value">
-            {{ getProgramGPA(program.id) !== null ? getProgramGPA(program.id).toFixed(2) + ' GPA' : 'No grades yet' }}
-          </span>
+    <main class="dashboard-main">
+      <header class="dashboard-header">
+        <div class="header-left">
+          <h1 class="dashboard-title">📚 Courses</h1>
+          <span class="dashboard-date">{{ activeCourses.length }} active</span>
         </div>
-      </div>
 
-      <div v-if="!programs.length" class="notice-bar">
-        <span>Set up a program to enable GPA tracking.</span>
-        <button class="notice-btn" @click="showProgramManager = true">+ Add Program</button>
-      </div>
-
-      <div class="filter-tabs">
-        <button
-          v-for="status in ['All', 'Active', 'Upcoming', 'Completed', 'Dropped']"
-          :key="status"
-          class="filter-tab"
-          :class="{ active: activeFilter === status }"
-          @click="activeFilter = status"
-        >
-          {{ status }}
-          <span class="tab-count">{{ getCountByStatus(status) }}</span>
-        </button>
-      </div>
-
-      <div v-if="filteredCourses.length === 0" class="empty-state">
-        <p class="empty-icon">📚</p>
-        <p class="empty-title">No courses yet</p>
-        <p class="empty-sub">Add your first course to get started.</p>
-        <button class="primary-btn" @click="showAddCourse = true">+ Add Course</button>
-      </div>
-
-      <div v-else-if="viewMode === 'grid'" class="courses-grid">
-        <div
-          v-for="course in filteredCourses"
-          :key="course.id"
-          class="course-card"
-          @click="goToCourse(course.id)"
-        >
-          <div
-            class="card-banner"
-            :style="course.bannerUrl
-              ? `background-image: url(${course.bannerUrl}); background-position: center ${course.bannerPosition}%;`
-              : `background: ${course.color};`"
-          ></div>
-
-          <div class="card-body">
-            <div class="card-icon">{{ course.icon }}</div>
-            <div class="card-title">{{ course.title }}</div>
-            <div class="card-meta">{{ course.term }} · {{ course.credits }} cr</div>
-
-            <div v-if="course.instructorName" class="card-instructor">
-              👤 {{ course.instructorName }}
-            </div>
-
-            <div class="card-footer">
-              <span class="status-chip" :class="course.status.toLowerCase()">
-                {{ course.status }}
-              </span>
-
-              <span v-if="getCourseAverage(course.id) !== null" class="card-grade">
-                {{ getCourseAverage(course.id) }}%
-              </span>
-              <span v-else class="card-grade muted">No grades</span>
-            </div>
-          </div>
+        <div class="header-right">
+          <button class="header-btn" @click="viewMode = viewMode === 'grid' ? 'list' : 'grid'">
+            {{ viewMode === 'grid' ? '☰ List' : '⊞ Grid' }}
+          </button>
+          <button class="header-btn" @click="showProgramManager = true">🎓 Programs</button>
+          <button class="header-btn primary" @click="showAddCourse = true">+ Add Course</button>
         </div>
-      </div>
+      </header>
 
-      <div v-else class="courses-list">
-        <div
-          v-for="course in filteredCourses"
-          :key="course.id"
-          class="course-row"
-          @click="goToCourse(course.id)"
-        >
-          <div class="row-icon">{{ course.icon }}</div>
-
-          <div class="row-main">
-            <span class="row-title">{{ course.title }}</span>
-            <span class="row-meta">
-              {{ course.term }} · {{ course.credits }} cr · {{ course.instructorName }}
+      <section class="hub-content">
+        <div v-if="programs.length" class="gpa-bar">
+          <div v-for="program in programs" :key="program.id" class="gpa-chip">
+            <span class="gpa-label">{{ program.name }}</span>
+            <span class="gpa-value">
+              {{ getProgramGPA(program.id) !== null ? getProgramGPA(program.id).toFixed(2) + ' GPA' : 'No grades yet' }}
             </span>
           </div>
-
-          <span class="status-chip" :class="course.status.toLowerCase()">
-            {{ course.status }}
-          </span>
-
-          <span v-if="getCourseAverage(course.id) !== null" class="row-grade">
-            {{ getCourseAverage(course.id) }}%
-          </span>
-          <span v-else class="row-grade muted">—</span>
         </div>
-      </div>
-    </section>
+
+        <div v-if="!programs.length" class="notice-bar">
+          <span>Set up a program to enable GPA tracking.</span>
+          <button class="notice-btn" @click="showProgramManager = true">+ Add Program</button>
+        </div>
+
+        <div class="filter-tabs">
+          <button
+            v-for="status in ['All', 'Active', 'Upcoming', 'Completed', 'Dropped']"
+            :key="status"
+            class="filter-tab"
+            :class="{ active: activeFilter === status }"
+            @click="activeFilter = status"
+          >
+            {{ status }}
+            <span class="tab-count">{{ getCountByStatus(status) }}</span>
+          </button>
+        </div>
+
+        <div v-if="filteredCourses.length === 0" class="empty-state">
+          <p class="empty-icon">📚</p>
+          <p class="empty-title">No courses yet</p>
+          <p class="empty-sub">Add your first course to get started.</p>
+          <button class="primary-btn" @click="showAddCourse = true">+ Add Course</button>
+        </div>
+
+        <div v-else-if="viewMode === 'grid'" class="courses-grid">
+          <div
+            v-for="course in filteredCourses"
+            :key="course.id"
+            class="course-card"
+            @click="goToCourse(course.id)"
+          >
+            <div
+              class="card-banner"
+              :style="course.bannerUrl
+                ? `background-image: url(${course.bannerUrl}); background-position: center ${course.bannerPosition}%;`
+                : `background: ${course.color};`"
+            ></div>
+
+            <div class="card-body">
+              <div class="card-icon">{{ course.icon }}</div>
+              <div class="card-title">{{ course.title }}</div>
+              <div class="card-meta">{{ course.term }} · {{ course.credits }} cr</div>
+              <div v-if="course.instructorName" class="card-instructor">
+                👤 {{ course.instructorName }}
+              </div>
+
+              <div class="card-footer">
+                <span class="status-chip" :class="course.status.toLowerCase()">
+                  {{ course.status }}
+                </span>
+                <span v-if="getCourseAverage(course.id) !== null" class="card-grade">
+                  {{ getCourseAverage(course.id) }}%
+                </span>
+                <span v-else class="card-grade muted">No grades</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="courses-list">
+          <div
+            v-for="course in filteredCourses"
+            :key="course.id"
+            class="course-row"
+            @click="goToCourse(course.id)"
+          >
+            <div class="row-icon">{{ course.icon }}</div>
+
+            <div class="row-main">
+              <span class="row-title">{{ course.title }}</span>
+              <span class="row-meta">
+                {{ course.term }} · {{ course.credits }} cr · {{ course.instructorName }}
+              </span>
+            </div>
+
+            <span class="status-chip" :class="course.status.toLowerCase()">
+              {{ course.status }}
+            </span>
+
+            <span v-if="getCourseAverage(course.id) !== null" class="row-grade">
+              {{ getCourseAverage(course.id) }}%
+            </span>
+            <span v-else class="row-grade muted">—</span>
+          </div>
+        </div>
+      </section>
+    </main>
 
     <div v-if="showAddCourse" class="modal-overlay" @click.self="showAddCourse = false">
       <div class="modal">
@@ -258,16 +254,16 @@
         </div>
       </div>
     </div>
-  </AppLayout>
+  </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import AppLayout from '@/components/AppLayout.vue'
-import { useCourses } from '../composables/useCourses'
+import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import AppSidebar from '../components/AppSidebar.vue';
+import { useCourses } from '../composables/useCourses';
 
-const router = useRouter()
+const router = useRouter();
 
 const {
   courses,
@@ -278,14 +274,14 @@ const {
   updateProgram,
   deleteProgram,
   getCourseAverage,
-  getProgramGPA,
-} = useCourses()
+  getProgramGPA
+} = useCourses();
 
-const viewMode = ref('grid')
-const activeFilter = ref('All')
-const showAddCourse = ref(false)
-const showProgramManager = ref(false)
-const newProgramName = ref('')
+const viewMode = ref('grid');
+const activeFilter = ref('All');
+const showAddCourse = ref(false);
+const showProgramManager = ref(false);
+const newProgramName = ref('');
 
 const defaultCourse = () => ({
   title: '',
@@ -299,45 +295,76 @@ const defaultCourse = () => ({
   meetingTime: '',
   location: '',
   programId: null,
-  color: '#6366f1',
-})
+  color: '#6366f1'
+});
 
-const newCourse = ref(defaultCourse())
+const newCourse = ref(defaultCourse());
 
 const filteredCourses = computed(() => {
-  if (activeFilter.value === 'All') return courses.value
-  return courses.value.filter((course) => course.status === activeFilter.value)
-})
+  if (activeFilter.value === 'All') return courses.value;
+  return courses.value.filter((course) => course.status === activeFilter.value);
+});
 
 function getCountByStatus(status) {
-  if (status === 'All') return courses.value.length
-  return courses.value.filter((course) => course.status === status).length
+  if (status === 'All') return courses.value.length;
+  return courses.value.filter((course) => course.status === status).length;
 }
 
 function submitCourse() {
-  if (!newCourse.value.title.trim()) return
+  if (!newCourse.value.title.trim()) return;
 
-  const created = addCourse(newCourse.value)
+  const created = addCourse(newCourse.value);
 
-  newCourse.value = defaultCourse()
-  showAddCourse.value = false
+  newCourse.value = defaultCourse();
+  showAddCourse.value = false;
 
-  router.push(`/courses/${created.id}`)
+  router.push(`/courses/${created.id}`);
 }
 
 function submitProgram() {
-  if (!newProgramName.value.trim()) return
+  if (!newProgramName.value.trim()) return;
 
-  addProgram(newProgramName.value.trim())
-  newProgramName.value = ''
+  addProgram(newProgramName.value.trim());
+  newProgramName.value = '';
 }
 
 function goToCourse(id) {
-  router.push(`/courses/${id}`)
+  router.push(`/courses/${id}`);
 }
 </script>
 
 <style scoped>
+.dashboard-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+}
+
+.dashboard-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+
 .dashboard-title {
   font-size: 1.4rem;
   font-weight: 700;
@@ -348,6 +375,12 @@ function goToCourse(id) {
 .dashboard-date {
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .header-btn,
@@ -392,6 +425,9 @@ function goToCourse(id) {
 }
 
 .hub-content {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -776,6 +812,20 @@ function goToCourse(id) {
 }
 
 @media (max-width: 760px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .header-right {
+    flex-wrap: wrap;
+  }
+
+  .hub-content {
+    padding: 1rem;
+  }
+
   .two-col {
     grid-template-columns: 1fr;
   }
