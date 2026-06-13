@@ -33,6 +33,10 @@ import SourcesHub from '../views/sources/SourcesHub.vue'
 import SourceDetailView from '../views/sources/SourceDetailView.vue'
 import BooksHub from '../views/books/BooksHub.vue'
 import BookDetailView from '../views/books/BookDetailView.vue'
+import JournalsHub from '../views/journals/JournalsHub.vue'
+import JournalDetailView from '../views/journals/JournalDetailView.vue'
+import ArticlesHub from '@/views/articles/ArticlesHub.vue'
+import ArticleDetailView from '@/views/articles/ArticleDetailView.vue'
 import KnowledgeTagsView from '../views/KnowledgeTagsView.vue'
 import KnowledgeTagDetail from '../views/KnowledgeTagDetail.vue'
 import KnowledgeGraphView from '../views/graph/KnowledgeGraphView.vue'
@@ -100,6 +104,11 @@ const routes = [
    },
    { path: '/books', name: 'BooksHub', component: BooksHub },
    { path: '/books/:id', name: 'BookDetailView', component: BookDetailView },
+
+   { path: '/journals', name: 'JournalsHub', component: JournalsHub },
+   { path: '/journals/:id', name: 'JournalDetailView', component: JournalDetailView },
+   {path: '/articles',name: 'ArticlesHub', component: ArticlesHub },
+   {path: '/articles/:id',name: 'ArticleDetailView', component: ArticleDetailView }
 ]
 
 const router = createRouter({
