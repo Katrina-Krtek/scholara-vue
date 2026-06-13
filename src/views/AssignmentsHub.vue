@@ -60,99 +60,6 @@
         <p>Add an assignment or change your filter.</p>
       </div>
     </section>
-
-    <div
-      v-if="showAddAssignment"
-      class="modal-overlay"
-      @click.self="showAddAssignment = false"
-    >
-      <div class="modal">
-        <div class="modal-header">
-          <span>New Assignment</span>
-          <button class="modal-close" @click="showAddAssignment = false">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="form-row">
-            <label>Title *</label>
-            <input
-              v-model="newAssignment.title"
-              class="form-input"
-              placeholder="Book Review Rough Draft"
-            />
-          </div>
-
-          <div class="form-row two-col">
-            <div>
-              <label>Course</label>
-              <input v-model="newAssignment.course" class="form-input" placeholder="DMIN 851" />
-            </div>
-
-            <div>
-              <label>Type</label>
-              <select v-model="newAssignment.type" class="form-input">
-                <option>Paper</option>
-                <option>Discussion</option>
-                <option>Project</option>
-                <option>Quiz</option>
-                <option>Exam</option>
-                <option>Reading</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row two-col">
-            <div>
-              <label>Due Date</label>
-              <input v-model="newAssignment.dueDate" class="form-input" type="date" />
-            </div>
-
-            <div>
-              <label>Priority</label>
-              <select v-model="newAssignment.priority" class="form-input">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <label>Status</label>
-            <select v-model="newAssignment.status" class="form-input">
-              <option value="not-started">Not Started</option>
-              <option value="in-progress">In Progress</option>
-              <option value="waiting">Waiting</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-
-          <div class="form-row">
-            <label>Description</label>
-            <textarea
-              v-model="newAssignment.description"
-              class="form-input textarea"
-              placeholder="Notes, rubric details, or next action..."
-            />
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button class="modal-btn-cancel" @click="showAddAssignment = false">
-            Cancel
-          </button>
-
-          <button
-            class="modal-btn-save"
-            :disabled="!newAssignment.title.trim()"
-            @click="submitAssignment"
-          >
-            Create Assignment
-          </button>
-        </div>
-      </div>
-    </div>
   </AppLayout>
 </template>
 
@@ -165,24 +72,14 @@ import PriorityBadge from '@/components/shared/PriorityBadge.vue'
 import { useAssignments } from '@/composables/useAssignments'
 
 const router = useRouter()
-const { assignments, addAssignment } = useAssignments()
+
+const { allAssignments } = useAssignments()
+
+const assignments = allAssignments
 
 const statusFilters = ['All', 'Not Started', 'In Progress', 'Waiting', 'Completed']
 const activeFilter = ref('All')
 const showAddAssignment = ref(false)
-
-const defaultAssignment = () => ({
-  title: '',
-  course: '',
-  courseId: null,
-  description: '',
-  dueDate: new Date().toISOString().slice(0, 10),
-  status: 'not-started',
-  priority: 'medium',
-  type: 'Paper',
-})
-
-const newAssignment = ref(defaultAssignment())
 
 const filteredAssignments = computed(() => {
   if (activeFilter.value === 'All') return assignments.value
@@ -200,20 +97,7 @@ function getCountByStatus(status) {
   return assignments.value.filter((assignment) => assignment.status === normalizedStatus).length
 }
 
-function submitAssignment() {
-  if (!newAssignment.value.title.trim()) return
-
-  addAssignment(newAssignment.value)
-  newAssignment.value = defaultAssignment()
-  showAddAssignment.value = false
-}
-
 function goToAssignment(assignment) {
-  if (assignment.courseId) {
-    router.push(`/courses/${assignment.courseId}/assignments/${assignment.id}`)
-    return
-  }
-
   router.push(`/assignments/${assignment.id}`)
 }
 
@@ -270,8 +154,7 @@ function formatDate(dateString) {
   border-color: var(--accent);
 }
 
-.primary-btn,
-.modal-btn-save {
+.primary-btn {
   border: none;
   background: linear-gradient(135deg, #6366f1, #a855f7);
   color: white;
@@ -364,110 +247,7 @@ function formatDate(dateString) {
   margin: 0;
 }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 50;
-  padding: 1rem;
-}
-
-.modal {
-  width: min(620px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-}
-
-.modal-header,
-.modal-footer {
-  display: flex;
-  align-items: center;
-  padding: 1rem;
-}
-
-.modal-header {
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border-color);
-  font-weight: 800;
-}
-
-.modal-footer {
-  justify-content: flex-end;
-  gap: 0.75rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.modal-close {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.modal-body {
-  padding: 1rem;
-  display: grid;
-  gap: 1rem;
-}
-
-.form-row {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.form-row label {
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.two-col {
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.form-input {
-  width: 100%;
-  background: var(--input-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
-  border-radius: 8px;
-  padding: 0.65rem 0.75rem;
-  box-sizing: border-box;
-}
-
-.textarea {
-  min-height: 110px;
-  resize: vertical;
-}
-
-.modal-btn-cancel {
-  border: 1px solid var(--border-color);
-  background: transparent;
-  color: var(--text-secondary);
-  border-radius: 8px;
-  padding: 0.6rem 1rem;
-  cursor: pointer;
-}
-
-.modal-btn-save:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 @media (max-width: 760px) {
-  .two-col {
-    grid-template-columns: 1fr;
-  }
-
   .assignments-grid {
     grid-template-columns: 1fr;
   }

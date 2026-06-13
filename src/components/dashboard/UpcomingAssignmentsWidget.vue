@@ -1,42 +1,42 @@
 <template>
   <section class="dashboard-widget">
     <div class="widget-header">
-      <h3>Today's Tasks</h3>
-      <span class="task-count">{{ tasks.length }}</span>
+      <h3>Upcoming Assignments</h3>
+      <span class="assignment-count">{{ assignments.length }}</span>
     </div>
 
-    <div class="task-list">
+    <div class="assignment-list">
       <div
-        v-for="task in tasks"
-        :key="task.id"
-        class="task-item"
+        v-for="assignment in assignments"
+        :key="assignment.id"
+        class="assignment-item"
       >
         <div>
-          <strong>{{ task.title }}</strong>
-          <p>{{ task.priority }} Priority</p>
+          <strong>{{ assignment.title }}</strong>
+          <p>{{ assignment.course }}</p>
         </div>
 
-        <span class="task-status">
-          {{ task.status }}
-        </span>
+        <div class="assignment-meta">
+          <span>{{ assignment.dueDate }}</span>
+        </div>
       </div>
     </div>
   </section>
 </template>
 
 <script setup>
-const tasks = [
+const assignments = [
   {
     id: 1,
-    title: 'Review DMIN 851 notes',
-    priority: 'High',
-    status: 'In Progress',
+    title: 'Discussion Question Response',
+    course: 'DMIN 851',
+    dueDate: 'Jun 12',
   },
   {
     id: 2,
-    title: 'Update Scholarory build',
-    priority: 'Medium',
-    status: 'Not Started',
+    title: 'Implementation Paper',
+    course: 'DMIN 851',
+    dueDate: 'Jun 26',
   },
 ]
 </script>
@@ -57,21 +57,17 @@ const tasks = [
   margin-bottom: 1rem;
 }
 
-.widget-header h3 {
-  margin: 0;
-}
-
-.task-count {
+.assignment-count {
   font-weight: 800;
   color: var(--accent-text);
 }
 
-.task-list {
+.assignment-list {
   display: grid;
   gap: 0.75rem;
 }
 
-.task-item {
+.assignment-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -81,14 +77,14 @@ const tasks = [
   background: var(--bg-secondary);
 }
 
-.task-item p {
+.assignment-item p {
   margin: 0.25rem 0 0;
   color: var(--text-secondary);
   font-size: 0.85rem;
 }
 
-.task-status {
-  font-size: 0.8rem;
+.assignment-meta {
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--accent-text);
 }

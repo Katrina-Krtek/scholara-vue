@@ -1,126 +1,123 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
+import { assignments as assignmentSeedData } from '@/data/assignments'
 
-const STORAGE_KEY = 'scholarory_assignments'
-
-const defaultAssignments = [
-  {
-    id: 1,
-    title: 'Book Review Rough Draft',
-    course: 'DMIN 851',
-    courseId: 1,
-    description: 'Draft the structure and organize the main argument.',
-    dueDate: '2026-06-06',
-    status: 'in-progress',
-    priority: 'urgent',
-    type: 'Paper',
-  },
-  {
-    id: 2,
-    title: 'Discussion Question Response',
-    course: 'DMIN 851',
-    courseId: 1,
-    description: 'Write initial post and prepare two replies.',
-    dueDate: '2026-06-06',
-    status: 'not-started',
-    priority: 'high',
-    type: 'Discussion',
-  },
-  {
-    id: 3,
-    title: 'Organization Phase Assignment',
-    course: 'DMIN 851',
-    courseId: 1,
-    description: 'Organize sources, journal options, and book review direction.',
-    dueDate: '2026-06-07',
-    status: 'in-progress',
-    priority: 'high',
-    type: 'Project',
-  },
-]
-
-function loadAssignments() {
-  try {
-    const storedAssignments = localStorage.getItem(STORAGE_KEY)
-
-    if (!storedAssignments) {
-      return defaultAssignments
-    }
-
-    return JSON.parse(storedAssignments)
-  } catch (error) {
-    console.error('Failed to load assignments:', error)
-    return defaultAssignments
-  }
-}
-
-const assignments = ref(loadAssignments())
-
-watch(
-  assignments,
-  (newAssignments) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newAssignments))
-  },
-  { deep: true },
-)
+const assignments = ref([...assignmentSeedData])
 
 export function useAssignments() {
-  const activeAssignments = computed(() =>
-    assignments.value.filter((assignment) => assignment.status !== 'completed'),
-  )
+  const allAssignments = computed(() => assignments.value)
 
-  const completedAssignments = computed(() =>
-    assignments.value.filter((assignment) => assignment.status === 'completed'),
-  )
-
-  function getAssignmentsByDate(date) {
-    return assignments.value.filter((assignment) => assignment.dueDate === date)
+  const getAssignmentById = (id) => {
+    return assignments.value.find((assignment) => assignment.id === Number(id))
   }
 
-  function getAssignment(id) {
-    return assignments.value.find((assignment) => assignment.id === id)
-  }
+  const upcomingAssignments = computed(() => {
+    return [...assignments.value].sort(
+      (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
+    )
+  })
 
-  function addAssignment(assignment) {
+  const urgentAssignments = computed(() => {
+    return assignments.value.filter(
+      (assignment) =>
+        assignment.priority === 'urgent' || assignment.status === 'in-progress'
+    )
+  })
+
+  const addAssignment = (assignment) => {
     const newAssignment = {
       id: Date.now(),
-      status: 'not-started',
-      priority: 'medium',
-      type: 'Paper',
-      ...assignment,
+      title: assignment.title || 'Untitled Assignment',
+      description: assignment.description || '',
+      course: assignment.course || '',
+      courseId: assignment.courseId || null,
+      instructorId: assignment.instructorId || null,
+      dueDate: assignment.dueDate || new Date().toISOString().slice(0, 10),
+      status: assignment.status || 'not-started',
+      priority: assignment.priority || 'medium',
+      progress: assignment.progress || 0,
+      type: assignment.type || 'Paper',
+      instructions: assignment.instructions || '',
+      rubric: assignment.rubric || '',
+      instructorNotes: assignment.instructorNotes || '',
+      personalNotes: assignment.personalNotes || '',
+      wordCount: assignment.wordCount || {
+        current: 0,
+        target: 0,
+      },
+      linkedResearch: assignment.linkedResearch || [],
+      linkedTasks: assignment.linkedTasks || [],
+      linkedFiles: assignment.linkedFiles || [],
+      checklist: assignment.checklist || [
+        { label: 'Instructions reviewed', completed: false },
+        { label: 'Rubric reviewed', completed: false },
+        { label: 'Research linked', completed: false },
+        { label: 'Draft completed', completed: false },
+        { label: 'Grammar checked', completed: false },
+        { label: 'Citations verified', completed: false },
+        { label: 'Final review completed', completed: false },
+        { label: 'Submitted', completed: false },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }
 
     assignments.value.push(newAssignment)
+
     return newAssignment
   }
 
-  function updateAssignment(id, updates) {
-    assignments.value = assignments.value.map((assignment) =>
-      assignment.id === id ? { ...assignment, ...updates } : assignment,
+  const updateAssignment = (id, updates) => {
+    const index = assignments.value.findIndex(
+      (assignment) => assignment.id === Number(id)
+    )
+
+    if (index !== -1) {
+      assignments.value[index] = {
+        ...assignments.value[index],
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      }
+    }
+  }
+
+  const deleteAssignment = (id) => {
+    assignments.value = assignments.value.filter(
+      (assignment) => assignment.id !== Number(id)
     )
   }
 
-  function deleteAssignment(id) {
-    assignments.value = assignments.value.filter((assignment) => assignment.id !== id)
+  const updateAssignmentStatus = (id, status) => {
+    updateAssignment(id, { status })
   }
 
-  function toggleAssignmentComplete(id) {
-    const assignment = assignments.value.find((assignmentItem) => assignmentItem.id === id)
+  const updateAssignmentPriority = (id, priority) => {
+    updateAssignment(id, { priority })
+  }
 
-    if (!assignment) return
+  const updateAssignmentProgress = (id, progress) => {
+    updateAssignment(id, { progress: Number(progress) })
+  }
 
-    assignment.status =
-      assignment.status === 'completed' ? 'not-started' : 'completed'
+  const updateAssignmentNotes = (id, notes) => {
+    updateAssignment(id, notes)
+  }
+
+  const updateAssignmentChecklist = (id, checklist) => {
+    updateAssignment(id, { checklist })
   }
 
   return {
-    assignments,
-    activeAssignments,
-    completedAssignments,
-    getAssignmentsByDate,
-    getAssignment,
+    allAssignments,
+    upcomingAssignments,
+    urgentAssignments,
+    getAssignmentById,
     addAssignment,
     updateAssignment,
     deleteAssignment,
-    toggleAssignmentComplete,
+    updateAssignmentStatus,
+    updateAssignmentPriority,
+    updateAssignmentProgress,
+    updateAssignmentNotes,
+    updateAssignmentChecklist,
   }
 }

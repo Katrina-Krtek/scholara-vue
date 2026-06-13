@@ -12,17 +12,30 @@
       </div>
     </template>
 
+
+    <DashboardStatsCards />
+    <AcademicCommandCenter />
+    <UpcomingAssignmentsWidget />
+    <TodaysTasksWidget />
+
+
     <!-- Recent Jots Widget -->
     <div class="widget">
       <div class="widget-header">
         <span class="widget-title">⚡ Recent Jots</span>
         <router-link to="/inbox" class="widget-link">View Inbox →</router-link>
       </div>
+
       <div v-if="unfiledJots.length === 0" class="widget-empty">
         No jots yet — hit ⚡ New Jot to capture something.
       </div>
+
       <div v-else class="widget-jots">
-        <div v-for="jot in unfiledJots.slice(0, 3)" :key="jot.id" class="widget-jot">
+        <div
+          v-for="jot in unfiledJots.slice(0, 3)"
+          :key="jot.id"
+          class="widget-jot"
+        >
           <span class="widget-jot-text">{{ jot.text }}</span>
           <span class="widget-jot-time">{{ formatDate(jot.createdAt) }}</span>
         </div>
@@ -32,20 +45,30 @@
 </template>
 
 <script setup>
-import AppLayout from '../components/AppLayout.vue';
-import ThemeSwitcher from '../components/ThemeSwitcher.vue';
-import { useJots } from '../composables/useJots';
+import AppLayout from '../components/AppLayout.vue'
+import ThemeSwitcher from '../components/ThemeSwitcher.vue'
+import { useJots } from '../composables/useJots'
+import AcademicCommandCenter from '@/components/academic/AcademicCommandCenter.vue'
+import UpcomingAssignmentsWidget from '@/components/dashboard/UpcomingAssignmentsWidget.vue'
+import DashboardStatsCards from '@/components/dashboard/DashboardStatsCards.vue'
+import TodaysTasksWidget from '@/components/dashboard/TodaysTasksWidget.vue'
 
-const { unfiledJots } = useJots();
+const { unfiledJots } = useJots()
 
 const formattedDate = new Date().toLocaleDateString('en-US', {
-  weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
-});
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+})
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-  });
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 </script>
 
@@ -60,7 +83,12 @@ function formatDate(iso) {
   cursor: pointer;
   transition: background 0.15s;
 }
-.action-btn:hover { background: var(--btn-hover); color: var(--text-primary); }
+
+.action-btn:hover {
+  background: var(--btn-hover);
+  color: var(--text-primary);
+}
+
 .widget {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -72,12 +100,41 @@ function formatDate(iso) {
   max-width: 600px;
   box-shadow: var(--shadow);
 }
-.widget-header { display: flex; align-items: center; justify-content: space-between; }
-.widget-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
-.widget-link { font-size: 0.78rem; color: var(--accent); text-decoration: none; }
-.widget-link:hover { color: var(--accent-text); }
-.widget-empty { font-size: 0.82rem; color: var(--text-muted); padding: 0.5rem 0; }
-.widget-jots { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.widget-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.widget-link {
+  font-size: 0.78rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.widget-link:hover {
+  color: var(--accent-text);
+}
+
+.widget-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+}
+
+.widget-jots {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .widget-jot {
   display: flex;
   align-items: flex-start;
@@ -88,6 +145,7 @@ function formatDate(iso) {
   border-radius: 7px;
   border: 1px solid var(--border-color);
 }
+
 .widget-jot-text {
   font-size: 0.85rem;
   color: var(--text-secondary);
@@ -97,5 +155,10 @@ function formatDate(iso) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.widget-jot-time { font-size: 0.72rem; color: var(--text-muted); flex-shrink: 0; }
+
+.widget-jot-time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
 </style>

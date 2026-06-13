@@ -40,9 +40,11 @@
 
       <RouterLink to="/academic" class="nav-item hub-item">🎓 Academic Hub</RouterLink>
       <RouterLink to="/courses" class="nav-item child-item">📚 Courses</RouterLink>
+      <RouterLink to="/instructors" class="nav-item child-item">👨‍🏫 Instructors</RouterLink>
       <RouterLink to="/assignments" class="nav-item child-item">📝 Assignments</RouterLink>
 
       <RouterLink to="/research" class="nav-item hub-item">🔎 Resource Hub</RouterLink>
+      <RouterLink to="/sources" class="nav-item child-item">🧩 Sources Database</RouterLink>
       <RouterLink to="/research/type/book" class="nav-item child-item">📘 Books</RouterLink>
       <RouterLink to="/research/type/article" class="nav-item child-item">📰 Articles</RouterLink>
       <RouterLink to="/research/type/dissertation" class="nav-item child-item">🎓 Dissertations</RouterLink>

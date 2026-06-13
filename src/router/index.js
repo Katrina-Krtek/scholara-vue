@@ -7,10 +7,17 @@ import InboxView from '../views/InboxView.vue'
 import DailyPageView from '../views/DailyPageView.vue'
 import TasksHub from '../views/TasksHub.vue'
 
-import CoursesHub from '../views/CoursesHub.vue'
-import CourseDetail from '../views/CourseDetail.vue'
+import CoursesHub from '../views/courses/CoursesHub.vue'
+import CourseDetailView from '../views/courses/CourseDetailView.vue'
+
 import AssignmentDetail from '../views/AssignmentDetail.vue'
+import AssignmentDetailView from '../views/assignments/AssignmentDetailView.vue'
 import AssignmentsHub from '../views/AssignmentsHub.vue'
+
+import InstructorsHub from '../views/instructors/InstructorsHub.vue'
+import InstructorDetailView from '../views/instructors/InstructorDetailView.vue'
+
+
 
 import NotesHub from '../views/NotesHub.vue'
 import CalendarHub from '../views/CalendarHub.vue'
@@ -22,7 +29,8 @@ import WritingHub from '../views/WritingHub.vue'
 import ResearchHub from '../views/ResearchHub.vue'
 import ResearchDetail from '../views/ResearchDetail.vue'
 import ResearchTypeView from '../views/ResearchTypeView.vue'
-
+import SourcesHub from '../views/sources/SourcesHub.vue'
+import SourceDetailView from '../views/sources/SourceDetailView.vue'
 import KnowledgeTagsView from '../views/KnowledgeTagsView.vue'
 import KnowledgeTagDetail from '../views/KnowledgeTagDetail.vue'
 import KnowledgeGraphView from '../views/graph/KnowledgeGraphView.vue'
@@ -47,8 +55,9 @@ const routes = [
   { path: '/planner', name: 'Planner', component: PlannerView },
 
   { path: '/academic', name: 'AcademicHub', component: AcademicHub },
+
   { path: '/courses', name: 'CoursesHub', component: CoursesHub },
-  { path: '/courses/:id', name: 'CourseDetail', component: CourseDetail },
+  { path: '/courses/:id', name: 'CourseDetailView', component: CourseDetailView },
 
   { path: '/assignments', name: 'AssignmentsHub', component: AssignmentsHub },
   {
@@ -56,6 +65,22 @@ const routes = [
     name: 'AssignmentDetail',
     component: AssignmentDetail,
   },
+  {
+    path: '/assignments/:id',
+    name: 'AssignmentDetailView',
+    component: AssignmentDetailView,
+  },
+  {
+  path: '/instructors',
+  name: 'InstructorsHub',
+  component: InstructorsHub,
+},
+{
+  path: '/instructors/:id',
+  name: 'InstructorDetailView',
+  component: InstructorDetailView,
+},
+
 
   { path: '/notes', name: 'NotesHub', component: NotesHub },
   { path: '/calendar', name: 'CalendarHub', component: CalendarHub },
@@ -68,6 +93,9 @@ const routes = [
   { path: '/research', name: 'ResearchHub', component: ResearchHub },
   { path: '/research/type/:type', name: 'ResearchTypeView', component: ResearchTypeView },
   { path: '/research/items/:id', name: 'ResearchDetail', component: ResearchDetail },
+   {path: '/sources', name: 'SourcesHub', component: SourcesHub },
+   {path: '/sources/:id', name: 'SourceDetailView', component: SourceDetailView
+   }
 ]
 
 const router = createRouter({
