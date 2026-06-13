@@ -63,13 +63,14 @@
 
           <label>
             Type
-            <select v-model="source.type" @change="save">
-              <option>Book</option>
-              <option>Journal Article</option>
-              <option>Dissertation</option>
-              <option>Website</option>
-              <option>Video</option>
-              <option>Podcast</option>
+            <select :value="source.type" @change="handleTypeChange($event.target.value)">
+              <option value="Book">Book</option>
+              <option value="Journal Article">Journal Article</option>
+              <option value="Dissertation">Dissertation</option>
+              <option value="Website">Website</option>
+              <option value="Sermon">Sermon</option>
+              <option value="Video">Video</option>
+              <option value="Podcast">Podcast</option>
             </select>
           </label>
 
@@ -217,69 +218,72 @@
         </section>
 
         <section class="detail-card">
-  <h3>Research Notes</h3>
+          <h3>Source Template</h3>
 
-  <textarea
-    v-model="source.notes"
-    rows="12"
-    placeholder="Capture chapter notes, quotes, reflections, paper ideas, and observations..."
-    @blur="save"
-  />
-</section>
+          <SourceTemplateSelector
+            :model-value="templateType"
+            :options="templateOptions"
+            @update:modelValue="handleTemplateChange"
+          />
+        </section>
 
-<section class="detail-card">
-  <div class="card-header">
-    <h3>Source Notes</h3>
+        <section v-if="source.templateNotes" class="detail-card">
+          <SourceTemplateRenderer
+            :template="template"
+            v-model="source.templateNotes"
+          />
+        </section>
 
-    <button
-      class="citation-btn"
-      @click="addSourceNote"
-    >
-      + Note
-    </button>
-  </div>
+        <section class="detail-card">
+          <div class="card-header">
+            <h3>Source Notes</h3>
 
-  <div
-  v-for="note in source.sourceNotes"
-  :key="note.id"
-  class="source-note"
->
-  <div class="note-actions">
-    <button
-      class="delete-note-btn"
-      @click="deleteSourceNote(note.id)"
-    >
-      Delete
-    </button>
+            <button class="citation-btn" @click="addSourceNote">
+              + Note
+            </button>
+          </div>
 
-  </div>
-    <input
-      v-model="note.title"
-      placeholder="Chapter, Section, Topic"
-      @blur="save"
-    />
+          <div
+            v-for="note in source.sourceNotes"
+            :key="note.id"
+            class="source-note"
+          >
+            <div class="note-actions">
+              <button
+                class="delete-note-btn"
+                @click="deleteSourceNote(note.id)"
+              >
+                Delete
+              </button>
+            </div>
 
-    <input
-      v-model="note.page"
-      placeholder="Page or Location"
-      @blur="save"
-    />
+            <input
+              v-model="note.title"
+              placeholder="Chapter, Section, Topic"
+              @blur="save"
+            />
 
-    <textarea
-      v-model="note.quote"
-      rows="3"
-      placeholder="Quote"
-      @blur="save"
-    />
+            <input
+              v-model="note.page"
+              placeholder="Page or Location"
+              @blur="save"
+            />
 
-    <textarea
-      v-model="note.reflection"
-      rows="4"
-      placeholder="My Thoughts / Reflection"
-      @blur="save"
-    />
-  </div>
-</section>
+            <textarea
+              v-model="note.quote"
+              rows="3"
+              placeholder="Quote"
+              @blur="save"
+            />
+
+            <textarea
+              v-model="note.reflection"
+              rows="4"
+              placeholder="My Thoughts / Reflection"
+              @blur="save"
+            />
+          </div>
+        </section>
 
         <section class="detail-card">
           <div class="card-header">
@@ -318,6 +322,9 @@ import AppLayout from '@/components/AppLayout.vue'
 import { useSources } from '@/composables/useSources'
 import { useCourses } from '@/composables/useCourses'
 import { useAssignments } from '@/composables/useAssignments'
+import SourceTemplateSelector from '@/components/sources/SourceTemplateSelector.vue'
+import SourceTemplateRenderer from '@/components/sources/SourceTemplateRenderer.vue'
+import { useSourceTemplates } from '@/composables/useSourceTemplates'
 
 const route = useRoute()
 
@@ -327,7 +334,37 @@ const { allAssignments } = useAssignments()
 
 const source = computed(() => getSourceById(route.params.id))
 
+const {
+  template,
+  templateOptions,
+  ensureTemplateNotes,
+  changeSourceType,
+} = useSourceTemplates(source)
+
 const tagsText = ref('')
+
+const typeToTemplateMap = {
+  Book: 'book',
+  'Journal Article': 'article',
+  Dissertation: 'dissertation',
+  Website: 'website',
+  Sermon: 'sermon',
+  Video: 'website',
+  Podcast: 'sermon',
+}
+
+const templateToTypeMap = {
+  book: 'Book',
+  article: 'Journal Article',
+  dissertation: 'Dissertation',
+  website: 'Website',
+  sermon: 'Sermon',
+}
+
+const templateType = computed(() => {
+  if (!source.value) return 'book'
+  return typeToTemplateMap[source.value.type] || 'book'
+})
 
 const detailSectionTitle = computed(() => {
   if (!source.value) return 'Source Details'
@@ -335,6 +372,7 @@ const detailSectionTitle = computed(() => {
   if (source.value.type === 'Journal Article') return 'Article Details'
   if (source.value.type === 'Website') return 'Website Details'
   if (source.value.type === 'Dissertation') return 'Dissertation Details'
+  if (source.value.type === 'Sermon') return 'Sermon Details'
   if (source.value.type === 'Video') return 'Video Details'
   if (source.value.type === 'Podcast') return 'Podcast Details'
   return 'Source Details'
@@ -344,6 +382,12 @@ watch(
   source,
   (newSource) => {
     if (!newSource) return
+
+    ensureTemplateNotes()
+
+    if (!newSource.sourceNotes) {
+      newSource.sourceNotes = []
+    }
 
     if (!newSource.firstAuthorFirstName && !newSource.firstAuthorLastName && newSource.author) {
       const parts = newSource.author.split(' ')
@@ -355,6 +399,25 @@ watch(
   },
   { immediate: true },
 )
+
+function handleTypeChange(type) {
+  if (!source.value) return
+
+  source.value.type = type
+  changeSourceType(typeToTemplateMap[type] || 'book')
+  source.value.type = type
+
+  save()
+}
+
+function handleTemplateChange(templateKey) {
+  if (!source.value) return
+
+  changeSourceType(templateKey)
+  source.value.type = templateToTypeMap[templateKey] || 'Book'
+
+  save()
+}
 
 function save() {
   if (!source.value) return
@@ -390,6 +453,7 @@ function getBibliographyAuthor() {
 
   return firstAuthor
 }
+
 function addSourceNote() {
   if (!source.value) return
 
@@ -405,16 +469,17 @@ function addSourceNote() {
 
   save()
 }
+
 function deleteSourceNote(noteId) {
   if (!source.value) return
 
-  source.value.sourceNotes =
-    source.value.sourceNotes.filter(
-      note => note.id !== noteId,
-    )
+  source.value.sourceNotes = source.value.sourceNotes.filter(
+    (note) => note.id !== noteId,
+  )
 
   save()
 }
+
 function generateCitation() {
   if (!source.value) return
 
@@ -521,6 +586,7 @@ textarea {
 .card-header h3 {
   margin: 0;
 }
+
 .source-note {
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -529,6 +595,7 @@ textarea {
   display: grid;
   gap: 0.75rem;
 }
+
 .note-actions {
   display: flex;
   justify-content: flex-end;
@@ -543,6 +610,7 @@ textarea {
   color: white;
   font-weight: 700;
 }
+
 @media (max-width: 900px) {
   .source-grid,
   .two-column {
