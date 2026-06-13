@@ -45,7 +45,7 @@
 
       <RouterLink to="/research" class="nav-item hub-item">🔎 Resource Hub</RouterLink>
       <RouterLink to="/sources" class="nav-item child-item">🧩 Sources Database</RouterLink>
-      <RouterLink to="/research/type/book" class="nav-item child-item">📘 Books</RouterLink>
+      <RouterLink to="/books" class="nav-item child-item">📘 Books Database</RouterLink>
       <RouterLink to="/research/type/article" class="nav-item child-item">📰 Articles</RouterLink>
       <RouterLink to="/research/type/dissertation" class="nav-item child-item">🎓 Dissertations</RouterLink>
       <RouterLink to="/research/type/thesis" class="nav-item child-item">📄 Thesis</RouterLink>

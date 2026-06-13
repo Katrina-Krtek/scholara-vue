@@ -31,6 +31,8 @@ import ResearchDetail from '../views/ResearchDetail.vue'
 import ResearchTypeView from '../views/ResearchTypeView.vue'
 import SourcesHub from '../views/sources/SourcesHub.vue'
 import SourceDetailView from '../views/sources/SourceDetailView.vue'
+import BooksHub from '../views/books/BooksHub.vue'
+import BookDetailView from '../views/books/BookDetailView.vue'
 import KnowledgeTagsView from '../views/KnowledgeTagsView.vue'
 import KnowledgeTagDetail from '../views/KnowledgeTagDetail.vue'
 import KnowledgeGraphView from '../views/graph/KnowledgeGraphView.vue'
@@ -95,7 +97,9 @@ const routes = [
   { path: '/research/items/:id', name: 'ResearchDetail', component: ResearchDetail },
    {path: '/sources', name: 'SourcesHub', component: SourcesHub },
    {path: '/sources/:id', name: 'SourceDetailView', component: SourceDetailView
-   }
+   },
+   { path: '/books', name: 'BooksHub', component: BooksHub },
+   { path: '/books/:id', name: 'BookDetailView', component: BookDetailView },
 ]
 
 const router = createRouter({
