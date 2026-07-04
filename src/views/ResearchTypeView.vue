@@ -214,7 +214,7 @@
             <RouterLink
               v-for="item in getItemsByStatus(status.id)"
               :key="item.id"
-              :to="`/research/items/${item.id}`"
+              :to="getDetailRoute(item)"
               class="board-card"
               draggable="true"
               @dragstart="handleDragStart(item.id)"
@@ -237,7 +237,7 @@
         <RouterLink
           v-for="item in visibleItems"
           :key="item.id"
-          :to="`/research/items/${item.id}`"
+          :to="getDetailRoute(item)"
           class="gallery-link"
         >
           <article class="gallery-card">
@@ -278,7 +278,7 @@
         <RouterLink
           v-for="item in visibleItems"
           :key="item.id"
-          :to="`/research/items/${item.id}`"
+          :to="getDetailRoute(item)"
           class="list-row"
         >
           <span>{{ getItemIcon(item) }} {{ item.title }}</span>
@@ -301,7 +301,7 @@
           <tbody>
             <tr v-for="item in visibleItems" :key="item.id">
               <td>
-                <RouterLink :to="`/research/items/${item.id}`">
+                <RouterLink :to="getDetailRoute(item)">
                   {{ getItemIcon(item) }} {{ item.title }}
                 </RouterLink>
               </td>
@@ -321,6 +321,7 @@
     </section>
   </AppLayout>
 </template>
+
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
@@ -463,6 +464,22 @@ watch(typeId, () => {
   showCreateForm.value = false
   searchQuery.value = ''
 })
+
+function getDetailRoute(item) {
+  if (item.type === 'article') {
+    return `/articles/${item.id}`
+  }
+
+  if (item.type === 'book') {
+    return `/books/${item.id}`
+  }
+
+  if (item.type === 'journal') {
+    return `/journals/${item.id}`
+  }
+
+  return `/research/items/${item.id}`
+}
 
 function getItemsByStatus(statusId) {
   return visibleItems.value.filter((item) => {

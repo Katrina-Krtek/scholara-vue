@@ -44,7 +44,7 @@
           v-for="article in filteredArticles"
           :key="article.id"
           class="article-row"
-          :to="`/journals/${article.journalId}`"
+          :to="`/articles/${article.id}`"
         >
           <div>
             <p class="journal-pill">{{ article.journalName }}</p>
@@ -176,10 +176,14 @@ select {
   padding: 1rem;
   color: inherit;
   text-decoration: none;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .article-row:hover {
   transform: translateY(-2px);
+  border-color: rgba(79, 70, 229, 0.35);
 }
 
 .journal-pill,
