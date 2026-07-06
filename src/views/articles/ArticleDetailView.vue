@@ -13,7 +13,9 @@
 
       <div class="empty-actions">
         <RouterLink to="/articles" class="primary-button">Go to Articles</RouterLink>
-        <RouterLink to="/research/type/article" class="ghost-button dark">Go to Research Articles</RouterLink>
+        <RouterLink to="/research/type/article" class="ghost-button dark">
+          Go to Research Articles
+        </RouterLink>
       </div>
     </section>
 
@@ -30,7 +32,9 @@
 
         <div class="header-actions">
           <RouterLink to="/articles" class="ghost-button">← Articles Hub</RouterLink>
-          <RouterLink to="/research/type/article" class="ghost-button">Research Articles</RouterLink>
+          <RouterLink to="/research/type/article" class="ghost-button">
+            Research Articles
+          </RouterLink>
           <button class="primary-button" type="button" @click="saveArticle">
             Save Article
           </button>
@@ -112,7 +116,25 @@
         <aside class="panel side-panel">
           <div class="section-heading">
             <h2>Journal Connection</h2>
-            <p>Articles can belong to journals while remaining searchable independently.</p>
+            <p>Connect this article to a real journal record.</p>
+          </div>
+
+          <label>
+            Parent Journal
+            <select v-model="article.journalId" @change="handleJournalChange">
+              <option value="">No linked journal</option>
+              <option
+                v-for="journal in availableJournals"
+                :key="journal.id"
+                :value="journal.id"
+              >
+                {{ journal.title || journal.name }}
+              </option>
+            </select>
+          </label>
+
+          <div v-if="!availableJournals.length" class="helper-note">
+            No journal records found yet. Create a journal first, then return here to connect it.
           </div>
 
           <div v-if="linkedJournal" class="linked-card">
@@ -126,7 +148,7 @@
           <div v-else class="linked-card muted">
             <p class="label">No journal record linked</p>
             <p>
-              This article still works independently. Later we can add a journal selector.
+              This article still works independently. Select a parent journal above to connect it.
             </p>
           </div>
 
@@ -139,6 +161,11 @@
             <div>
               <span>Storage</span>
               <strong>{{ sourceLabel }}</strong>
+            </div>
+
+            <div>
+              <span>Journal Records</span>
+              <strong>{{ availableJournals.length }}</strong>
             </div>
 
             <div>
@@ -301,6 +328,7 @@ import { RouterLink, useRoute } from 'vue-router'
 
 import AppLayout from '@/components/AppLayout.vue'
 import { useResearch } from '@/composables/useResearch'
+import { useJournals } from '@/composables/useJournals'
 
 const route = useRoute()
 
@@ -310,6 +338,13 @@ const {
   updateResearchItem,
 } = useResearch()
 
+const {
+  allJournals: journalHubJournals,
+  getArticleById,
+  updateArticle,
+  updateJournal,
+} = useJournals()
+
 const standaloneArticleStorageKeys = [
   'scholarory_articles',
   'articles',
@@ -317,6 +352,7 @@ const standaloneArticleStorageKeys = [
 ]
 
 const standaloneJournalStorageKeys = [
+  'scholarory-journals',
   'scholarory_journals',
   'journals',
   'journalItems',
@@ -329,6 +365,7 @@ const selectedCitationStyle = ref('Turabian')
 const sourceMode = ref('')
 const sourceStorageKey = ref('')
 const originalResearchItem = ref(null)
+const originalJournalId = ref('')
 
 const citationStyles = ['Turabian', 'APA', 'MLA', 'Chicago']
 
@@ -376,6 +413,18 @@ async function loadData() {
     article.value = normalizeResearchArticle(foundResearchItem)
     sourceMode.value = 'research'
     sourceStorageKey.value = ''
+    originalJournalId.value = article.value.journalId
+    notFound.value = false
+    return
+  }
+
+  const foundJournalHubArticle = getArticleById(articleId)
+
+  if (foundJournalHubArticle) {
+    article.value = normalizeJournalHubArticle(foundJournalHubArticle)
+    sourceMode.value = 'journalHub'
+    sourceStorageKey.value = 'scholarory-journals'
+    originalJournalId.value = article.value.journalId
     notFound.value = false
     return
   }
@@ -386,6 +435,7 @@ async function loadData() {
     article.value = normalizeStandaloneArticle(foundStandaloneArticle.item)
     sourceMode.value = 'standalone'
     sourceStorageKey.value = foundStandaloneArticle.key
+    originalJournalId.value = article.value.journalId
     notFound.value = false
     return
   }
@@ -396,6 +446,7 @@ async function loadData() {
     article.value = normalizeStandaloneArticle(foundScannedArticle.item)
     sourceMode.value = 'localStorage'
     sourceStorageKey.value = foundScannedArticle.key
+    originalJournalId.value = article.value.journalId
     notFound.value = false
     return
   }
@@ -438,6 +489,37 @@ function normalizeResearchArticle(item) {
     rating: metadata.rating || '',
     createdAt: item.createdAt || '',
     updatedAt: metadata.updatedAt || item.updatedAt || '',
+  }
+}
+
+function normalizeJournalHubArticle(item) {
+  return {
+    ...createBlankArticle(),
+    id: String(item.id),
+    title: item.title || '',
+    authors: normalizeAuthorText(item.authors || item.author || ''),
+    journalId: item.journalId || '',
+    journalTitle: item.journalName || item.journalTitle || '',
+    year: item.year || '',
+    volume: item.volume || '',
+    issue: item.issue || '',
+    pages: item.pages || '',
+    doi: item.doi || '',
+    url: item.url || '',
+    database: item.database || '',
+    status: item.status || 'planned',
+    abstract: item.abstract || '',
+    thesis: item.thesis || '',
+    methodology: item.methodology || '',
+    sections: item.sections || item.sectionNotes || '',
+    quotes: item.quotes || item.keyQuotes || '',
+    researchUsefulness: item.researchUsefulness || item.useForWriting || '',
+    tags: Array.isArray(item.tags) ? item.tags.join(', ') : item.tags || '',
+    linkedCourse: item.linkedCourse || '',
+    linkedAssignment: item.linkedAssignment || '',
+    rating: item.rating || '',
+    createdAt: item.createdAt || '',
+    updatedAt: item.updatedAt || '',
   }
 }
 
@@ -525,12 +607,23 @@ function getStoredArray(key) {
 function getStoredJournals() {
   const journals = []
 
+  for (const journal of journalHubJournals.value) {
+    journals.push({
+      ...journal,
+      id: String(journal.id),
+      title: journal.title || journal.name || journal.journalTitle || '',
+      name: journal.name || journal.title || journal.journalTitle || '',
+      source: 'useJournals',
+    })
+  }
+
   for (const item of allResearchItems.value) {
     if (item.type === 'journal') {
       journals.push({
         id: String(item.id),
         title: item.title,
         name: item.title,
+        source: 'research',
       })
     }
   }
@@ -542,11 +635,40 @@ function getStoredJournals() {
       journals.push({
         ...journal,
         id: String(journal.id),
+        title: journal.title || journal.name || journal.journalTitle || '',
+        name: journal.name || journal.title || journal.journalTitle || '',
+        source: key,
       })
     }
   }
 
-  return journals
+  const seen = new Set()
+
+  return journals.filter((journal) => {
+    const id = String(journal.id || '')
+    const name = String(journal.title || journal.name || '').toLowerCase()
+    const signature = id || name
+
+    if (!signature || seen.has(signature)) {
+      return false
+    }
+
+    seen.add(signature)
+    return true
+  })
+}
+
+function handleJournalChange() {
+  const selectedJournal = availableJournals.value.find((journal) => {
+    return String(journal.id) === String(article.value.journalId)
+  })
+
+  if (!selectedJournal) {
+    article.value.journalTitle = ''
+    return
+  }
+
+  article.value.journalTitle = selectedJournal.title || selectedJournal.name || ''
 }
 
 function formatAuthorsFromMetadata(metadata) {
@@ -629,6 +751,12 @@ async function saveArticle() {
     return
   }
 
+  if (sourceMode.value === 'journalHub') {
+    saveJournalHubArticle(now)
+    showMessage('Article saved.')
+    return
+  }
+
   if (sourceStorageKey.value) {
     saveStandaloneArticle(now)
     showMessage('Article saved.')
@@ -685,6 +813,68 @@ async function saveResearchArticle(now) {
 
   await updateResearchItem(updatedItem.id, updatedItem)
   originalResearchItem.value = updatedItem
+  originalJournalId.value = article.value.journalId
+}
+
+function saveJournalHubArticle(now) {
+  const updates = {
+    id: article.value.id,
+    title: article.value.title,
+    subtitle: '',
+    author: article.value.authors,
+    year: article.value.year,
+    volume: article.value.volume,
+    issue: article.value.issue,
+    pages: article.value.pages,
+    doi: article.value.doi,
+    url: article.value.url,
+    abstract: article.value.abstract,
+    thesis: article.value.thesis,
+    methodology: article.value.methodology,
+    sections: article.value.sections,
+    sectionNotes: article.value.sections,
+    quotes: article.value.quotes,
+    keyQuotes: article.value.quotes,
+    researchUsefulness: article.value.researchUsefulness,
+    useForWriting: article.value.researchUsefulness,
+    linkedCourse: article.value.linkedCourse,
+    linkedAssignment: article.value.linkedAssignment,
+    rating: article.value.rating,
+    tags: tagList.value,
+    status: article.value.status,
+    updatedAt: now,
+  }
+
+  const oldJournalId = originalJournalId.value
+  const newJournalId = article.value.journalId
+
+  if (!newJournalId) return
+
+  if (oldJournalId && oldJournalId !== newJournalId) {
+    const oldJournal = journalHubJournals.value.find((journal) => journal.id === oldJournalId)
+    const newJournal = journalHubJournals.value.find((journal) => journal.id === newJournalId)
+
+    if (!newJournal) return
+
+    if (oldJournal) {
+      updateJournal(oldJournalId, {
+        articles: (oldJournal.articles || []).filter((item) => item.id !== article.value.id),
+      })
+    }
+
+    updateJournal(newJournalId, {
+      articles: [
+        ...(newJournal.articles || []),
+        updates,
+      ],
+    })
+
+    originalJournalId.value = newJournalId
+    return
+  }
+
+  updateArticle(newJournalId, article.value.id, updates)
+  originalJournalId.value = newJournalId
 }
 
 function saveStandaloneArticle(now) {
@@ -729,11 +919,13 @@ function showMessage(message) {
   }, 2200)
 }
 
-const linkedJournal = computed(() => {
-  const journals = getStoredJournals()
+const availableJournals = computed(() => {
+  return getStoredJournals()
+})
 
+const linkedJournal = computed(() => {
   if (article.value.journalId) {
-    const journalById = journals.find((journal) => {
+    const journalById = availableJournals.value.find((journal) => {
       return String(journal.id) === String(article.value.journalId)
     })
 
@@ -741,7 +933,7 @@ const linkedJournal = computed(() => {
   }
 
   if (article.value.journalTitle) {
-    return journals.find((journal) => {
+    return availableJournals.value.find((journal) => {
       const journalName = String(journal.title || journal.name || '').toLowerCase()
       return journalName === article.value.journalTitle.toLowerCase()
     })
@@ -752,6 +944,7 @@ const linkedJournal = computed(() => {
 
 const sourceLabel = computed(() => {
   if (sourceMode.value === 'research') return 'Research DB'
+  if (sourceMode.value === 'journalHub') return 'Journal DB'
   if (sourceMode.value === 'standalone') return sourceStorageKey.value
   if (sourceMode.value === 'localStorage') return sourceStorageKey.value
 
@@ -1038,6 +1231,16 @@ textarea:focus {
 .ghost-button:hover,
 .mini-link:hover {
   transform: translateY(-1px);
+}
+
+.helper-note {
+  border-radius: 14px;
+  padding: 0.75rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  color: #92400e;
+  font-size: 0.85rem;
+  line-height: 1.45;
 }
 
 .linked-card {
