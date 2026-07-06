@@ -25,7 +25,11 @@
 
           <label>
             Author
-            <input v-model="book.author" @blur="save" />
+            <input
+              v-model="book.author"
+              placeholder="Use semicolons for multiple authors"
+              @blur="save"
+            />
           </label>
 
           <div class="two-column">
@@ -63,8 +67,26 @@
           <h3>Book Details</h3>
 
           <label>
+            Short Title
+            <input
+              v-model="book.shortTitle"
+              placeholder="Used for short notes"
+              @blur="save"
+            />
+          </label>
+
+          <label>
             Publisher
             <input v-model="book.publisher" @blur="save" />
+          </label>
+
+          <label>
+            Place of Publication
+            <input
+              v-model="book.placeOfPublication"
+              placeholder="Grand Rapids, MI"
+              @blur="save"
+            />
           </label>
 
           <label>
@@ -120,6 +142,35 @@
         </article>
 
         <article class="detail-card full-width">
+          <div class="card-header">
+            <div>
+              <h3>Citations</h3>
+              <p>Generated from the shared Scholarory citation engine.</p>
+            </div>
+
+            <button class="secondary-btn" type="button" @click="copyCitation">
+              Copy Citation
+            </button>
+          </div>
+
+          <div class="citation-tabs">
+            <button
+              v-for="style in citationStyles"
+              :key="style.value"
+              type="button"
+              :class="{ active: selectedCitationStyle === style.value }"
+              @click="selectedCitationStyle = style.value"
+            >
+              {{ style.label }}
+            </button>
+          </div>
+
+          <div class="citation-box">
+            <p v-html="activeCitation"></p>
+          </div>
+        </article>
+
+        <article class="detail-card full-width">
           <h3>Summary</h3>
           <textarea v-model="book.summary" rows="6" @blur="save" />
         </article>
@@ -127,14 +178,14 @@
         <article class="detail-card full-width">
           <div class="card-header">
             <h3>Chapter Notes</h3>
-            <button class="primary-btn" @click="createChapter">+ Chapter</button>
+            <button class="primary-btn" type="button" @click="createChapter">+ Chapter</button>
           </div>
 
           <div v-for="chapter in book.chapters" :key="chapter.id" class="chapter-card">
             <div class="card-header">
               <input v-model="chapter.title" class="chapter-title" @blur="save" />
 
-              <button class="delete-btn" @click="removeChapter(chapter.id)">
+              <button class="delete-btn" type="button" @click="removeChapter(chapter.id)">
                 Delete
               </button>
             </div>
@@ -166,20 +217,26 @@
           </div>
         </article>
       </section>
+
+      <div v-if="saveMessage" class="save-toast">
+        {{ saveMessage }}
+      </div>
     </section>
 
-    <section v-else>
+    <section v-else class="not-found-card">
       <h2>Book not found</h2>
     </section>
   </AppLayout>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+
 import AppLayout from '@/components/AppLayout.vue'
-import { useBooks } from '@/composables/useBooks'
 import BookCoverUploader from '@/components/books/BookCoverUploader.vue'
+import { useBooks } from '@/composables/useBooks'
+import { generateCitationSet } from '@/utils/citations'
 
 const route = useRoute()
 
@@ -193,20 +250,68 @@ const {
 
 const book = computed(() => getBookById(route.params.id))
 
+const selectedCitationStyle = ref('turabianBibliography')
+const saveMessage = ref('')
+
+const citationStyles = [
+  { label: 'Turabian Bibliography', value: 'turabianBibliography' },
+  { label: 'Turabian Footnote', value: 'turabianFootnote' },
+  { label: 'Turabian Short Note', value: 'turabianShortNote' },
+  { label: 'APA', value: 'apa' },
+  { label: 'MLA', value: 'mla' },
+  { label: 'Chicago Bibliography', value: 'chicagoBibliography' },
+  { label: 'Chicago Footnote', value: 'chicagoFootnote' },
+  { label: 'Chicago Short Note', value: 'chicagoShortNote' },
+]
+
 const progress = computed(() => {
   if (!book.value) return 0
   return getReadingProgress(book.value)
+})
+
+const citationItem = computed(() => {
+  if (!book.value) return null
+
+  return {
+    id: book.value.id,
+    type: 'book',
+    title: book.value.title,
+    author: book.value.author,
+    authors: book.value.author,
+    metadata: {
+      author: book.value.author,
+      authors: book.value.author,
+      shortTitle: book.value.shortTitle || book.value.title,
+      publisher: book.value.publisher,
+      placeOfPublication: book.value.placeOfPublication,
+      year: book.value.publicationYear,
+      isbn: book.value.isbn,
+      edition: book.value.edition,
+      genre: book.value.genre,
+    },
+  }
+})
+
+const citationSet = computed(() => {
+  if (!citationItem.value) return {}
+
+  return generateCitationSet(citationItem.value)
+})
+
+const activeCitation = computed(() => {
+  return citationSet.value[selectedCitationStyle.value] || ''
 })
 
 function save() {
   if (!book.value) return
   updateBook(book.value.id, { ...book.value })
 }
-function handleCoverUpdate(url) {
-    if (!book.value) return
 
-    book.value.coverUrl = url
-    save()
+function handleCoverUpdate(url) {
+  if (!book.value) return
+
+  book.value.coverUrl = url
+  save()
 }
 
 function createChapter() {
@@ -220,6 +325,25 @@ function removeChapter(chapterId) {
   deleteChapter(book.value.id, chapterId)
   save()
 }
+
+async function copyCitation() {
+  const plainCitation = activeCitation.value.replace(/<[^>]+>/g, '')
+
+  try {
+    await navigator.clipboard.writeText(plainCitation)
+    showMessage('Citation copied.')
+  } catch {
+    showMessage('Could not copy citation.')
+  }
+}
+
+function showMessage(message) {
+  saveMessage.value = message
+
+  setTimeout(() => {
+    saveMessage.value = ''
+  }, 2200)
+}
 </script>
 
 <style scoped>
@@ -229,7 +353,8 @@ function removeChapter(chapterId) {
 }
 
 .hero-card,
-.detail-card {
+.detail-card,
+.not-found-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 18px;
@@ -324,6 +449,16 @@ textarea {
   gap: 1rem;
 }
 
+.card-header h3,
+.card-header p {
+  margin: 0;
+}
+
+.card-header p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .progress-track {
   height: 10px;
   border-radius: 999px;
@@ -338,6 +473,7 @@ textarea {
 }
 
 .primary-btn,
+.secondary-btn,
 .delete-btn {
   border: none;
   border-radius: 10px;
@@ -349,6 +485,12 @@ textarea {
 .primary-btn {
   background: var(--accent);
   color: white;
+}
+
+.secondary-btn {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 .delete-btn {
@@ -366,11 +508,64 @@ textarea {
   font-weight: 800;
 }
 
+.citation-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.citation-tabs button {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.citation-tabs button.active {
+  background: #0f172a;
+  color: white;
+  border-color: #0f172a;
+}
+
+.citation-box {
+  padding: 1rem;
+  border-radius: 18px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  line-height: 1.65;
+}
+
+.citation-box p {
+  margin: 0;
+}
+
+.save-toast {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 20;
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  background: #0f172a;
+  color: white;
+  font-weight: 850;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.28);
+}
+
 @media (max-width: 900px) {
   .hero-card,
   .grid,
   .two-column {
     grid-template-columns: 1fr;
+  }
+
+  .card-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

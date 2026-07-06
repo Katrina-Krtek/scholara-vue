@@ -295,14 +295,14 @@
 
           <div class="citation-tabs">
             <button
-              v-for="style in citationStyles"
-              :key="style"
-              type="button"
-              :class="{ active: selectedCitationStyle === style }"
-              @click="selectedCitationStyle = style"
-            >
-              {{ style }}
-            </button>
+  v-for="style in citationStyles"
+  :key="style.value"
+  type="button"
+  :class="{ active: selectedCitationStyle === style.value }"
+  @click="selectedCitationStyle = style.value"
+>
+  {{ style.label }}
+</button>
           </div>
 
           <div class="citation-box">
@@ -329,6 +329,7 @@ import { RouterLink, useRoute } from 'vue-router'
 import AppLayout from '@/components/AppLayout.vue'
 import { useResearch } from '@/composables/useResearch'
 import { useJournals } from '@/composables/useJournals'
+import {generateCitationSet } from '@/utils/citations'
 
 const route = useRoute()
 
@@ -361,13 +362,22 @@ const standaloneJournalStorageKeys = [
 const article = ref(createBlankArticle())
 const notFound = ref(false)
 const saveMessage = ref('')
-const selectedCitationStyle = ref('Turabian')
+const selectedCitationStyle = ref('turabianBibliography')
 const sourceMode = ref('')
 const sourceStorageKey = ref('')
 const originalResearchItem = ref(null)
 const originalJournalId = ref('')
 
-const citationStyles = ['Turabian', 'APA', 'MLA', 'Chicago']
+const citationStyles = [
+  { label: 'Turabian Bibliography', value: 'turabianBibliography' },
+  { label: 'Turabian Footnote', value: 'turabianFootnote' },
+  { label: 'Turabian Short Note', value: 'turabianShortNote' },
+  { label: 'APA', value: 'apa' },
+  { label: 'MLA', value: 'mla' },
+  { label: 'Chicago Bibliography', value: 'chicagoBibliography' },
+  { label: 'Chicago Footnote', value: 'chicagoFootnote' },
+  { label: 'Chicago Short Note', value: 'chicagoShortNote' },
+]
 
 function createBlankArticle() {
   return {
@@ -964,63 +974,46 @@ const tagList = computed(() => {
     .filter(Boolean)
 })
 
-const authorForCitation = computed(() => {
-  return article.value.authors || 'Unknown Author'
-})
-
-const titleForCitation = computed(() => {
-  return article.value.title || 'Untitled Article'
-})
-
-const journalForCitation = computed(() => {
-  return (
-    article.value.journalTitle ||
-    linkedJournal.value?.title ||
-    linkedJournal.value?.name ||
-    'Journal Title'
-  )
-})
-
-const volumeIssue = computed(() => {
-  const volume = article.value.volume
-  const issue = article.value.issue
-
-  if (volume && issue) return `${volume}, no. ${issue}`
-  if (volume) return volume
-  if (issue) return `no. ${issue}`
-
-  return ''
-})
-
-const doiOrUrl = computed(() => {
-  if (article.value.doi) {
-    return `https://doi.org/${article.value.doi.replace('https://doi.org/', '')}`
-  }
-
-  if (article.value.url) return article.value.url
-
-  return ''
-})
-
-const citationDrafts = computed(() => {
-  const author = authorForCitation.value
-  const title = titleForCitation.value
-  const journal = journalForCitation.value
-  const year = article.value.year || 'n.d.'
-  const pages = article.value.pages ? `: ${article.value.pages}` : ''
-  const volume = volumeIssue.value ? ` ${volumeIssue.value}` : ''
-  const access = doiOrUrl.value ? `. ${doiOrUrl.value}` : ''
-
+const citationItem = computed(() => {
   return {
-    Turabian: `${author}. “${title}.” ${journal}${volume} (${year})${pages}${access}.`,
-    APA: `${author}. (${year}). ${title}. ${journal}${volume}${pages}${access}.`,
-    MLA: `${author}. “${title}.” ${journal}${volume}, ${year}${pages}${access}.`,
-    Chicago: `${author}. “${title}.” ${journal}${volume} (${year})${pages}${access}.`,
+    id: article.value.id,
+    type: 'article',
+    title: article.value.title,
+    author: article.value.authors,
+    authors: article.value.authors,
+    metadata: {
+      authors: parseAuthors(article.value.authors),
+      author: article.value.authors,
+      journalId: article.value.journalId,
+      journalTitle:
+        article.value.journalTitle ||
+        linkedJournal.value?.title ||
+        linkedJournal.value?.name ||
+        '',
+      journalName:
+        article.value.journalTitle ||
+        linkedJournal.value?.title ||
+        linkedJournal.value?.name ||
+        '',
+      year: article.value.year,
+      volume: article.value.volume,
+      issue: article.value.issue,
+      pages: article.value.pages,
+      pageRange: article.value.pages,
+      doi: article.value.doi,
+      url: article.value.url,
+      database: article.value.database,
+      shortTitle: article.value.title,
+    },
   }
+})
+
+const citationSet = computed(() => {
+  return generateCitationSet(citationItem.value)
 })
 
 const activeCitation = computed(() => {
-  return citationDrafts.value[selectedCitationStyle.value]
+  return citationSet.value[selectedCitationStyle.value] || ''
 })
 
 onMounted(() => {
