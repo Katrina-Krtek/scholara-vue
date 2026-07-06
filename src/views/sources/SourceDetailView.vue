@@ -53,7 +53,7 @@
         </label>
 
         <div class="source-actions">
-          <button class="save-btn" @click="save">Save Source</button>
+          <button class="save-btn" type="button" @click="save">Save Source</button>
         </div>
       </div>
 
@@ -109,6 +109,15 @@
 
           <template v-if="source.type === 'Book'">
             <label>
+              Short Title
+              <input
+                v-model="source.shortTitle"
+                placeholder="Used for short notes"
+                @blur="save"
+              />
+            </label>
+
+            <label>
               ISBN
               <input v-model="source.isbn" @blur="save" />
             </label>
@@ -149,9 +158,23 @@
               DOI
               <input v-model="source.doi" @blur="save" />
             </label>
+
+            <label>
+              URL
+              <input v-model="source.url" @blur="save" />
+            </label>
           </template>
 
           <template v-else-if="source.type === 'Website'">
+            <label>
+              Website Name
+              <input
+                v-model="source.websiteName"
+                placeholder="Website or organization name"
+                @blur="save"
+              />
+            </label>
+
             <label>
               URL
               <input v-model="source.url" @blur="save" />
@@ -238,7 +261,7 @@
           <div class="card-header">
             <h3>Source Notes</h3>
 
-            <button class="citation-btn" @click="addSourceNote">
+            <button class="citation-btn" type="button" @click="addSourceNote">
               + Note
             </button>
           </div>
@@ -251,6 +274,7 @@
             <div class="note-actions">
               <button
                 class="delete-note-btn"
+                type="button"
                 @click="deleteSourceNote(note.id)"
               >
                 Delete
@@ -287,14 +311,47 @@
 
         <section class="detail-card">
           <div class="card-header">
-            <h3>Citation</h3>
+            <div>
+              <h3>Citations</h3>
+              <p>Generated from the shared Scholarory citation engine.</p>
+            </div>
 
-            <button class="citation-btn" @click="generateCitation">
-              Generate Citation
+            <button class="citation-btn" type="button" @click="copyCitation">
+              Copy Citation
             </button>
           </div>
 
-          <textarea v-model="source.citation" rows="6" @blur="save" />
+          <div class="citation-tabs">
+            <button
+              v-for="style in citationStyles"
+              :key="style.value"
+              type="button"
+              :class="{ active: selectedCitationStyle === style.value }"
+              @click="selectedCitationStyle = style.value"
+            >
+              {{ style.label }}
+            </button>
+          </div>
+
+          <div class="citation-box">
+            <p v-html="activeCitation"></p>
+          </div>
+
+          <label>
+            Saved / Manual Citation
+            <textarea
+              v-model="source.citation"
+              rows="5"
+              placeholder="Save the generated citation here or manually adjust it."
+              @blur="save"
+            />
+          </label>
+
+          <div class="citation-actions">
+            <button class="secondary-btn" type="button" @click="saveGeneratedCitation">
+              Save Generated Citation
+            </button>
+          </div>
         </section>
 
         <section class="detail-card">
@@ -307,6 +364,10 @@
           />
         </section>
       </div>
+
+      <div v-if="saveMessage" class="save-toast">
+        {{ saveMessage }}
+      </div>
     </section>
 
     <section v-else>
@@ -318,13 +379,16 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+
 import AppLayout from '@/components/AppLayout.vue'
+import SourceTemplateSelector from '@/components/sources/SourceTemplateSelector.vue'
+import SourceTemplateRenderer from '@/components/sources/SourceTemplateRenderer.vue'
+
 import { useSources } from '@/composables/useSources'
 import { useCourses } from '@/composables/useCourses'
 import { useAssignments } from '@/composables/useAssignments'
-import SourceTemplateSelector from '@/components/sources/SourceTemplateSelector.vue'
-import SourceTemplateRenderer from '@/components/sources/SourceTemplateRenderer.vue'
 import { useSourceTemplates } from '@/composables/useSourceTemplates'
+import { generateCitationSet } from '@/utils/citations'
 
 const route = useRoute()
 
@@ -342,6 +406,19 @@ const {
 } = useSourceTemplates(source)
 
 const tagsText = ref('')
+const selectedCitationStyle = ref('turabianBibliography')
+const saveMessage = ref('')
+
+const citationStyles = [
+  { label: 'Turabian Bibliography', value: 'turabianBibliography' },
+  { label: 'Turabian Footnote', value: 'turabianFootnote' },
+  { label: 'Turabian Short Note', value: 'turabianShortNote' },
+  { label: 'APA', value: 'apa' },
+  { label: 'MLA', value: 'mla' },
+  { label: 'Chicago Bibliography', value: 'chicagoBibliography' },
+  { label: 'Chicago Footnote', value: 'chicagoFootnote' },
+  { label: 'Chicago Short Note', value: 'chicagoShortNote' },
+]
 
 const typeToTemplateMap = {
   Book: 'book',
@@ -376,6 +453,51 @@ const detailSectionTitle = computed(() => {
   if (source.value.type === 'Video') return 'Video Details'
   if (source.value.type === 'Podcast') return 'Podcast Details'
   return 'Source Details'
+})
+
+const citationItem = computed(() => {
+  if (!source.value) return null
+
+  return {
+    id: source.value.id,
+    type: getCitationSourceType(source.value.type),
+    title: source.value.title,
+    author: getAuthorText(),
+    authors: getCitationAuthors(),
+    metadata: {
+      authors: getCitationAuthors(),
+      author: getAuthorText(),
+      shortTitle: source.value.shortTitle || source.value.title,
+      publisher: source.value.publisher,
+      placeOfPublication: source.value.publicationLocation,
+      year: source.value.year,
+      date: source.value.year || source.value.accessDate,
+      isbn: source.value.isbn,
+      edition: source.value.edition,
+      pages: source.value.pages,
+      pageRange: source.value.pages,
+      journalTitle: source.value.journal,
+      journalName: source.value.journal,
+      volume: source.value.volume,
+      issue: source.value.issue,
+      doi: source.value.doi,
+      url: source.value.url,
+      websiteName: source.value.websiteName || source.value.publisher,
+      siteName: source.value.websiteName || source.value.publisher,
+      accessDate: source.value.accessDate,
+      sourceType: source.value.type,
+    },
+  }
+})
+
+const citationSet = computed(() => {
+  if (!citationItem.value) return {}
+
+  return generateCitationSet(citationItem.value)
+})
+
+const activeCitation = computed(() => {
+  return citationSet.value[selectedCitationStyle.value] || ''
 })
 
 watch(
@@ -435,23 +557,61 @@ function saveTags() {
   })
 }
 
-function getBibliographyAuthor() {
-  const first = source.value.firstAuthorFirstName || ''
-  const last = source.value.firstAuthorLastName || ''
-  const secondFirst = source.value.secondAuthorFirstName || ''
-  const secondLast = source.value.secondAuthorLastName || ''
+function getCitationSourceType(type) {
+  if (type === 'Book') return 'book'
+  if (type === 'Journal Article') return 'article'
+  if (type === 'Website') return 'website'
 
-  const firstAuthor = last
-    ? `${last}, ${first}`.trim()
-    : source.value.author || 'Unknown Author'
+  return 'generic'
+}
 
-  const secondAuthor = [secondFirst, secondLast].filter(Boolean).join(' ')
+function getCitationAuthors() {
+  if (!source.value) return []
 
-  if (secondAuthor) {
-    return `${firstAuthor}, and ${secondAuthor}`
+  const authors = []
+
+  if (source.value.firstAuthorFirstName || source.value.firstAuthorLastName) {
+    authors.push({
+      firstName: source.value.firstAuthorFirstName || '',
+      initial: '',
+      lastName: source.value.firstAuthorLastName || '',
+    })
   }
 
-  return firstAuthor
+  if (source.value.secondAuthorFirstName || source.value.secondAuthorLastName) {
+    authors.push({
+      firstName: source.value.secondAuthorFirstName || '',
+      initial: '',
+      lastName: source.value.secondAuthorLastName || '',
+    })
+  }
+
+  if (!authors.length && source.value.author) {
+    authors.push(source.value.author)
+  }
+
+  return authors
+}
+
+function getAuthorText() {
+  const authors = getCitationAuthors()
+
+  if (!authors.length) return source.value?.author || ''
+
+  return authors
+    .map((author) => {
+      if (typeof author === 'string') return author
+
+      return [
+        author.firstName,
+        author.initial,
+        author.lastName,
+      ]
+        .filter(Boolean)
+        .join(' ')
+    })
+    .filter(Boolean)
+    .join('; ')
 }
 
 function addSourceNote() {
@@ -480,23 +640,31 @@ function deleteSourceNote(noteId) {
   save()
 }
 
-function generateCitation() {
+function saveGeneratedCitation() {
   if (!source.value) return
 
-  if (source.value.type === 'Book') {
-    const author = getBibliographyAuthor()
-    const title = source.value.title || 'Untitled'
-    const location = source.value.publicationLocation || ''
-    const publisher = source.value.publisher || 'Unknown Publisher'
-    const year = source.value.year || 'n.d.'
+  source.value.citation = activeCitation.value.replace(/<[^>]+>/g, '')
+  save()
+  showMessage('Generated citation saved.')
+}
 
-    const publicationInfo = location
-      ? `${location}: ${publisher}, ${year}`
-      : `${publisher}, ${year}`
+async function copyCitation() {
+  const plainCitation = activeCitation.value.replace(/<[^>]+>/g, '')
 
-    source.value.citation = `${author}. ${title}. ${publicationInfo}.`
-    save()
+  try {
+    await navigator.clipboard.writeText(plainCitation)
+    showMessage('Citation copied.')
+  } catch {
+    showMessage('Could not copy citation.')
   }
+}
+
+function showMessage(message) {
+  saveMessage.value = message
+
+  setTimeout(() => {
+    saveMessage.value = ''
+  }, 2200)
 }
 </script>
 
@@ -537,20 +705,32 @@ function generateCitation() {
   font-weight: 800;
 }
 
-.source-actions {
+.source-actions,
+.citation-actions {
   display: flex;
   justify-content: flex-end;
 }
 
 .save-btn,
-.citation-btn {
+.citation-btn,
+.secondary-btn {
   border: none;
   border-radius: 10px;
   padding: 0.7rem 1rem;
   cursor: pointer;
   font-weight: 800;
+}
+
+.save-btn,
+.citation-btn {
   background: var(--accent);
   color: white;
+}
+
+.secondary-btn {
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
 }
 
 .source-grid {
@@ -578,13 +758,20 @@ textarea {
 .card-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 1rem;
   margin-bottom: 1rem;
 }
 
-.card-header h3 {
+.card-header h3,
+.card-header p {
   margin: 0;
+}
+
+.card-header p {
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 .source-note {
@@ -611,10 +798,64 @@ textarea {
   font-weight: 700;
 }
 
+.citation-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.citation-tabs button {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  background: var(--input-bg);
+  color: var(--text-secondary);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.citation-tabs button.active {
+  background: #0f172a;
+  color: white;
+  border-color: #0f172a;
+}
+
+.citation-box {
+  padding: 1rem;
+  border-radius: 18px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  line-height: 1.65;
+  margin-bottom: 1rem;
+}
+
+.citation-box p {
+  margin: 0;
+}
+
+.save-toast {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 20;
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  background: #0f172a;
+  color: white;
+  font-weight: 850;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.28);
+}
+
 @media (max-width: 900px) {
   .source-grid,
   .two-column {
     grid-template-columns: 1fr;
+  }
+
+  .card-header {
+    display: grid;
   }
 }
 </style>
