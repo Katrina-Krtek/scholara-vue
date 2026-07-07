@@ -58,6 +58,13 @@
         </div>
       </section>
 
+      <SourceRelationshipPanel
+        :source-id="journal.id"
+        :source-title="journal.name"
+        :source-type="'Journal'"
+        heading="Connected Sources"
+      />
+
       <section class="stats-grid">
         <article class="stat-card">
           <p>Journal Articles</p>
@@ -272,6 +279,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AppLayout from '@/components/AppLayout.vue'
+import SourceRelationshipPanel from '@/components/sources/SourceRelationshipPanel.vue'
 import { useJournals } from '@/composables/useJournals'
 import { useResearch } from '@/composables/useResearch'
 

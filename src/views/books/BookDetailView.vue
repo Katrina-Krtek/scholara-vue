@@ -62,6 +62,14 @@
         </div>
       </section>
 
+      <SourceRelationshipPanel
+        :source-id="book.id"
+        :source-title="book.title"
+        :source-author="book.author"
+        :source-type="'Book'"
+        heading="Connected Sources"
+      />
+
       <section class="grid">
         <article class="detail-card">
           <h3>Book Details</h3>
@@ -235,6 +243,7 @@ import { useRoute } from 'vue-router'
 
 import AppLayout from '@/components/AppLayout.vue'
 import BookCoverUploader from '@/components/books/BookCoverUploader.vue'
+import SourceRelationshipPanel from '@/components/sources/SourceRelationshipPanel.vue'
 import { useBooks } from '@/composables/useBooks'
 import { generateCitationSet } from '@/utils/citations'
 

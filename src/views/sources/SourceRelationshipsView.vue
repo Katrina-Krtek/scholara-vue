@@ -1,262 +1,272 @@
 <template>
-  <div class="source-relationships-page">
-    <section class="relationships-hero">
-      <div>
-        <p class="eyebrow">Research Hub</p>
-        <h1>Source Relationships</h1>
-        <p>
-          Connect journals, articles, books, websites, dissertations, assignments, and themes so
-          Scholarory can understand how your research fits together.
-        </p>
-      </div>
-
-      <div class="hero-stats">
-        <article>
-          <strong>{{ sources.length }}</strong>
-          <span>Sources found</span>
-        </article>
-
-        <article>
-          <strong>{{ relationships.length }}</strong>
-          <span>Relationships</span>
-        </article>
-
-        <article>
-          <strong>{{ suggestions.length }}</strong>
-          <span>Suggestions</span>
-        </article>
-      </div>
-    </section>
-
-    <section class="relationship-grid">
-      <article class="panel relationship-builder">
-        <div class="panel-header">
-          <div>
-            <h2>Create relationship</h2>
-            <p>Choose two sources and define how they connect.</p>
-          </div>
-        </div>
-
-        <div v-if="sources.length < 2" class="empty-state">
-          <h3>Not enough sources yet</h3>
+  <AppLayout
+    title="Source Relationships"
+    subtitle="Connect sources, journals, articles, books, and research themes."
+    banner-key="source-relationships"
+    default-icon="🔗"
+  >
+    <div class="source-relationships-page">
+      <section class="relationships-hero">
+        <div>
+          <p class="eyebrow">Research Hub</p>
+          <h1>Source Relationships</h1>
           <p>
-            Add at least two sources first. This page will automatically detect books, articles,
-            journals, websites, dissertations, and general source records from localStorage.
+            Connect journals, articles, books, websites, dissertations, assignments, and themes so
+            Scholarory can understand how your research fits together.
           </p>
         </div>
 
-        <form v-else class="relationship-form" @submit.prevent="handleCreateRelationship">
-          <label>
-            First source
-            <select v-model="form.fromUid">
-              <option value="">Choose a source</option>
-              <option
-                v-for="source in sortedSources"
-                :key="source.uid"
-                :value="source.uid"
-              >
-                {{ source.title }} · {{ source.sourceType }}
-              </option>
-            </select>
-          </label>
+        <div class="hero-stats">
+          <article>
+            <strong>{{ sources.length }}</strong>
+            <span>Sources found</span>
+          </article>
 
-          <label>
-            Relationship
-            <select v-model="form.relationshipType">
-              <option
-                v-for="relationshipType in RELATIONSHIP_TYPES"
-                :key="relationshipType.value"
-                :value="relationshipType.value"
-              >
-                {{ relationshipType.label }}
-              </option>
-            </select>
-          </label>
+          <article>
+            <strong>{{ relationships.length }}</strong>
+            <span>Relationships</span>
+          </article>
 
-          <label>
-            Second source
-            <select v-model="form.toUid">
-              <option value="">Choose a source</option>
-              <option
-                v-for="source in availableToSources"
-                :key="source.uid"
-                :value="source.uid"
-              >
-                {{ source.title }} · {{ source.sourceType }}
-              </option>
-            </select>
-          </label>
+          <article>
+            <strong>{{ suggestions.length }}</strong>
+            <span>Suggestions</span>
+          </article>
+        </div>
+      </section>
 
-          <label class="full">
-            Notes
-            <textarea
-              v-model="form.note"
-              rows="4"
-              placeholder="Why are these sources connected?"
-            ></textarea>
-          </label>
-
-          <label class="full">
-            Tags
-            <input
-              v-model="form.tags"
-              type="text"
-              placeholder="Example: spiritual formation, community, discipleship"
-            />
-          </label>
-
-          <div class="form-actions">
-            <button type="submit">Add relationship</button>
-            <button type="button" class="ghost-button" @click="resetForm">
-              Clear
-            </button>
+      <section class="relationship-grid">
+        <article class="panel relationship-builder">
+          <div class="panel-header">
+            <div>
+              <h2>Create relationship</h2>
+              <p>Choose two sources and define how they connect.</p>
+            </div>
           </div>
 
-          <p v-if="errorMessage" class="message error">{{ errorMessage }}</p>
-          <p v-if="successMessage" class="message success">{{ successMessage }}</p>
-        </form>
-      </article>
-
-      <article class="panel relationship-types">
-        <div class="panel-header">
-          <div>
-            <h2>Relationship types</h2>
-            <p>Use these to build the research map.</p>
-          </div>
-        </div>
-
-        <div class="type-list">
-          <button
-            class="type-card"
-            :class="{ active: activeTypeFilter === 'all' }"
-            @click="activeTypeFilter = 'all'"
-          >
-            <strong>All relationships</strong>
-            <span>{{ relationships.length }} total</span>
-          </button>
-
-          <button
-            v-for="relationshipType in RELATIONSHIP_TYPES"
-            :key="relationshipType.value"
-            class="type-card"
-            :class="{ active: activeTypeFilter === relationshipType.value }"
-            @click="activeTypeFilter = relationshipType.value"
-          >
-            <strong>{{ relationshipType.label }}</strong>
-            <span>{{ relationshipType.description }}</span>
-          </button>
-        </div>
-      </article>
-    </section>
-
-    <section v-if="suggestions.length" class="panel suggestions-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Suggested journal/article links</h2>
-          <p>
-            Scholarory found article records that appear to belong to existing journal records.
-          </p>
-        </div>
-      </div>
-
-      <div class="suggestion-list">
-        <article
-          v-for="suggestion in suggestions"
-          :key="suggestion.id"
-          class="suggestion-card"
-        >
-          <div>
-            <strong>{{ sourceTitle(suggestion.fromUid) }}</strong>
-            <span>
-              {{ relationshipTypeLabel(suggestion.relationshipType) }}
-              {{ sourceTitle(suggestion.toUid) }}
-            </span>
+          <div v-if="sources.length < 2" class="empty-state">
+            <h3>Not enough sources yet</h3>
+            <p>
+              Add at least two sources first. This page will automatically detect books, articles,
+              journals, websites, dissertations, and general source records from localStorage.
+            </p>
           </div>
 
-          <button @click="acceptSuggestion(suggestion)">Add</button>
+          <form v-else class="relationship-form" @submit.prevent="handleCreateRelationship">
+            <label>
+              First source
+              <select v-model="form.fromUid">
+                <option value="">Choose a source</option>
+                <option
+                  v-for="source in sortedSources"
+                  :key="source.uid"
+                  :value="source.uid"
+                >
+                  {{ source.title }} · {{ source.sourceType }}
+                </option>
+              </select>
+            </label>
+
+            <label>
+              Relationship
+              <select v-model="form.relationshipType">
+                <option
+                  v-for="relationshipType in RELATIONSHIP_TYPES"
+                  :key="relationshipType.value"
+                  :value="relationshipType.value"
+                >
+                  {{ relationshipType.label }}
+                </option>
+              </select>
+            </label>
+
+            <label>
+              Second source
+              <select v-model="form.toUid">
+                <option value="">Choose a source</option>
+                <option
+                  v-for="source in availableToSources"
+                  :key="source.uid"
+                  :value="source.uid"
+                >
+                  {{ source.title }} · {{ source.sourceType }}
+                </option>
+              </select>
+            </label>
+
+            <label class="full">
+              Notes
+              <textarea
+                v-model="form.note"
+                rows="4"
+                placeholder="Why are these sources connected?"
+              ></textarea>
+            </label>
+
+            <label class="full">
+              Tags
+              <input
+                v-model="form.tags"
+                type="text"
+                placeholder="Example: spiritual formation, community, discipleship"
+              />
+            </label>
+
+            <div class="form-actions">
+              <button type="submit">Add relationship</button>
+              <button type="button" class="ghost-button" @click="resetForm">
+                Clear
+              </button>
+            </div>
+
+            <p v-if="errorMessage" class="message error">{{ errorMessage }}</p>
+            <p v-if="successMessage" class="message success">{{ successMessage }}</p>
+          </form>
         </article>
-      </div>
-    </section>
 
-    <section class="panel relationships-list-panel">
-      <div class="panel-header list-header">
-        <div>
-          <h2>Relationship database</h2>
-          <p>Search, filter, and review connected research items.</p>
-        </div>
+        <article class="panel relationship-types">
+          <div class="panel-header">
+            <div>
+              <h2>Relationship types</h2>
+              <p>Use these to build the research map.</p>
+            </div>
+          </div>
 
-        <div class="list-controls">
-          <input
-            v-model="search"
-            type="search"
-            placeholder="Search relationships..."
-          />
-
-          <select v-model="activeSourceFilter">
-            <option value="all">All source types</option>
-            <option
-              v-for="sourceType in sourceTypes"
-              :key="sourceType"
-              :value="sourceType"
+          <div class="type-list">
+            <button
+              class="type-card"
+              :class="{ active: activeTypeFilter === 'all' }"
+              @click="activeTypeFilter = 'all'"
             >
-              {{ sourceType }}
-            </option>
-          </select>
-        </div>
-      </div>
+              <strong>All relationships</strong>
+              <span>{{ relationships.length }} total</span>
+            </button>
 
-      <div v-if="filteredRelationships.length" class="relationship-list">
-        <article
-          v-for="relationship in filteredRelationships"
-          :key="relationship.id"
-          class="relationship-card"
-        >
-          <div class="relationship-main">
-            <div class="source-pill">
-              <span>{{ sourceType(relationship.fromUid) }}</span>
-              <strong>{{ sourceTitle(relationship.fromUid) }}</strong>
-              <small>{{ sourceSubtitle(relationship.fromUid) }}</small>
-            </div>
-
-            <div class="relationship-arrow">
-              <span>{{ relationshipTypeLabel(relationship.relationshipType) }}</span>
-              <strong>→</strong>
-            </div>
-
-            <div class="source-pill">
-              <span>{{ sourceType(relationship.toUid) }}</span>
-              <strong>{{ sourceTitle(relationship.toUid) }}</strong>
-              <small>{{ sourceSubtitle(relationship.toUid) }}</small>
-            </div>
-          </div>
-
-          <div v-if="relationship.note || relationship.tags" class="relationship-notes">
-            <p v-if="relationship.note">{{ relationship.note }}</p>
-            <small v-if="relationship.tags">Tags: {{ relationship.tags }}</small>
-          </div>
-
-          <div class="relationship-footer">
-            <small>Created {{ formatDate(relationship.createdAt) }}</small>
-            <button class="danger-button" @click="handleDeleteRelationship(relationship.id)">
-              Delete
+            <button
+              v-for="relationshipType in RELATIONSHIP_TYPES"
+              :key="relationshipType.value"
+              class="type-card"
+              :class="{ active: activeTypeFilter === relationshipType.value }"
+              @click="activeTypeFilter = relationshipType.value"
+            >
+              <strong>{{ relationshipType.label }}</strong>
+              <span>{{ relationshipType.description }}</span>
             </button>
           </div>
         </article>
-      </div>
+      </section>
 
-      <div v-else class="empty-state">
-        <h3>No relationships found</h3>
-        <p>
-          Create your first relationship above. A strong starting point is connecting each article
-          to the journal where it was published.
-        </p>
-      </div>
-    </section>
-  </div>
+      <section v-if="suggestions.length" class="panel suggestions-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Suggested journal/article links</h2>
+            <p>
+              Scholarory found article records that appear to belong to existing journal records.
+            </p>
+          </div>
+        </div>
+
+        <div class="suggestion-list">
+          <article
+            v-for="suggestion in suggestions"
+            :key="suggestion.id"
+            class="suggestion-card"
+          >
+            <div>
+              <strong>{{ sourceTitle(suggestion.fromUid) }}</strong>
+              <span>
+                {{ relationshipTypeLabel(suggestion.relationshipType) }}
+                {{ sourceTitle(suggestion.toUid) }}
+              </span>
+            </div>
+
+            <button @click="acceptSuggestion(suggestion)">Add</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel relationships-list-panel">
+        <div class="panel-header list-header">
+          <div>
+            <h2>Relationship database</h2>
+            <p>Search, filter, and review connected research items.</p>
+          </div>
+
+          <div class="list-controls">
+            <input
+              v-model="search"
+              type="search"
+              placeholder="Search relationships..."
+            />
+
+            <select v-model="activeSourceFilter">
+              <option value="all">All source types</option>
+              <option
+                v-for="sourceType in sourceTypes"
+                :key="sourceType"
+                :value="sourceType"
+              >
+                {{ sourceType }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div v-if="filteredRelationships.length" class="relationship-list">
+          <article
+            v-for="relationship in filteredRelationships"
+            :key="relationship.id"
+            class="relationship-card"
+          >
+            <div class="relationship-main">
+              <div class="source-pill">
+                <span>{{ sourceType(relationship.fromUid) }}</span>
+                <strong>{{ sourceTitle(relationship.fromUid) }}</strong>
+                <small>{{ sourceSubtitle(relationship.fromUid) }}</small>
+              </div>
+
+              <div class="relationship-arrow">
+                <span>{{ relationshipTypeLabel(relationship.relationshipType) }}</span>
+                <strong>→</strong>
+              </div>
+
+              <div class="source-pill">
+                <span>{{ sourceType(relationship.toUid) }}</span>
+                <strong>{{ sourceTitle(relationship.toUid) }}</strong>
+                <small>{{ sourceSubtitle(relationship.toUid) }}</small>
+              </div>
+            </div>
+
+            <div v-if="relationship.note || relationship.tags" class="relationship-notes">
+              <p v-if="relationship.note">{{ relationship.note }}</p>
+              <small v-if="relationship.tags">Tags: {{ relationship.tags }}</small>
+            </div>
+
+            <div class="relationship-footer">
+              <small>Created {{ formatDate(relationship.createdAt) }}</small>
+              <button class="danger-button" @click="handleDeleteRelationship(relationship.id)">
+                Delete
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div v-else class="empty-state">
+          <h3>No relationships found</h3>
+          <p>
+            Create your first relationship above. A strong starting point is connecting each article
+            to the journal where it was published.
+          </p>
+        </div>
+      </section>
+    </div>
+  </AppLayout>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+
+import AppLayout from '@/components/AppLayout.vue'
+
 import {
   RELATIONSHIP_TYPES,
   buildSourceRelationshipSuggestions,

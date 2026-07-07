@@ -41,6 +41,14 @@
         </div>
       </div>
 
+      <SourceRelationshipPanel
+  :source-id="article.id"
+  :source-title="article.title"
+  :source-author="article.authors"
+  :source-type="'Journal Article'"
+  heading="Connected Sources"
+/>
+
       <div class="detail-grid">
         <section class="panel main-panel">
           <div class="section-heading">
@@ -295,14 +303,14 @@
 
           <div class="citation-tabs">
             <button
-  v-for="style in citationStyles"
-  :key="style.value"
-  type="button"
-  :class="{ active: selectedCitationStyle === style.value }"
-  @click="selectedCitationStyle = style.value"
->
-  {{ style.label }}
-</button>
+              v-for="style in citationStyles"
+              :key="style.value"
+              type="button"
+              :class="{ active: selectedCitationStyle === style.value }"
+              @click="selectedCitationStyle = style.value"
+            >
+              {{ style.label }}
+            </button>
           </div>
 
           <div class="citation-box">
@@ -327,9 +335,10 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import AppLayout from '@/components/AppLayout.vue'
+import SourceRelationshipPanel from '@/components/sources/SourceRelationshipPanel.vue'
 import { useResearch } from '@/composables/useResearch'
 import { useJournals } from '@/composables/useJournals'
-import {generateCitationSet } from '@/utils/citations'
+import { generateCitationSet } from '@/utils/citations'
 
 const route = useRoute()
 

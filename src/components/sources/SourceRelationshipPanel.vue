@@ -22,8 +22,8 @@
     <div v-if="!currentSource" class="empty-state warning">
       <h3>Source not matched yet</h3>
       <p>
-        This usually means the detail page route uses a different ID name than expected. Once you
-        send me the detail page file, I’ll wire this panel in directly with the correct source ID.
+        This usually means the detail page has not finished loading its source information yet.
+        Refresh the page once. If this message remains, send me the detail file.
       </p>
     </div>
 
@@ -139,6 +139,7 @@ import {
   deleteSourceRelationship,
   getAllSources,
   readSourceRelationships,
+  registerSourceSnapshot,
   relationshipTypeLabel,
 } from '../../lib/sourceRelationshipsStore'
 
@@ -155,6 +156,18 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  sourceTitle: {
+    type: String,
+    default: '',
+  },
+  sourceAuthor: {
+    type: String,
+    default: '',
+  },
+  sourceYear: {
+    type: [String, Number],
+    default: '',
+  },
   heading: {
     type: String,
     default: 'Source Relationships',
@@ -167,6 +180,7 @@ const route = useRoute()
 
 const sources = ref([])
 const relationships = ref([])
+const registeredSource = ref(null)
 
 const errorMessage = ref('')
 const successMessage = ref('')
@@ -183,33 +197,6 @@ const sourceByUid = computed(() => {
     lookup[source.uid] = source
     return lookup
   }, {})
-})
-
-const currentSource = computed(() => {
-  if (!sources.value.length) return null
-
-  if (props.sourceUid) {
-    const directMatch = sourceByUid.value[props.sourceUid]
-    if (directMatch) return directMatch
-  }
-
-  const idToMatch = cleanText(props.sourceId || routeSourceId.value)
-  const typeToMatch = cleanText(props.sourceType || inferredSourceType.value)
-
-  if (!idToMatch) return null
-
-  const idMatches = sources.value.filter((source) => cleanText(source.id) === idToMatch)
-
-  if (!idMatches.length) return null
-
-  if (typeToMatch) {
-    const typeMatch = idMatches.find((source) => cleanText(source.sourceType) === typeToMatch)
-    if (typeMatch) return typeMatch
-  }
-
-  if (idMatches.length === 1) return idMatches[0]
-
-  return null
 })
 
 const routeSourceId = computed(() => {
@@ -238,7 +225,7 @@ const routeSourceId = computed(() => {
 const inferredSourceType = computed(() => {
   const path = route.path.toLowerCase()
 
-  if (path.includes('article')) return 'Article'
+  if (path.includes('article')) return 'Journal Article'
   if (path.includes('journal')) return 'Journal'
   if (path.includes('book')) return 'Book'
   if (path.includes('dissertation')) return 'Dissertation'
@@ -249,6 +236,66 @@ const inferredSourceType = computed(() => {
   if (path.includes('communication')) return 'Communication'
 
   return props.sourceType || ''
+})
+
+const currentSource = computed(() => {
+  if (!sources.value.length && !registeredSource.value) return null
+
+  if (props.sourceUid) {
+    const directMatch = sourceByUid.value[props.sourceUid]
+    if (directMatch) return directMatch
+  }
+
+  if (registeredSource.value?.uid) {
+    const registeredMatch = sourceByUid.value[registeredSource.value.uid]
+    if (registeredMatch) return registeredMatch
+    return registeredSource.value
+  }
+
+  const idToMatch = cleanText(props.sourceId || routeSourceId.value)
+  const typeToMatch = cleanText(props.sourceType || inferredSourceType.value)
+  const titleToMatch = cleanText(props.sourceTitle)
+  const authorToMatch = cleanText(props.sourceAuthor)
+
+  if (idToMatch) {
+    const idMatches = sources.value.filter((source) => {
+      return cleanText(source.id) === idToMatch
+    })
+
+    if (idMatches.length) {
+      if (typeToMatch) {
+        const typeMatch = idMatches.find((source) => {
+          return cleanText(source.sourceType) === typeToMatch
+        })
+
+        if (typeMatch) return typeMatch
+      }
+
+      if (idMatches.length === 1) return idMatches[0]
+    }
+  }
+
+  if (titleToMatch) {
+    const titleMatches = sources.value.filter((source) => {
+      const titleMatchesSource = cleanText(source.title) === titleToMatch
+      const typeMatchesSource =
+        !typeToMatch || cleanText(source.sourceType) === typeToMatch
+
+      return titleMatchesSource && typeMatchesSource
+    })
+
+    if (titleMatches.length === 1) return titleMatches[0]
+
+    if (titleMatches.length > 1 && authorToMatch) {
+      const authorMatch = titleMatches.find((source) => {
+        return cleanText(source.author) === authorToMatch
+      })
+
+      if (authorMatch) return authorMatch
+    }
+  }
+
+  return null
 })
 
 const availableSources = computed(() => {
@@ -287,15 +334,46 @@ const relationshipRows = computed(() => {
 })
 
 onMounted(() => {
-  loadData()
+  refreshData()
 })
 
 watch(
-  () => route.fullPath,
+  () => [
+    route.fullPath,
+    props.sourceUid,
+    props.sourceId,
+    props.sourceType,
+    props.sourceTitle,
+    props.sourceAuthor,
+    props.sourceYear,
+  ],
   () => {
-    loadData()
+    refreshData()
   },
 )
+
+function refreshData() {
+  registerCurrentSource()
+  loadData()
+}
+
+function registerCurrentSource() {
+  const title = String(props.sourceTitle || '').trim()
+  const id = String(props.sourceId || routeSourceId.value || '').trim()
+
+  if (!title && !id) return
+
+  registeredSource.value = registerSourceSnapshot({
+    sourceUid: props.sourceUid,
+    sourceId: id,
+    sourceType: props.sourceType || inferredSourceType.value,
+    sourceTitle: title,
+    sourceAuthor: props.sourceAuthor,
+    sourceYear: props.sourceYear,
+    routeId: routeSourceId.value,
+    routePath: route.fullPath,
+  })
+}
 
 function loadData() {
   sources.value = getAllSources()
