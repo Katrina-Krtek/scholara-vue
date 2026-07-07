@@ -57,6 +57,12 @@
         </div>
       </div>
 
+      <SourceRelationshipPanel
+        :source-id="source.id"
+        :source-type="source.type"
+        heading="Connected Sources"
+      />
+
       <div class="source-grid">
         <section class="detail-card">
           <h3>Publication Details</h3>
@@ -381,6 +387,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AppLayout from '@/components/AppLayout.vue'
+import SourceRelationshipPanel from '@/components/sources/SourceRelationshipPanel.vue'
 import SourceTemplateSelector from '@/components/sources/SourceTemplateSelector.vue'
 import SourceTemplateRenderer from '@/components/sources/SourceTemplateRenderer.vue'
 
