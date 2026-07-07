@@ -40,6 +40,7 @@ import ArticleDetailView from '../views/articles/ArticleDetailView.vue'
 import KnowledgeTagsView from '../views/KnowledgeTagsView.vue'
 import KnowledgeTagDetail from '../views/KnowledgeTagDetail.vue'
 import KnowledgeGraphView from '../views/graph/KnowledgeGraphView.vue'
+import SourceRelationshipsView from '../views/sources/SourceRelationshipsView.vue'
 
 const routes = [
   { path: '/auth', name: 'Auth', component: AuthView },
@@ -99,16 +100,25 @@ const routes = [
   { path: '/research', name: 'ResearchHub', component: ResearchHub },
   { path: '/research/type/:type', name: 'ResearchTypeView', component: ResearchTypeView },
   { path: '/research/items/:id', name: 'ResearchDetail', component: ResearchDetail },
-   {path: '/sources', name: 'SourcesHub', component: SourcesHub },
-   {path: '/sources/:id', name: 'SourceDetailView', component: SourceDetailView
-   },
-   { path: '/books', name: 'BooksHub', component: BooksHub },
+  { path: '/sources', name: 'SourcesHub', component: SourcesHub, meta: { title: 'Sources' } },
+  {
+    path: '/sources/relationships',
+    name: 'source-relationships',
+    component: SourceRelationshipsView,
+    meta: {
+      title: 'Source Relationships',
+      subtitle: 'Connect sources, journals, articles, books, and research themes.',
+    },
+  },
+  { path: '/sources/:id', name: 'SourceDetailView', component: SourceDetailView },
+  { path: '/books', name: 'BooksHub', component: BooksHub },
    { path: '/books/:id', name: 'BookDetailView', component: BookDetailView },
 
    { path: '/journals', name: 'JournalsHub', component: JournalsHub },
    { path: '/journals/:id', name: 'JournalDetailView', component: JournalDetailView },
    {path: '/articles',name: 'ArticlesHub', component: ArticlesHub },
    {path: '/articles/:id',name: 'ArticleDetailView', component: ArticleDetailView }
+  
 ]
 
 const router = createRouter({
