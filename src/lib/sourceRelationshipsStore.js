@@ -629,4 +629,4 @@ export function buildSourceRelationshipSuggestions(sources, relationships) {
   })
 
   return suggestions.slice(0, 12)
-}
+} 

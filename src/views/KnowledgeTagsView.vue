@@ -9,10 +9,18 @@
       <section class="toolbar-card">
         <div>
           <h2>🏷️ Knowledge Tags</h2>
-          <p>{{ allKnowledgeTags.length }} tag{{ allKnowledgeTags.length === 1 ? '' : 's' }}</p>
+
+          <p>
+            {{ allKnowledgeTags.length }}
+            tag{{ allKnowledgeTags.length === 1 ? '' : 's' }}
+          </p>
         </div>
 
-        <button class="new-tag-btn" type="button" @click="showCreateForm = !showCreateForm">
+        <button
+          class="new-tag-btn"
+          type="button"
+          @click="showCreateForm = !showCreateForm"
+        >
           {{ showCreateForm ? 'Close' : '+ New Tag' }}
         </button>
       </section>
@@ -20,17 +28,26 @@
       <section v-if="showCreateForm" class="create-card">
         <div class="create-header">
           <h2>Create Knowledge Tag</h2>
-          <p>Create topic pages, child topics, schema tags, and shortcut tags.</p>
+
+          <p>
+            Create topic pages, child topics, schema tags, and shortcut tags.
+          </p>
         </div>
 
         <div class="form-grid">
           <div class="form-group">
             <label>Name</label>
-            <input v-model="newTag.name" type="text" placeholder="Messiah, Paul, Book, Primary Source..." />
+
+            <input
+              v-model="newTag.name"
+              type="text"
+              placeholder="Messiah, Paul, Book, Primary Source..."
+            />
           </div>
 
           <div class="form-group">
             <label>Kind</label>
+
             <select v-model="newTag.kind">
               <option value="topic">Topic</option>
               <option value="subtopic">Subtopic</option>
@@ -44,25 +61,33 @@
 
           <div class="form-group">
             <label>Parent Tag</label>
+
             <select v-model="newTag.parentId">
               <option :value="null">No parent</option>
+
               <option
                 v-for="tag in allKnowledgeTags"
                 :key="tag.id"
                 :value="tag.id"
               >
-                {{ tag.icon || '🏷️' }} {{ tag.name }}
+                {{ tag.icon || getKindIcon(tag.kind) }} {{ tag.name }}
               </option>
             </select>
           </div>
 
           <div class="form-group">
             <label>Icon</label>
-            <input v-model="newTag.icon" type="text" placeholder="🏷️" />
+
+            <input
+              v-model="newTag.icon"
+              type="text"
+              placeholder="🏷️"
+            />
           </div>
 
           <div class="form-group wide">
             <label>Description</label>
+
             <textarea
               v-model="newTag.description"
               placeholder="What does this topic, schema, or shortcut represent?"
@@ -71,12 +96,22 @@
 
           <div class="form-group">
             <label>Supertags</label>
-            <input v-model="newTag.supertagsInput" type="text" placeholder="topic, theology, schema" />
+
+            <input
+              v-model="newTag.supertagsInput"
+              type="text"
+              placeholder="topic, theology, schema"
+            />
           </div>
 
           <div class="form-group">
             <label>Aliases</label>
-            <input v-model="newTag.aliasesInput" type="text" placeholder="Christ, Anointed One" />
+
+            <input
+              v-model="newTag.aliasesInput"
+              type="text"
+              placeholder="Christ, Anointed One"
+            />
           </div>
         </div>
 
@@ -85,11 +120,19 @@
         </div>
 
         <div class="create-actions">
-          <button class="secondary-btn" type="button" @click="resetForm">
+          <button
+            class="secondary-btn"
+            type="button"
+            @click="resetForm"
+          >
             Cancel
           </button>
 
-          <button class="create-btn" type="button" @click="handleCreateTag">
+          <button
+            class="create-btn"
+            type="button"
+            @click="handleCreateTag"
+          >
             Create Tag
           </button>
         </div>
@@ -129,48 +172,98 @@
             v-for="tag in visibleTags"
             :key="tag.id"
             class="tag-card"
+            role="link"
+            tabindex="0"
+            :aria-label="`Open ${tag.name} tag page`"
+            @click="openTag(tag)"
+            @keydown.enter.prevent="openTag(tag)"
+            @keydown.space.prevent="openTag(tag)"
           >
             <div class="tag-card-header">
-              <div>
-                <h3>{{ tag.icon || getKindIcon(tag.kind) }} {{ tag.name }}</h3>
+              <div class="tag-title-area">
+                <div class="tag-title-line">
+                  <span class="tag-main-icon">
+                    {{ tag.icon || getKindIcon(tag.kind) }}
+                  </span>
+
+                  <h3>{{ tag.name }}</h3>
+                </div>
+
                 <p>{{ getKindLabel(tag.kind) }}</p>
               </div>
 
-              <span v-if="getParentName(tag.parentId)" class="parent-pill">
+              <button
+                v-if="getParentTag(tag.parentId)"
+                class="parent-pill"
+                type="button"
+                @click.stop="openTag(getParentTag(tag.parentId))"
+              >
                 Parent: {{ getParentName(tag.parentId) }}
-              </span>
+              </button>
             </div>
 
             <p v-if="tag.description" class="tag-description">
               {{ tag.description }}
             </p>
 
-            <div v-if="getChildTags(tag.id).length" class="child-section">
+            <div
+              v-if="getChildTags(tag.id).length"
+              class="child-section"
+            >
               <strong>Child tags</strong>
 
               <div class="pill-row">
-                <span
+                <button
                   v-for="child in getChildTags(tag.id)"
                   :key="child.id"
                   class="tag-pill"
+                  type="button"
+                  @click.stop="openTag(child)"
                 >
-                  {{ child.icon || getKindIcon(child.kind) }} {{ child.name }}
-                </span>
+                  {{ child.icon || getKindIcon(child.kind) }}
+                  {{ child.name }}
+                </button>
               </div>
             </div>
 
-            <div v-if="tag.supertags?.length" class="pill-row">
-              <span
-                v-for="supertag in tag.supertags"
-                :key="supertag"
-                class="schema-pill"
-              >
-                #{{ supertag }}
-              </span>
+            <div
+              v-if="tag.supertags?.length"
+              class="supertag-section"
+            >
+              <strong>Supertags</strong>
+
+              <div class="pill-row">
+                <button
+                  v-for="supertag in tag.supertags"
+                  :key="supertag"
+                  class="schema-pill"
+                  type="button"
+                  @click.stop="openNamedTag(supertag)"
+                >
+                  #{{ supertag }}
+                </button>
+              </div>
             </div>
 
-            <div v-if="tag.aliases?.length" class="alias-line">
-              Also known as: {{ tag.aliases.join(', ') }}
+            <div v-if="tag.aliases?.length" class="alias-section">
+              <strong>Also known as</strong>
+
+              <div class="pill-row">
+                <button
+                  v-for="alias in tag.aliases"
+                  :key="alias"
+                  class="alias-pill"
+                  type="button"
+                  @click.stop="openTag(tag)"
+                >
+                  {{ alias }}
+                </button>
+              </div>
+            </div>
+
+            <div class="open-tag-row">
+              <span>View everything tagged {{ tag.name }}</span>
+              <strong>→</strong>
             </div>
           </article>
         </div>
@@ -180,10 +273,17 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import {
+  computed,
+  onMounted,
+  ref,
+} from 'vue'
+import { useRouter } from 'vue-router'
 
 import AppLayout from '../components/AppLayout.vue'
 import { useKnowledgeTags } from '../composables/useKnowledgeTags'
+
+const router = useRouter()
 
 const {
   allKnowledgeTags,
@@ -191,7 +291,7 @@ const {
   knowledgeTagsError,
   loadKnowledgeTags,
   createKnowledgeTag,
-  getChildTags
+  getChildTags,
 } = useKnowledgeTags()
 
 const showCreateForm = ref(false)
@@ -209,7 +309,10 @@ const visibleTags = computed(() => {
 
   return allKnowledgeTags.value
     .filter((tag) => {
-      if (kindFilter.value !== 'all' && tag.kind !== kindFilter.value) {
+      if (
+        kindFilter.value !== 'all' &&
+        tag.kind !== kindFilter.value
+      ) {
         return false
       }
 
@@ -218,7 +321,7 @@ const visibleTags = computed(() => {
         tag.kind,
         tag.description,
         ...(tag.supertags || []),
-        ...(tag.aliases || [])
+        ...(tag.aliases || []),
       ]
         .filter(Boolean)
         .join(' ')
@@ -229,6 +332,7 @@ const visibleTags = computed(() => {
     .sort((a, b) => {
       if (!a.parentId && b.parentId) return -1
       if (a.parentId && !b.parentId) return 1
+
       return a.name.localeCompare(b.name)
     })
 })
@@ -241,7 +345,7 @@ function getEmptyTagForm() {
     description: '',
     supertagsInput: '',
     aliasesInput: '',
-    icon: ''
+    icon: '',
   }
 }
 
@@ -260,7 +364,7 @@ async function handleCreateTag() {
     description: newTag.value.description,
     supertags: parseCommaList(newTag.value.supertagsInput),
     aliases: parseCommaList(newTag.value.aliasesInput),
-    icon: newTag.value.icon
+    icon: newTag.value.icon,
   })
 
   if (created) {
@@ -273,9 +377,65 @@ function resetForm() {
   showCreateForm.value = false
 }
 
+function openTag(tag) {
+  if (!tag?.id) {
+    return
+  }
+
+  router.push(`/knowledge-tags/${tag.id}`)
+}
+
+function openNamedTag(name) {
+  const matchingTag = allKnowledgeTags.value.find((tag) => {
+    const names = [
+      tag.name,
+      ...(tag.aliases || []),
+    ]
+
+    return names.some((value) => {
+      return normalizeTag(value) === normalizeTag(name)
+    })
+  })
+
+  if (matchingTag) {
+    openTag(matchingTag)
+    return
+  }
+
+  router.push({
+    path: `/knowledge-tags/${slugifyTag(name)}`,
+    query: {
+      name,
+    },
+  })
+}
+
+function getParentTag(parentId) {
+  if (!parentId) {
+    return null
+  }
+
+  return (
+    allKnowledgeTags.value.find((tag) => {
+      return String(tag.id) === String(parentId)
+    }) || null
+  )
+}
+
 function getParentName(parentId) {
-  if (!parentId) return ''
-  return allKnowledgeTags.value.find((tag) => tag.id === parentId)?.name || ''
+  return getParentTag(parentId)?.name || ''
+}
+
+function normalizeTag(text) {
+  return slugifyTag(text)
+}
+
+function slugifyTag(text) {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '')
 }
 
 function getKindLabel(kind) {
@@ -286,7 +446,7 @@ function getKindLabel(kind) {
     shortcut: 'Shortcut',
     doctrine: 'Doctrine',
     person: 'Person',
-    passage: 'Bible Passage'
+    passage: 'Bible Passage',
   }
 
   return labels[kind] || 'Tag'
@@ -300,7 +460,7 @@ function getKindIcon(kind) {
     shortcut: '⚡',
     doctrine: '📖',
     person: '👤',
-    passage: '🔖'
+    passage: '🔖',
   }
 
   return icons[kind] || '🏷️'
@@ -317,11 +477,11 @@ function getKindIcon(kind) {
 .toolbar-card,
 .create-card,
 .content-card {
-  background: var(--bg-card);
+  margin-bottom: 1rem;
   border: 1px solid var(--border-color);
   border-radius: 14px;
+  background: var(--bg-card);
   padding: 1.2rem;
-  margin-bottom: 1rem;
   box-shadow: var(--shadow);
 }
 
@@ -349,26 +509,29 @@ function getKindIcon(kind) {
 .secondary-btn {
   border-radius: 8px;
   padding: 0.65rem 0.85rem;
-  cursor: pointer;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .new-tag-btn,
 .create-btn {
+  border: none;
   background: var(--accent);
   color: white;
-  border: none;
 }
 
 .secondary-btn {
+  border: 1px solid var(--border-color);
   background: var(--btn-bg);
   color: var(--text-secondary);
-  border: 1px solid var(--border-color);
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(220px, 1fr)
+  );
   gap: 0.9rem;
   margin-top: 1rem;
 }
@@ -393,9 +556,9 @@ function getKindIcon(kind) {
 .form-group select,
 .search-input,
 .sort-select {
-  background: var(--btn-bg);
   border: 1px solid var(--border-color);
   border-radius: 8px;
+  background: var(--btn-bg);
   color: var(--text-primary);
   padding: 0.7rem;
   font: inherit;
@@ -423,12 +586,12 @@ function getKindIcon(kind) {
 }
 
 .error-box {
+  margin-top: 1rem;
   border: 1px solid #ef4444;
+  border-radius: 8px;
   background: rgba(239, 68, 68, 0.08);
   color: #ef4444;
-  border-radius: 8px;
   padding: 0.75rem;
-  margin-top: 1rem;
   font-size: 0.85rem;
 }
 
@@ -439,16 +602,39 @@ function getKindIcon(kind) {
 
 .tag-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(280px, 1fr)
+  );
   gap: 1rem;
   margin-top: 1rem;
 }
 
 .tag-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 210px;
   border: 1px solid var(--border-color);
   border-radius: 14px;
   background: var(--btn-bg);
   padding: 1rem;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.tag-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 12px 28px rgba(10, 31, 68, 0.12);
+  transform: translateY(-2px);
+}
+
+.tag-card:focus-visible {
+  outline: 3px solid var(--accent-soft);
+  outline-offset: 3px;
+  border-color: var(--accent);
 }
 
 .tag-card-header {
@@ -458,14 +644,32 @@ function getKindIcon(kind) {
   gap: 0.75rem;
 }
 
-.tag-card h3 {
-  margin: 0;
+.tag-title-area {
+  min-width: 0;
+}
+
+.tag-title-line {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.tag-main-icon {
+  flex-shrink: 0;
   font-size: 1rem;
 }
 
+.tag-card h3 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tag-card-header p,
-.tag-description,
-.alias-line {
+.tag-description {
   color: var(--text-muted);
   font-size: 0.82rem;
 }
@@ -481,43 +685,97 @@ function getKindIcon(kind) {
 
 .parent-pill,
 .tag-pill,
-.schema-pill {
+.schema-pill,
+.alias-pill {
   border: 1px solid var(--border-color);
   border-radius: 999px;
-  padding: 0.2rem 0.45rem;
+  background: var(--bg-card);
+  padding: 0.25rem 0.5rem;
+  font: inherit;
   font-size: 0.72rem;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .parent-pill {
+  flex-shrink: 0;
   color: var(--text-secondary);
-  background: var(--bg-card);
+}
+
+.tag-pill,
+.alias-pill {
+  color: var(--text-secondary);
+}
+
+.schema-pill {
+  color: var(--accent-text);
+}
+
+.parent-pill:hover,
+.tag-pill:hover,
+.schema-pill:hover,
+.alias-pill:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.child-section,
+.supertag-section,
+.alias-section {
+  margin: 0.85rem 0 0;
+}
+
+.child-section > strong,
+.supertag-section > strong,
+.alias-section > strong {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
 }
 
 .pill-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin-top: 0.6rem;
+  margin-top: 0.5rem;
 }
 
-.tag-pill {
-  color: var(--text-secondary);
-  background: var(--bg-card);
+.open-tag-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: auto;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.85rem;
+  color: var(--accent-text);
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
-.schema-pill {
-  color: var(--accent);
-  background: var(--bg-card);
+.open-tag-row strong {
+  font-size: 1rem;
 }
 
-.child-section {
-  margin: 0.85rem 0;
-}
+@media (max-width: 700px) {
+  .knowledge-page {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
 
-.child-section strong {
-  color: var(--text-secondary);
-  font-size: 0.82rem;
+  .toolbar-card,
+  .browse-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .new-tag-btn,
+  .sort-select {
+    width: 100%;
+  }
+
+  .tag-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
-
