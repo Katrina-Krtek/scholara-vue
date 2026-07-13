@@ -1,10 +1,20 @@
 <template>
-  <aside class="sidebar" :class="{ collapsed: isCollapsed }">
-    <button class="collapse-btn" @click="isCollapsed = !isCollapsed">
+  <aside
+    class="sidebar"
+    :class="{ collapsed: isCollapsed }"
+  >
+    <button
+      class="collapse-btn"
+      @click="isCollapsed = !isCollapsed"
+    >
       {{ isCollapsed ? '☰' : '◀' }}
     </button>
 
-    <RouterLink to="/" class="sidebar-logo" aria-label="Scholarory Home">
+    <RouterLink
+      to="/"
+      class="sidebar-logo"
+      aria-label="Scholarory Home"
+    >
       <img
         src="/scholarory-logo.png"
         alt="Scholarory logo"
@@ -12,7 +22,10 @@
       />
     </RouterLink>
 
-    <div v-if="!isCollapsed" class="sidebar-search">
+    <div
+      v-if="!isCollapsed"
+      class="sidebar-search"
+    >
       <input
         v-model="searchQuery"
         type="text"
@@ -20,76 +33,139 @@
       />
     </div>
 
-    <div v-if="!isCollapsed" class="sidebar-actions">
-      <button class="action-btn" @click="jotOpen = true">
+    <div
+      v-if="!isCollapsed"
+      class="sidebar-actions"
+    >
+      <button
+        class="action-btn"
+        @click="jotOpen = true"
+      >
         <span>⚡</span>
         <span>New Jot</span>
       </button>
 
       <button class="action-btn">
-        <img src="/RoryFace.png" alt="Rory" class="rory-face" />
+        <img
+          src="/RoryFace.png"
+          alt="Rory"
+          class="rory-face"
+        />
+
         <span>Ask Rory</span>
       </button>
     </div>
 
     <nav class="sidebar-nav">
-      <div v-if="!isCollapsed" class="nav-section-label">Main</div>
+      <div
+        v-if="!isCollapsed"
+        class="nav-section-label"
+      >
+        Main
+      </div>
 
-      <RouterLink to="/" class="nav-item">
+      <RouterLink
+        to="/"
+        class="nav-item"
+      >
         📊 Dashboard
       </RouterLink>
 
-      <RouterLink to="/inbox" class="nav-item">
+      <RouterLink
+        to="/inbox"
+        class="nav-item"
+      >
         📥 Inbox
       </RouterLink>
 
-      <RouterLink to="/notes" class="nav-item">
+      <RouterLink
+        to="/notes"
+        class="nav-item"
+      >
         📓 Notes
       </RouterLink>
 
-      <RouterLink to="/calendar" class="nav-item">
+      <RouterLink
+        to="/calendar"
+        class="nav-item"
+      >
         📅 Calendar
       </RouterLink>
 
-      <RouterLink to="/daily" class="nav-item">
+      <RouterLink
+        to="/daily"
+        class="nav-item"
+      >
         📖 Daily Page
       </RouterLink>
 
-      <RouterLink to="/tasks" class="nav-item">
+      <RouterLink
+        to="/tasks"
+        class="nav-item"
+      >
         ✅ Tasks
       </RouterLink>
 
-      <RouterLink to="/planner" class="nav-item">
+      <RouterLink
+        to="/planner"
+        class="nav-item"
+      >
         🗒️ Planner
       </RouterLink>
 
-      <RouterLink to="/tools/pomodoro" class="nav-item">
+      <RouterLink
+        to="/tools/pomodoro"
+        class="nav-item"
+      >
         ⏱️ Pomodoro
       </RouterLink>
 
-      <div v-if="!isCollapsed" class="nav-section-label">Hubs</div>
+      <div
+        v-if="!isCollapsed"
+        class="nav-section-label"
+      >
+        Hubs
+      </div>
 
-      <RouterLink to="/academic" class="nav-item hub-item">
+      <RouterLink
+        to="/academic"
+        class="nav-item hub-item"
+      >
         🎓 Academic Hub
       </RouterLink>
 
-      <RouterLink to="/courses" class="nav-item child-item">
+      <RouterLink
+        to="/courses"
+        class="nav-item child-item"
+      >
         📚 Courses
       </RouterLink>
 
-      <RouterLink to="/instructors" class="nav-item child-item">
+      <RouterLink
+        to="/instructors"
+        class="nav-item child-item"
+      >
         👨‍🏫 Instructors
       </RouterLink>
 
-      <RouterLink to="/assignments" class="nav-item child-item">
+      <RouterLink
+        to="/assignments"
+        class="nav-item child-item"
+      >
         📝 Assignments
       </RouterLink>
 
-      <RouterLink to="/research" class="nav-item hub-item">
+      <RouterLink
+        to="/research"
+        class="nav-item hub-item"
+      >
         🔎 Resource Hub
       </RouterLink>
 
-      <RouterLink to="/sources" class="nav-item child-item">
+      <RouterLink
+        to="/sources"
+        class="nav-item child-item"
+      >
         🧩 Sources Database
       </RouterLink>
 
@@ -100,15 +176,24 @@
         🔗 Source Relationships
       </RouterLink>
 
-      <RouterLink to="/research/audit" class="nav-item child-item">
+      <RouterLink
+        to="/research/audit"
+        class="nav-item child-item"
+      >
         📋 Research Audit
       </RouterLink>
 
-      <RouterLink to="/books" class="nav-item child-item">
+      <RouterLink
+        to="/books"
+        class="nav-item child-item"
+      >
         📘 Books Database
       </RouterLink>
 
-      <RouterLink to="/journals" class="nav-item child-item">
+      <RouterLink
+        to="/journals"
+        class="nav-item child-item"
+      >
         📒 Journals Database
       </RouterLink>
 
@@ -161,26 +246,50 @@
         💬 Communications
       </RouterLink>
 
-      <RouterLink to="/writing" class="nav-item hub-item">
+      <RouterLink
+        to="/writing"
+        class="nav-item hub-item"
+      >
         ✍️ Writing Hub
       </RouterLink>
 
-      <div v-if="!isCollapsed" class="nav-section-label">
+      <div
+        v-if="!isCollapsed"
+        class="nav-section-label"
+      >
         Knowledge
       </div>
 
-      <RouterLink to="/knowledge-tags" class="nav-item hub-item">
+      <RouterLink
+        to="/concepts"
+        class="nav-item hub-item"
+      >
+        🧠 Concepts Database
+      </RouterLink>
+
+      <RouterLink
+        to="/knowledge-tags"
+        class="nav-item hub-item"
+      >
         🏷️ Knowledge Tags
       </RouterLink>
 
-      <RouterLink to="/knowledge-graph" class="nav-item child-item">
+      <RouterLink
+        to="/knowledge-graph"
+        class="nav-item child-item"
+      >
         🕸️ Knowledge Graph
       </RouterLink>
     </nav>
 
     <div class="sidebar-bottom">
-      <div v-if="!isCollapsed" class="citation-box">
-        <label for="citation-style">Citation Style</label>
+      <div
+        v-if="!isCollapsed"
+        class="citation-box"
+      >
+        <label for="citation-style">
+          Citation Style
+        </label>
 
         <select
           id="citation-style"
@@ -198,10 +307,18 @@
         </select>
       </div>
 
-      <button class="bottom-btn">⚙️ Settings</button>
-      <button class="bottom-btn">❔ Help</button>
+      <button class="bottom-btn">
+        ⚙️ Settings
+      </button>
 
-      <button class="bottom-btn logout-btn" @click="handleLogout">
+      <button class="bottom-btn">
+        ❔ Help
+      </button>
+
+      <button
+        class="bottom-btn logout-btn"
+        @click="handleLogout"
+      >
         🚪 Log Out
       </button>
 
@@ -210,11 +327,17 @@
           {{ usernameInitial }}
         </div>
 
-        <span v-if="!isCollapsed" class="user-name">
+        <span
+          v-if="!isCollapsed"
+          class="user-name"
+        >
           {{ username }}
         </span>
 
-        <button v-if="!isCollapsed" class="faq-btn">
+        <button
+          v-if="!isCollapsed"
+          class="faq-btn"
+        >
           ?
         </button>
       </div>
@@ -229,43 +352,64 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import {
+  computed,
+  ref,
+} from 'vue'
+
 import { useRouter } from 'vue-router'
 
 import JotModal from './JotModal.vue'
 import { citationStyles } from '../data/citationStyles'
+
 import {
   getStoredUsername,
   getCitationStyle,
   setCitationStyle,
 } from '../lib/userPreferences.js'
+
 import { useAuth } from '../composables/useAuth'
 
 const router = useRouter()
-const { user, signOut } = useAuth()
+
+const {
+  user,
+  signOut,
+} = useAuth()
 
 const isCollapsed = ref(false)
 const searchQuery = ref('')
 const jotOpen = ref(false)
 
-const selectedCitationStyle = ref(getCitationStyle())
+const selectedCitationStyle = ref(
+  getCitationStyle(),
+)
 
 const username = computed(() => {
-  return user.value?.email || getStoredUsername() || 'Student'
+  return (
+    user.value?.email ||
+    getStoredUsername() ||
+    'Student'
+  )
 })
 
 const usernameInitial = computed(() => {
-  return username.value.charAt(0).toUpperCase()
+  return username.value
+    .charAt(0)
+    .toUpperCase()
 })
 
 function updateCitationStyle(event) {
   const style = event.target.value
+
   selectedCitationStyle.value = style
+
   setCitationStyle(style)
 }
 
 async function handleLogout() {
   await signOut()
+
   router.push('/auth')
 }
 
@@ -492,7 +636,11 @@ function onJotSaved(text) {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
+  background: linear-gradient(
+    135deg,
+    #6366f1,
+    #a855f7
+  );
   display: flex;
   align-items: center;
   justify-content: center;

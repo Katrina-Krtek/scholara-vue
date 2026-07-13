@@ -1,4 +1,8 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import {
+  createRouter,
+  createWebHistory,
+} from 'vue-router'
+
 import { supabase } from '../lib/supabaseClient'
 
 import AuthView from '../views/AuthView.vue'
@@ -20,7 +24,15 @@ import InstructorDetailView from '../views/instructors/InstructorDetailView.vue'
 import NotesHub from '../views/NotesHub.vue'
 import CalendarHub from '../views/CalendarHub.vue'
 import DailyPagesView from '../views/DailyPagesView.vue'
+
 import PlannerView from '../views/planner/PlannerView.vue'
+import WeeklyPlannerView from '../views/planner/WeeklyPlannerView.vue'
+import MonthlyPlannerView from '../views/planner/MonthlyPlannerView.vue'
+import YearlyPlannerView from '../views/planner/YearlyPlannerView.vue'
+import WeeklyView from '../views/planner/WeeklyView.vue'
+import MonthlyView from '../views/planner/MonthlyView.vue'
+import YearlyView from '../views/planner/YearlyView.vue'
+
 import AcademicHub from '../views/AcademicHub.vue'
 
 import WritingHub from '../views/WritingHub.vue'
@@ -45,6 +57,9 @@ import JournalDetailView from '../views/journals/JournalDetailView.vue'
 import ArticlesHub from '../views/articles/ArticlesHub.vue'
 import ArticleDetailView from '../views/articles/ArticleDetailView.vue'
 
+import ConceptsHub from '../views/concepts/ConceptsHub.vue'
+import ConceptDetailView from '../views/concepts/ConceptDetailView.vue'
+
 import KnowledgeTagsView from '../views/KnowledgeTagsView.vue'
 import KnowledgeTagDetail from '../views/KnowledgeTagDetail.vue'
 import KnowledgeGraphView from '../views/graph/KnowledgeGraphView.vue'
@@ -59,7 +74,8 @@ const routes = [
   {
     path: '/tools/pomodoro',
     name: 'Pomodoro',
-    component: () => import('@/views/tools/PomodoroView.vue'),
+    component: () =>
+      import('@/views/tools/PomodoroView.vue'),
   },
 
   {
@@ -77,6 +93,7 @@ const routes = [
     name: 'Inbox',
     component: InboxView,
   },
+
   {
     path: '/daily',
     name: 'DailyPage',
@@ -91,15 +108,55 @@ const routes = [
     name: 'DailyPagesView',
     component: DailyPagesView,
   },
+
   {
     path: '/tasks',
     name: 'TasksHub',
     component: TasksHub,
   },
+
   {
     path: '/planner',
     name: 'Planner',
     component: PlannerView,
+  },
+  {
+    path: '/planner/week',
+    name: 'WeeklyPlanner',
+    component: WeeklyPlannerView,
+  },
+  {
+    path: '/planner/weekly',
+    name: 'WeeklyView',
+    component: WeeklyView,
+  },
+  {
+    path: '/planner/month',
+    name: 'MonthlyPlanner',
+    component: MonthlyPlannerView,
+  },
+  {
+    path: '/planner/monthly',
+    redirect: '/planner/month',
+  },
+  {
+    path: '/planner/month-view',
+    name: 'MonthlyView',
+    component: MonthlyView,
+  },
+  {
+    path: '/planner/year',
+    name: 'YearlyPlanner',
+    component: YearlyPlannerView,
+  },
+  {
+    path: '/planner/yearly',
+    redirect: '/planner/year',
+  },
+  {
+    path: '/planner/year-view',
+    name: 'YearlyView',
+    component: YearlyView,
   },
 
   {
@@ -125,7 +182,8 @@ const routes = [
     component: AssignmentsHub,
   },
   {
-    path: '/courses/:courseId/assignments/:assignmentId',
+    path:
+      '/courses/:courseId/assignments/:assignmentId',
     name: 'AssignmentDetail',
     component: AssignmentDetail,
   },
@@ -151,6 +209,7 @@ const routes = [
     name: 'NotesHub',
     component: NotesHub,
   },
+
   {
     path: '/calendar',
     name: 'CalendarHub',
@@ -168,7 +227,29 @@ const routes = [
     component: WritingEditorView,
     meta: {
       title: 'Writing Editor',
-      subtitle: 'Draft, revise, and track writing progress.',
+      subtitle:
+        'Draft, revise, and track writing progress.',
+    },
+  },
+
+  {
+    path: '/concepts',
+    name: 'ConceptsHub',
+    component: ConceptsHub,
+    meta: {
+      title: 'Concepts',
+      subtitle:
+        'Build and connect reusable ideas across Scholarory.',
+    },
+  },
+  {
+    path: '/concepts/:id',
+    name: 'ConceptDetailView',
+    component: ConceptDetailView,
+    meta: {
+      title: 'Concept Detail',
+      subtitle:
+        'Develop definitions, notes, and concept relationships.',
     },
   },
 
@@ -278,22 +359,35 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(
+    import.meta.env.BASE_URL,
+  ),
   routes,
 })
 
 router.beforeEach(async (to) => {
   const publicPages = ['/auth']
-  const isPublicPage = publicPages.includes(to.path)
 
-  const { data } = await supabase.auth.getSession()
-  const isLoggedIn = !!data.session
+  const isPublicPage =
+    publicPages.includes(to.path)
 
-  if (!isLoggedIn && !isPublicPage) {
+  const { data } =
+    await supabase.auth.getSession()
+
+  const isLoggedIn =
+    Boolean(data.session)
+
+  if (
+    !isLoggedIn &&
+    !isPublicPage
+  ) {
     return '/auth'
   }
 
-  if (isLoggedIn && to.path === '/auth') {
+  if (
+    isLoggedIn &&
+    to.path === '/auth'
+  ) {
     return '/'
   }
 
