@@ -6,7 +6,11 @@
     default-icon="✍️"
   >
     <template #actions>
-      <button class="topbar-primary-btn" type="button" @click="openCreateModal">
+      <button
+        class="topbar-primary-btn"
+        type="button"
+        @click="openCreateModal"
+      >
         + New Writing Project
       </button>
     </template>
@@ -51,6 +55,7 @@
           <div>
             <p>Upcoming Deadlines</p>
             <strong>{{ dueSoonProjects.length }}</strong>
+
             <span>
               <template v-if="overdueProjects.length">
                 {{ overdueProjects.length }} overdue
@@ -92,7 +97,10 @@
                   </span>
 
                   <span
-                    v-if="focusProject.course && focusProject.assignment"
+                    v-if="
+                      focusProject.course &&
+                      focusProject.assignment
+                    "
                     aria-hidden="true"
                   >
                     ·
@@ -103,7 +111,10 @@
                   </span>
 
                   <span
-                    v-if="!focusProject.course && !focusProject.assignment"
+                    v-if="
+                      !focusProject.course &&
+                      !focusProject.assignment
+                    "
                   >
                     Independent writing project
                   </span>
@@ -116,7 +127,9 @@
                 :class="getDeadlineClass(focusProject)"
               >
                 <span>{{ getDeadlineLabel(focusProject) }}</span>
-                <strong>{{ formatDate(focusProject.dueDate) }}</strong>
+                <strong>
+                  {{ formatDate(focusProject.dueDate) }}
+                </strong>
               </div>
             </div>
 
@@ -127,11 +140,15 @@
                 </strong>
 
                 <span>
-                  of {{ formatNumber(focusProject.wordGoal) }} words
+                  of
+                  {{ formatNumber(focusProject.wordGoal) }}
+                  words
                 </span>
               </div>
 
-              <strong>{{ getProgress(focusProject) }}%</strong>
+              <strong>
+                {{ getProgress(focusProject) }}%
+              </strong>
             </div>
 
             <div
@@ -144,27 +161,40 @@
             >
               <span
                 class="progress-fill"
-                :style="{ width: `${getProgress(focusProject)}%` }"
+                :style="{
+                  width: `${getProgress(focusProject)}%`,
+                }"
               ></span>
             </div>
 
             <div class="focus-stat-grid">
               <div>
                 <span>Words remaining</span>
+
                 <strong>
-                  {{ formatNumber(getRemainingWords(focusProject)) }}
+                  {{
+                    formatNumber(
+                      getRemainingWords(focusProject),
+                    )
+                  }}
                 </strong>
               </div>
 
               <div>
                 <span>Last updated</span>
+
                 <strong>
-                  {{ formatUpdatedDate(focusProject.updatedAt) }}
+                  {{
+                    formatUpdatedDate(
+                      focusProject.updatedAt,
+                    )
+                  }}
                 </strong>
               </div>
 
               <div>
                 <span>Stage</span>
+
                 <strong>
                   {{ getStatusLabel(focusProject.status) }}
                 </strong>
@@ -175,16 +205,24 @@
               <button
                 class="primary-btn"
                 type="button"
+                @click="openEditor(focusProject)"
+              >
+                Open Writing Editor
+              </button>
+
+              <button
+                class="secondary-btn"
+                type="button"
                 @click="openEditModal(focusProject)"
               >
-                Update Project
+                Project Settings
               </button>
 
               <button
                 v-if="focusProject.status !== 'complete'"
                 class="secondary-btn"
                 type="button"
-                @click="markComplete(focusProject)"
+                @click="completeProject(focusProject)"
               >
                 Mark Complete
               </button>
@@ -193,10 +231,13 @@
 
           <div v-else class="focus-empty">
             <div class="empty-icon">✍️</div>
+
             <h3>No active writing project</h3>
+
             <p>
-              Create a paper, article, outline, reflection, or other writing
-              project to begin tracking your progress.
+              Create a paper, article, outline, reflection, or
+              other writing project to begin tracking your
+              progress.
             </p>
 
             <button
@@ -219,20 +260,28 @@
             <span>{{ deadlineProjects.length }}</span>
           </div>
 
-          <div v-if="deadlineProjects.length" class="deadline-list">
+          <div
+            v-if="deadlineProjects.length"
+            class="deadline-list"
+          >
             <button
               v-for="project in deadlineProjects"
               :key="project.id"
               class="deadline-row"
               type="button"
-              @click="openEditModal(project)"
+              @click="openEditor(project)"
             >
               <div
                 class="deadline-date"
                 :class="getDeadlineClass(project)"
               >
-                <strong>{{ getDateDay(project.dueDate) }}</strong>
-                <span>{{ getDateMonth(project.dueDate) }}</span>
+                <strong>
+                  {{ getDateDay(project.dueDate) }}
+                </strong>
+
+                <span>
+                  {{ getDateMonth(project.dueDate) }}
+                </span>
               </div>
 
               <div class="deadline-copy">
@@ -251,8 +300,13 @@
 
           <div v-else class="small-empty-state">
             <span>📅</span>
+
             <h3>No upcoming deadlines</h3>
-            <p>Add a due date to a writing project to see it here.</p>
+
+            <p>
+              Add a due date to a writing project to see it
+              here.
+            </p>
           </div>
         </article>
       </section>
@@ -262,8 +316,10 @@
           <div>
             <p class="eyebrow">Writing Projects</p>
             <h2>Project library</h2>
+
             <p>
-              Track word counts, writing stages, assignments, and deadlines.
+              Track writing stages, deadlines, word goals, and
+              active documents.
             </p>
           </div>
 
@@ -279,7 +335,12 @@
 
         <div class="project-toolbar">
           <label class="search-field">
-            <span class="search-icon" aria-hidden="true">⌕</span>
+            <span
+              class="search-icon"
+              aria-hidden="true"
+            >
+              ⌕
+            </span>
 
             <input
               v-model="searchQuery"
@@ -324,11 +385,25 @@
             <span>Sort</span>
 
             <select v-model="sortBy">
-              <option value="recent">Recently updated</option>
-              <option value="deadline">Nearest deadline</option>
-              <option value="progress-high">Highest progress</option>
-              <option value="progress-low">Lowest progress</option>
-              <option value="title">Project title</option>
+              <option value="recent">
+                Recently updated
+              </option>
+
+              <option value="deadline">
+                Nearest deadline
+              </option>
+
+              <option value="progress-high">
+                Highest progress
+              </option>
+
+              <option value="progress-low">
+                Lowest progress
+              </option>
+
+              <option value="title">
+                Project title
+              </option>
             </select>
           </label>
 
@@ -342,12 +417,17 @@
           </button>
         </div>
 
-        <div v-if="projects.length === 0" class="large-empty-state">
+        <div
+          v-if="allProjects.length === 0"
+          class="large-empty-state"
+        >
           <div class="empty-icon">📄</div>
+
           <h3>Your writing dashboard is ready</h3>
+
           <p>
-            Create your first writing project to track drafts, deadlines,
-            word goals, and completion progress.
+            Create your first writing project to track drafts,
+            deadlines, word goals, and completion progress.
           </p>
 
           <button
@@ -364,10 +444,18 @@
           class="large-empty-state"
         >
           <div class="empty-icon">⌕</div>
-          <h3>No projects match these filters</h3>
-          <p>Try another search or clear the current filters.</p>
 
-          <button class="secondary-btn" type="button" @click="clearFilters">
+          <h3>No projects match these filters</h3>
+
+          <p>
+            Try another search or clear the current filters.
+          </p>
+
+          <button
+            class="secondary-btn"
+            type="button"
+            @click="clearFilters"
+          >
             Clear Filters
           </button>
         </div>
@@ -395,14 +483,19 @@
               <button
                 class="icon-btn"
                 type="button"
-                aria-label="Edit writing project"
+                aria-label="Edit project settings"
+                title="Project settings"
                 @click="openEditModal(project)"
               >
-                ✎
+                ⚙
               </button>
             </div>
 
-            <div class="project-title">
+            <button
+              class="project-title-button"
+              type="button"
+              @click="openEditor(project)"
+            >
               <h3>{{ project.title }}</h3>
 
               <p>
@@ -410,7 +503,12 @@
                   {{ project.course }}
                 </template>
 
-                <template v-if="project.course && project.assignment">
+                <template
+                  v-if="
+                    project.course &&
+                    project.assignment
+                  "
+                >
                   ·
                 </template>
 
@@ -418,13 +516,21 @@
                   {{ project.assignment }}
                 </template>
 
-                <template v-if="!project.course && !project.assignment">
+                <template
+                  v-if="
+                    !project.course &&
+                    !project.assignment
+                  "
+                >
                   Independent project
                 </template>
               </p>
-            </div>
+            </button>
 
-            <p v-if="project.description" class="project-description">
+            <p
+              v-if="project.description"
+              class="project-description"
+            >
               {{ project.description }}
             </p>
 
@@ -436,32 +542,25 @@
                   </strong>
 
                   <span>
-                    of {{ formatNumber(project.wordGoal) }} words
+                    of
+                    {{ formatNumber(project.wordGoal) }}
+                    words
                   </span>
                 </div>
 
-                <strong>{{ getProgress(project) }}%</strong>
+                <strong>
+                  {{ getProgress(project) }}%
+                </strong>
               </div>
 
               <div class="progress-track">
                 <span
                   class="progress-fill"
-                  :style="{ width: `${getProgress(project)}%` }"
+                  :style="{
+                    width: `${getProgress(project)}%`,
+                  }"
                 ></span>
               </div>
-            </div>
-
-            <div class="quick-word-update">
-              <label>
-                Current word count
-
-                <input
-                  v-model.number="project.currentWords"
-                  type="number"
-                  min="0"
-                  @change="saveInlineProject(project)"
-                />
-              </label>
             </div>
 
             <div class="project-meta">
@@ -475,23 +574,44 @@
                   {{ formatDate(project.dueDate) }}
                 </strong>
 
-                <strong v-else>No due date</strong>
+                <strong v-else>
+                  No due date
+                </strong>
               </div>
 
               <div>
                 <span>Remaining</span>
+
                 <strong>
-                  {{ formatNumber(getRemainingWords(project)) }} words
+                  {{
+                    formatNumber(
+                      getRemainingWords(project),
+                    )
+                  }}
+                  words
                 </strong>
               </div>
             </div>
 
             <div class="project-card-actions">
+              <button
+                class="primary-btn open-editor-btn"
+                type="button"
+                @click="openEditor(project)"
+              >
+                Open Editor
+              </button>
+
               <select
-                v-model="project.status"
+                :value="project.status"
                 class="status-select"
                 aria-label="Writing project status"
-                @change="saveInlineProject(project)"
+                @change="
+                  updateProjectStatus(
+                    project,
+                    $event.target.value,
+                  )
+                "
               >
                 <option
                   v-for="status in writingStatuses"
@@ -507,14 +627,17 @@
                 type="button"
                 @click="openEditModal(project)"
               >
-                Edit
+                Settings
               </button>
             </div>
           </article>
         </div>
       </section>
 
-      <section v-if="recentProjects.length" class="recent-panel">
+      <section
+        v-if="recentProjects.length"
+        class="recent-panel"
+      >
         <div class="section-heading">
           <div>
             <p class="eyebrow">Recent Activity</p>
@@ -528,7 +651,7 @@
             :key="project.id"
             class="recent-row"
             type="button"
-            @click="openEditModal(project)"
+            @click="openEditor(project)"
           >
             <div class="recent-icon">
               {{ getTypeIcon(project.type) }}
@@ -536,12 +659,17 @@
 
             <div>
               <strong>{{ project.title }}</strong>
+
               <span>
-                Updated {{ formatUpdatedDate(project.updatedAt) }}
+                Updated
+                {{ formatUpdatedDate(project.updatedAt) }}
               </span>
             </div>
 
-            <span>{{ formatNumber(project.currentWords) }} words</span>
+            <span>
+              {{ formatNumber(project.currentWords) }}
+              words
+            </span>
           </button>
         </div>
       </section>
@@ -552,13 +680,20 @@
       class="modal-backdrop"
       @click.self="closeProjectModal"
     >
-      <form class="project-modal" @submit.prevent="saveProject">
+      <form
+        class="project-modal"
+        @submit.prevent="saveProject"
+      >
         <div class="modal-heading">
           <div>
             <p class="eyebrow">Writing Project</p>
 
             <h2>
-              {{ editingProjectId ? 'Edit Project' : 'New Writing Project' }}
+              {{
+                editingProjectId
+                  ? 'Edit Project'
+                  : 'New Writing Project'
+              }}
             </h2>
           </div>
 
@@ -657,17 +792,23 @@
             <label>
               Due date
 
-              <input v-model="projectForm.dueDate" type="date" />
+              <input
+                v-model="projectForm.dueDate"
+                type="date"
+              />
             </label>
 
             <label>
               Priority
 
               <select v-model="projectForm.priority">
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
+                <option
+                  v-for="priority in writingPriorities"
+                  :key="priority.value"
+                  :value="priority.value"
+                >
+                  {{ priority.label }}
+                </option>
               </select>
             </label>
           </div>
@@ -702,53 +843,62 @@
               Cancel
             </button>
 
-            <button class="primary-btn" type="submit">
-              {{ editingProjectId ? 'Save Changes' : 'Create Project' }}
+            <button
+              class="primary-btn"
+              type="submit"
+            >
+              {{
+                editingProjectId
+                  ? 'Save Changes'
+                  : 'Create Project'
+              }}
             </button>
           </div>
         </div>
       </form>
     </div>
 
-    <div v-if="saveMessage" class="save-toast">
+    <div
+      v-if="saveMessage"
+      class="save-toast"
+    >
       {{ saveMessage }}
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
 import AppLayout from '../components/AppLayout.vue'
+import { useWritingProjects } from '@/composables/useWritingProjects'
 
-const STORAGE_KEY = 'scholarory-writing-projects'
+const router = useRouter()
 
-const LEGACY_STORAGE_KEYS = [
-  'scholarory_writing_projects',
-  'writingProjects',
-]
+const {
+  allProjects,
+  activeProjects,
+  completedProjects,
+  totalWords,
+  totalGoalWords,
+  overallProgress,
 
-const writingTypes = [
-  { value: 'paper', label: 'Academic Paper', icon: '📄' },
-  { value: 'article', label: 'Article', icon: '📰' },
-  { value: 'book-review', label: 'Book Review', icon: '📘' },
-  { value: 'discussion', label: 'Discussion Post', icon: '💬' },
-  { value: 'reflection', label: 'Reflection', icon: '🪞' },
-  { value: 'sermon', label: 'Sermon or Lesson', icon: '📖' },
-  { value: 'outline', label: 'Outline', icon: '🗂️' },
-  { value: 'dissertation', label: 'Dissertation', icon: '🎓' },
-  { value: 'other', label: 'Other Writing', icon: '✍️' },
-]
+  writingTypes,
+  writingStatuses,
+  writingPriorities,
 
-const writingStatuses = [
-  { value: 'planning', label: 'Planning' },
-  { value: 'outlining', label: 'Outlining' },
-  { value: 'drafting', label: 'Drafting' },
-  { value: 'revising', label: 'Revising' },
-  { value: 'proofreading', label: 'Proofreading' },
-  { value: 'complete', label: 'Complete' },
-]
+  addProject,
+  updateProject,
+  deleteProject,
+  markProjectComplete,
 
-const projects = ref([])
+  getProgress,
+  getRemainingWords,
+  getTypeLabel,
+  getTypeIcon,
+  getStatusLabel,
+} = useWritingProjects()
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
@@ -761,50 +911,14 @@ const saveMessage = ref('')
 
 const projectForm = ref(createBlankProject())
 
-const activeProjects = computed(() => {
-  return projects.value.filter(
-    (project) => project.status !== 'complete',
-  )
-})
-
-const completedProjects = computed(() => {
-  return projects.value.filter(
-    (project) => project.status === 'complete',
-  )
-})
-
-const totalWords = computed(() => {
-  return projects.value.reduce(
-    (total, project) =>
-      total + normalizeNumber(project.currentWords),
-    0,
-  )
-})
-
-const totalGoalWords = computed(() => {
-  return projects.value.reduce(
-    (total, project) =>
-      total + normalizeNumber(project.wordGoal),
-    0,
-  )
-})
-
-const overallProgress = computed(() => {
-  if (totalGoalWords.value <= 0) {
-    return 0
-  }
-
-  return Math.min(
-    100,
-    Math.round(
-      (totalWords.value / totalGoalWords.value) * 100,
-    ),
-  )
-})
+let saveMessageTimer = null
 
 const overdueProjects = computed(() => {
   return activeProjects.value.filter((project) => {
-    return project.dueDate && getDaysUntil(project.dueDate) < 0
+    return (
+      project.dueDate &&
+      getDaysUntil(project.dueDate) < 0
+    )
   })
 })
 
@@ -825,7 +939,10 @@ const deadlineProjects = computed(() => {
     .filter((project) => project.dueDate)
     .slice()
     .sort((a, b) => {
-      return getDateValue(a.dueDate) - getDateValue(b.dueDate)
+      return (
+        getDateValue(a.dueDate) -
+        getDateValue(b.dueDate)
+      )
     })
     .slice(0, 6)
 })
@@ -838,8 +955,13 @@ const focusProject = computed(() => {
   }
 
   return active.sort((a, b) => {
-    const aOverdue = a.dueDate && getDaysUntil(a.dueDate) < 0
-    const bOverdue = b.dueDate && getDaysUntil(b.dueDate) < 0
+    const aOverdue =
+      a.dueDate &&
+      getDaysUntil(a.dueDate) < 0
+
+    const bOverdue =
+      b.dueDate &&
+      getDaysUntil(b.dueDate) < 0
 
     if (aOverdue !== bOverdue) {
       return aOverdue ? -1 : 1
@@ -857,15 +979,21 @@ const focusProject = computed(() => {
       return aDate - bDate
     }
 
-    return getDateValue(b.updatedAt) - getDateValue(a.updatedAt)
+    return (
+      getDateValue(b.updatedAt) -
+      getDateValue(a.updatedAt)
+    )
   })[0]
 })
 
 const recentProjects = computed(() => {
-  return projects.value
+  return allProjects.value
     .slice()
     .sort((a, b) => {
-      return getDateValue(b.updatedAt) - getDateValue(a.updatedAt)
+      return (
+        getDateValue(b.updatedAt) -
+        getDateValue(a.updatedAt)
+      )
     })
     .slice(0, 4)
 })
@@ -879,41 +1007,44 @@ const hasActiveFilters = computed(() => {
 })
 
 const filteredProjects = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
+  const query =
+    searchQuery.value.trim().toLowerCase()
 
-  const filtered = projects.value.filter((project) => {
-    if (
-      statusFilter.value !== 'all' &&
-      project.status !== statusFilter.value
-    ) {
-      return false
-    }
+  const filtered = allProjects.value.filter(
+    (project) => {
+      if (
+        statusFilter.value !== 'all' &&
+        project.status !== statusFilter.value
+      ) {
+        return false
+      }
 
-    if (
-      typeFilter.value !== 'all' &&
-      project.type !== typeFilter.value
-    ) {
-      return false
-    }
+      if (
+        typeFilter.value !== 'all' &&
+        project.type !== typeFilter.value
+      ) {
+        return false
+      }
 
-    if (!query) {
-      return true
-    }
+      if (!query) {
+        return true
+      }
 
-    const searchableText = [
-      project.title,
-      project.course,
-      project.assignment,
-      project.description,
-      getTypeLabel(project.type),
-      getStatusLabel(project.status),
-    ]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
+      const searchableText = [
+        project.title,
+        project.course,
+        project.assignment,
+        project.description,
+        getTypeLabel(project.type),
+        getStatusLabel(project.status),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
 
-    return searchableText.includes(query)
-  })
+      return searchableText.includes(query)
+    },
+  )
 
   return filtered.slice().sort((a, b) => {
     switch (sortBy.value) {
@@ -934,13 +1065,12 @@ const filteredProjects = computed(() => {
 
       case 'recent':
       default:
-        return getDateValue(b.updatedAt) - getDateValue(a.updatedAt)
+        return (
+          getDateValue(b.updatedAt) -
+          getDateValue(a.updatedAt)
+        )
     }
   })
-})
-
-onMounted(() => {
-  loadProjects()
 })
 
 function createBlankProject() {
@@ -958,109 +1088,6 @@ function createBlankProject() {
   }
 }
 
-function loadProjects() {
-  const currentProjects = readStorageKey(STORAGE_KEY)
-
-  if (currentProjects.length) {
-    projects.value = currentProjects.map(normalizeProject)
-    return
-  }
-
-  for (const legacyKey of LEGACY_STORAGE_KEYS) {
-    const legacyProjects = readStorageKey(legacyKey)
-
-    if (legacyProjects.length) {
-      projects.value = legacyProjects.map(normalizeProject)
-      saveProjects()
-      return
-    }
-  }
-
-  projects.value = []
-}
-
-function readStorageKey(key) {
-  const storedValue = localStorage.getItem(key)
-
-  if (!storedValue) {
-    return []
-  }
-
-  try {
-    const parsed = JSON.parse(storedValue)
-
-    if (Array.isArray(parsed)) {
-      return parsed
-    }
-
-    if (Array.isArray(parsed?.projects)) {
-      return parsed.projects
-    }
-
-    if (Array.isArray(parsed?.items)) {
-      return parsed.items
-    }
-  } catch (error) {
-    console.warn(
-      `Scholarory Writing Dashboard could not read "${key}".`,
-      error,
-    )
-  }
-
-  return []
-}
-
-function normalizeProject(project, index) {
-  const now = new Date().toISOString()
-
-  return {
-    id: String(
-      project.id ||
-        project.projectId ||
-        `writing-${Date.now()}-${index}`,
-    ),
-
-    title:
-      String(project.title || project.name || 'Untitled Project').trim(),
-
-    type: project.type || project.projectType || 'paper',
-    status: project.status || project.stage || 'planning',
-
-    course: String(
-      project.course || project.courseName || '',
-    ).trim(),
-
-    assignment: String(
-      project.assignment || project.assignmentName || '',
-    ).trim(),
-
-    currentWords: normalizeNumber(
-      project.currentWords ?? project.wordCount,
-    ),
-
-    wordGoal: normalizeNumber(
-      project.wordGoal ?? project.goalWords ?? 1500,
-    ),
-
-    dueDate: project.dueDate || project.deadline || '',
-    priority: project.priority || 'normal',
-
-    description: String(
-      project.description || project.notes || '',
-    ).trim(),
-
-    createdAt: project.createdAt || now,
-    updatedAt: project.updatedAt || project.createdAt || now,
-  }
-}
-
-function saveProjects() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(projects.value),
-  )
-}
-
 function openCreateModal() {
   editingProjectId.value = ''
   projectForm.value = createBlankProject()
@@ -1076,7 +1103,9 @@ function openEditModal(project) {
     status: project.status,
     course: project.course,
     assignment: project.assignment,
-    currentWords: normalizeNumber(project.currentWords),
+    currentWords: normalizeNumber(
+      project.currentWords,
+    ),
     wordGoal: normalizeNumber(project.wordGoal),
     dueDate: project.dueDate,
     priority: project.priority,
@@ -1093,64 +1122,52 @@ function closeProjectModal() {
 }
 
 function saveProject() {
-  const now = new Date().toISOString()
-
   const cleanedProject = {
-    title: projectForm.value.title.trim(),
+    title:
+      projectForm.value.title.trim() ||
+      'Untitled Writing Project',
+
     type: projectForm.value.type,
     status: projectForm.value.status,
     course: projectForm.value.course.trim(),
-    assignment: projectForm.value.assignment.trim(),
-    currentWords: normalizeNumber(projectForm.value.currentWords),
-    wordGoal: normalizeNumber(projectForm.value.wordGoal),
+    assignment:
+      projectForm.value.assignment.trim(),
+
+    currentWords: normalizeNumber(
+      projectForm.value.currentWords,
+    ),
+
+    wordGoal: normalizeNumber(
+      projectForm.value.wordGoal,
+    ),
+
     dueDate: projectForm.value.dueDate,
     priority: projectForm.value.priority,
-    description: projectForm.value.description.trim(),
-    updatedAt: now,
+
+    description:
+      projectForm.value.description.trim(),
   }
 
   if (editingProjectId.value) {
-    const projectIndex = projects.value.findIndex(
-      (project) => project.id === editingProjectId.value,
+    const updatedProject = updateProject(
+      editingProjectId.value,
+      cleanedProject,
     )
 
-    if (projectIndex !== -1) {
-      projects.value[projectIndex] = {
-        ...projects.value[projectIndex],
-        ...cleanedProject,
-      }
-
-      showSaveMessage('Writing project updated.')
+    if (updatedProject) {
+      showSaveMessage(
+        'Writing project updated.',
+      )
     }
   } else {
-    projects.value.unshift({
-      id: `writing-${Date.now()}`,
-      ...cleanedProject,
-      createdAt: now,
-    })
+    addProject(cleanedProject)
 
-    showSaveMessage('Writing project created.')
+    showSaveMessage(
+      'Writing project created.',
+    )
   }
 
-  saveProjects()
   closeProjectModal()
-}
-
-function saveInlineProject(project) {
-  project.currentWords = normalizeNumber(project.currentWords)
-  project.wordGoal = normalizeNumber(project.wordGoal)
-  project.updatedAt = new Date().toISOString()
-
-  saveProjects()
-  showSaveMessage('Writing progress saved.')
-}
-
-function markComplete(project) {
-  project.status = 'complete'
-  project.updatedAt = new Date().toISOString()
-
-  saveProjects()
-  showSaveMessage('Writing project marked complete.')
 }
 
 function deleteEditingProject() {
@@ -1158,25 +1175,53 @@ function deleteEditingProject() {
     return
   }
 
-  const project = projects.value.find(
-    (item) => item.id === editingProjectId.value,
+  const project = allProjects.value.find(
+    (item) =>
+      item.id === editingProjectId.value,
   )
 
   const confirmed = window.confirm(
-    `Delete "${project?.title || 'this writing project'}"?`,
+    `Delete "${
+      project?.title || 'this writing project'
+    }"?`,
   )
 
   if (!confirmed) {
     return
   }
 
-  projects.value = projects.value.filter(
-    (item) => item.id !== editingProjectId.value,
-  )
-
-  saveProjects()
+  deleteProject(editingProjectId.value)
   closeProjectModal()
-  showSaveMessage('Writing project deleted.')
+
+  showSaveMessage(
+    'Writing project deleted.',
+  )
+}
+
+function completeProject(project) {
+  markProjectComplete(project.id)
+
+  showSaveMessage(
+    'Writing project marked complete.',
+  )
+}
+
+function updateProjectStatus(project, status) {
+  updateProject(project.id, {
+    status,
+  })
+
+  showSaveMessage(
+    'Writing stage updated.',
+  )
+}
+
+function openEditor(project) {
+  router.push(
+    `/writing/projects/${encodeURIComponent(
+      project.id,
+    )}`,
+  )
 }
 
 function clearFilters() {
@@ -1195,52 +1240,6 @@ function normalizeNumber(value) {
   return Math.round(number)
 }
 
-function getProgress(project) {
-  const goal = normalizeNumber(project.wordGoal)
-  const current = normalizeNumber(project.currentWords)
-
-  if (goal <= 0) {
-    return current > 0 ? 100 : 0
-  }
-
-  return Math.min(
-    100,
-    Math.round((current / goal) * 100),
-  )
-}
-
-function getRemainingWords(project) {
-  return Math.max(
-    0,
-    normalizeNumber(project.wordGoal) -
-      normalizeNumber(project.currentWords),
-  )
-}
-
-function getStatusLabel(statusValue) {
-  return (
-    writingStatuses.find(
-      (status) => status.value === statusValue,
-    )?.label || 'Planning'
-  )
-}
-
-function getTypeLabel(typeValue) {
-  return (
-    writingTypes.find(
-      (type) => type.value === typeValue,
-    )?.label || 'Writing Project'
-  )
-}
-
-function getTypeIcon(typeValue) {
-  return (
-    writingTypes.find(
-      (type) => type.value === typeValue,
-    )?.icon || '✍️'
-  )
-}
-
 function getDateValue(dateValue) {
   if (!dateValue) {
     return 0
@@ -1249,7 +1248,9 @@ function getDateValue(dateValue) {
   const date = new Date(dateValue)
   const time = date.getTime()
 
-  return Number.isNaN(time) ? 0 : time
+  return Number.isNaN(time)
+    ? 0
+    : time
 }
 
 function getSortableDeadline(dateValue) {
@@ -1257,7 +1258,9 @@ function getSortableDeadline(dateValue) {
     return Number.POSITIVE_INFINITY
   }
 
-  return getDateValue(`${dateValue}T00:00:00`)
+  return getDateValue(
+    `${dateValue}T00:00:00`,
+  )
 }
 
 function getDaysUntil(dateValue) {
@@ -1268,10 +1271,19 @@ function getDaysUntil(dateValue) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const dueDate = new Date(`${dateValue}T00:00:00`)
+  const dueDate = new Date(
+    `${dateValue}T00:00:00`,
+  )
+
+  if (Number.isNaN(dueDate.getTime())) {
+    return Number.POSITIVE_INFINITY
+  }
 
   return Math.round(
-    (dueDate.getTime() - today.getTime()) /
+    (
+      dueDate.getTime() -
+      today.getTime()
+    ) /
       (1000 * 60 * 60 * 24),
   )
 }
@@ -1287,7 +1299,9 @@ function getDeadlineLabel(project) {
     const overdueDays = Math.abs(days)
 
     return `${overdueDays} ${
-      overdueDays === 1 ? 'day' : 'days'
+      overdueDays === 1
+        ? 'day'
+        : 'days'
     } overdue`
   }
 
@@ -1303,7 +1317,10 @@ function getDeadlineLabel(project) {
 }
 
 function getDeadlineClass(project) {
-  if (!project.dueDate || project.status === 'complete') {
+  if (
+    !project.dueDate ||
+    project.status === 'complete'
+  ) {
     return ''
   }
 
@@ -1325,17 +1342,22 @@ function formatDate(dateValue) {
     return 'No due date'
   }
 
-  const date = new Date(`${dateValue}T00:00:00`)
+  const date = new Date(
+    `${dateValue}T00:00:00`,
+  )
 
   if (Number.isNaN(date.getTime())) {
     return dateValue
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date)
+  return new Intl.DateTimeFormat(
+    undefined,
+    {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    },
+  ).format(date)
 }
 
 function formatUpdatedDate(dateValue) {
@@ -1350,8 +1372,15 @@ function formatUpdatedDate(dateValue) {
   }
 
   const now = new Date()
-  const difference = now.getTime() - date.getTime()
-  const days = Math.floor(difference / (1000 * 60 * 60 * 24))
+
+  const difference =
+    now.getTime() -
+    date.getTime()
+
+  const days = Math.floor(
+    difference /
+      (1000 * 60 * 60 * 24),
+  )
 
   if (days <= 0) {
     return 'today'
@@ -1365,10 +1394,13 @@ function formatUpdatedDate(dateValue) {
     return `${days} days ago`
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-  }).format(date)
+  return new Intl.DateTimeFormat(
+    undefined,
+    {
+      month: 'short',
+      day: 'numeric',
+    },
+  ).format(date)
 }
 
 function getDateDay(dateValue) {
@@ -1376,11 +1408,16 @@ function getDateDay(dateValue) {
     return '--'
   }
 
-  const date = new Date(`${dateValue}T00:00:00`)
+  const date = new Date(
+    `${dateValue}T00:00:00`,
+  )
 
-  return new Intl.DateTimeFormat(undefined, {
-    day: '2-digit',
-  }).format(date)
+  return new Intl.DateTimeFormat(
+    undefined,
+    {
+      day: '2-digit',
+    },
+  ).format(date)
 }
 
 function getDateMonth(dateValue) {
@@ -1388,11 +1425,16 @@ function getDateMonth(dateValue) {
     return ''
   }
 
-  const date = new Date(`${dateValue}T00:00:00`)
+  const date = new Date(
+    `${dateValue}T00:00:00`,
+  )
 
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-  })
+  return new Intl.DateTimeFormat(
+    undefined,
+    {
+      month: 'short',
+    },
+  )
     .format(date)
     .toUpperCase()
 }
@@ -1404,9 +1446,11 @@ function formatNumber(value) {
 }
 
 function showSaveMessage(message) {
+  window.clearTimeout(saveMessageTimer)
+
   saveMessage.value = message
 
-  window.setTimeout(() => {
+  saveMessageTimer = window.setTimeout(() => {
     saveMessage.value = ''
   }, 2200)
 }
@@ -1425,7 +1469,8 @@ function showSaveMessage(message) {
 .delete-btn,
 .clear-btn,
 .icon-btn,
-.modal-close {
+.modal-close,
+.project-title-button {
   font: inherit;
   cursor: pointer;
 }
@@ -1454,7 +1499,7 @@ function showSaveMessage(message) {
   border-radius: 10px;
   background: var(--btn-bg);
   color: var(--text-primary);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 750;
 }
 
@@ -1465,7 +1510,8 @@ function showSaveMessage(message) {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
   gap: 0.9rem;
 }
 
@@ -1524,7 +1570,9 @@ function showSaveMessage(message) {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
+  grid-template-columns:
+    minmax(0, 1.65fr)
+    minmax(280px, 0.85fr);
   gap: 1rem;
 }
 
@@ -1711,7 +1759,8 @@ function showSaveMessage(message) {
 
 .focus-stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
@@ -1791,7 +1840,8 @@ function showSaveMessage(message) {
 
 .deadline-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.7rem;
   width: 100%;
@@ -1913,7 +1963,6 @@ function showSaveMessage(message) {
 .modal-form input,
 .modal-form select,
 .modal-form textarea,
-.quick-word-update input,
 .status-select {
   width: 100%;
   box-sizing: border-box;
@@ -1963,7 +2012,6 @@ function showSaveMessage(message) {
 .modal-form input:focus,
 .modal-form select:focus,
 .modal-form textarea:focus,
-.quick-word-update input:focus,
 .status-select:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -1982,7 +2030,8 @@ function showSaveMessage(message) {
 
 .project-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
   gap: 0.85rem;
 }
 
@@ -2019,14 +2068,28 @@ function showSaveMessage(message) {
   color: var(--accent-text);
 }
 
-.project-title h3 {
+.project-title-button {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.project-title-button:hover h3 {
+  color: var(--accent-text);
+}
+
+.project-title-button h3 {
   margin: 0;
   color: var(--text-primary);
   font-size: 1rem;
 }
 
-.project-title p {
-  margin: 0.25rem 0 0;
+.project-title-button p {
+  margin: 0;
   color: var(--text-muted);
   font-size: 0.73rem;
 }
@@ -2040,6 +2103,7 @@ function showSaveMessage(message) {
   line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .project-progress {
@@ -2047,22 +2111,10 @@ function showSaveMessage(message) {
   gap: 0.5rem;
 }
 
-.quick-word-update label {
-  display: grid;
-  gap: 0.35rem;
-  color: var(--text-muted);
-  font-size: 0.67rem;
-  font-weight: 750;
-}
-
-.quick-word-update input {
-  padding: 0.55rem 0.65rem;
-  font-size: 0.78rem;
-}
-
 .project-meta {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
   gap: 0.55rem;
 }
 
@@ -2086,14 +2138,21 @@ function showSaveMessage(message) {
   font-size: 0.72rem;
 }
 
+.project-card-actions {
+  display: grid;
+  grid-template-columns:
+    auto minmax(120px, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.open-editor-btn {
+  white-space: nowrap;
+}
+
 .status-select {
   min-height: 40px;
   padding: 0.5rem;
   font-size: 0.75rem;
-}
-
-.project-card-actions .status-select {
-  flex: 1;
 }
 
 .large-empty-state {
@@ -2110,13 +2169,15 @@ function showSaveMessage(message) {
 
 .recent-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
 .recent-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns:
+    auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.7rem;
   padding: 0.7rem;
@@ -2178,7 +2239,9 @@ function showSaveMessage(message) {
   border: 1px solid var(--border-color);
   border-radius: 18px;
   background: var(--bg-card);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+  box-shadow:
+    0 24px 70px
+    rgba(15, 23, 42, 0.3);
 }
 
 .modal-heading {
@@ -2206,7 +2269,8 @@ function showSaveMessage(message) {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
@@ -2261,12 +2325,15 @@ function showSaveMessage(message) {
   color: white;
   font-size: 0.8rem;
   font-weight: 800;
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.28);
+  box-shadow:
+    0 18px 34px
+    rgba(15, 23, 42, 0.28);
 }
 
 @media (max-width: 1100px) {
   .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
   }
 
   .dashboard-grid {
@@ -2274,7 +2341,8 @@ function showSaveMessage(message) {
   }
 
   .project-toolbar {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
   }
 
   .search-field {
@@ -2290,7 +2358,8 @@ function showSaveMessage(message) {
   }
 
   .project-toolbar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
   }
 
   .search-field {
@@ -2299,6 +2368,10 @@ function showSaveMessage(message) {
 
   .projects-heading {
     align-items: flex-start;
+  }
+
+  .project-card-actions {
+    grid-template-columns: 1fr;
   }
 }
 

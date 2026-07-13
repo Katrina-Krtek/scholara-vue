@@ -22,7 +22,9 @@ import CalendarHub from '../views/CalendarHub.vue'
 import DailyPagesView from '../views/DailyPagesView.vue'
 import PlannerView from '../views/planner/PlannerView.vue'
 import AcademicHub from '../views/AcademicHub.vue'
+
 import WritingHub from '../views/WritingHub.vue'
+import WritingEditorView from '../views/writing/WritingEditorView.vue'
 
 import ResearchHub from '../views/ResearchHub.vue'
 import ResearchDashboard from '../views/research/ResearchDashboard.vue'
@@ -154,10 +156,20 @@ const routes = [
     name: 'CalendarHub',
     component: CalendarHub,
   },
+
   {
     path: '/writing',
     name: 'WritingHub',
     component: WritingHub,
+  },
+  {
+    path: '/writing/projects/:id',
+    name: 'WritingEditorView',
+    component: WritingEditorView,
+    meta: {
+      title: 'Writing Editor',
+      subtitle: 'Draft, revise, and track writing progress.',
+    },
   },
 
   {
