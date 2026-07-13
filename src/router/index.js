@@ -26,6 +26,7 @@ import WritingHub from '../views/WritingHub.vue'
 
 import ResearchHub from '../views/ResearchHub.vue'
 import ResearchDashboard from '../views/research/ResearchDashboard.vue'
+import ResearchAuditHub from '../views/research/ResearchAuditHub.vue'
 import ResearchDetail from '../views/ResearchDetail.vue'
 import ResearchTypeView from '../views/ResearchTypeView.vue'
 
@@ -184,6 +185,16 @@ const routes = [
     path: '/research/workspace',
     name: 'ResearchWorkspace',
     component: ResearchHub,
+  },
+  {
+    path: '/research/audit',
+    name: 'ResearchAuditHub',
+    component: ResearchAuditHub,
+    meta: {
+      title: 'Research Audit',
+      subtitle:
+        'Find incomplete records, citation gaps, and disconnected research.',
+    },
   },
   {
     path: '/research/type/:type',

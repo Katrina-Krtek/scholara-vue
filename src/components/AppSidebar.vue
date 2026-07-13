@@ -5,11 +5,19 @@
     </button>
 
     <RouterLink to="/" class="sidebar-logo" aria-label="Scholarory Home">
-      <img src="/scholarory-logo.png" alt="Scholarory logo" class="logo-img" />
+      <img
+        src="/scholarory-logo.png"
+        alt="Scholarory logo"
+        class="logo-img"
+      />
     </RouterLink>
 
     <div v-if="!isCollapsed" class="sidebar-search">
-      <input v-model="searchQuery" type="text" placeholder="Search Scholarory..." />
+      <input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Search Scholarory..."
+      />
     </div>
 
     <div v-if="!isCollapsed" class="sidebar-actions">
@@ -27,38 +35,139 @@
     <nav class="sidebar-nav">
       <div v-if="!isCollapsed" class="nav-section-label">Main</div>
 
-      <RouterLink to="/" class="nav-item">📊 Dashboard</RouterLink>
-      <RouterLink to="/inbox" class="nav-item">📥 Inbox</RouterLink>
-      <RouterLink to="/notes" class="nav-item">📓 Notes</RouterLink>
-      <RouterLink to="/calendar" class="nav-item">📅 Calendar</RouterLink>
-      <RouterLink to="/daily" class="nav-item">📖 Daily Page</RouterLink>
-      <RouterLink to="/tasks" class="nav-item">✅ Tasks</RouterLink>
-      <RouterLink to="/planner" class="nav-item">🗒️ Planner</RouterLink>
-      <RouterLink to="/tools/pomodoro" class="nav-item">⏱️ Pomodoro</RouterLink>
+      <RouterLink to="/" class="nav-item">
+        📊 Dashboard
+      </RouterLink>
+
+      <RouterLink to="/inbox" class="nav-item">
+        📥 Inbox
+      </RouterLink>
+
+      <RouterLink to="/notes" class="nav-item">
+        📓 Notes
+      </RouterLink>
+
+      <RouterLink to="/calendar" class="nav-item">
+        📅 Calendar
+      </RouterLink>
+
+      <RouterLink to="/daily" class="nav-item">
+        📖 Daily Page
+      </RouterLink>
+
+      <RouterLink to="/tasks" class="nav-item">
+        ✅ Tasks
+      </RouterLink>
+
+      <RouterLink to="/planner" class="nav-item">
+        🗒️ Planner
+      </RouterLink>
+
+      <RouterLink to="/tools/pomodoro" class="nav-item">
+        ⏱️ Pomodoro
+      </RouterLink>
 
       <div v-if="!isCollapsed" class="nav-section-label">Hubs</div>
 
-      <RouterLink to="/academic" class="nav-item hub-item">🎓 Academic Hub</RouterLink>
-      <RouterLink to="/courses" class="nav-item child-item">📚 Courses</RouterLink>
-      <RouterLink to="/instructors" class="nav-item child-item">👨‍🏫 Instructors</RouterLink>
-      <RouterLink to="/assignments" class="nav-item child-item">📝 Assignments</RouterLink>
+      <RouterLink to="/academic" class="nav-item hub-item">
+        🎓 Academic Hub
+      </RouterLink>
 
-      <RouterLink to="/research" class="nav-item hub-item">🔎 Resource Hub</RouterLink>
-      <RouterLink to="/sources" class="nav-item child-item">🧩 Sources Database</RouterLink>
-      <RouterLink to="/sources/relationships" class="nav-item child-item">🔗 Source Relationships</RouterLink>
-      <RouterLink to="/books" class="nav-item child-item">📘 Books Database</RouterLink>
-      <RouterLink to="/journals" class="nav-item child-item">📒 Journals Database</RouterLink>
-      <RouterLink to="/research/type/article" class="nav-item child-item">📰 Articles Database</RouterLink>
-      <RouterLink to="/research/type/dissertation" class="nav-item child-item">🎓 Dissertations</RouterLink>
-      <RouterLink to="/research/type/thesis" class="nav-item child-item">📄 Thesis</RouterLink>
-      <RouterLink to="/research/type/website" class="nav-item child-item">🌐 Webpages</RouterLink>
-      <RouterLink to="/research/type/blog" class="nav-item child-item">✍️ Blogs</RouterLink>
-      <RouterLink to="/research/type/video" class="nav-item child-item">🎥 Video & Media</RouterLink>
-      <RouterLink to="/research/type/communication" class="nav-item child-item">💬 Communications</RouterLink>
+      <RouterLink to="/courses" class="nav-item child-item">
+        📚 Courses
+      </RouterLink>
 
-      <RouterLink to="/writing" class="nav-item hub-item">✍️ Writing Hub</RouterLink>
+      <RouterLink to="/instructors" class="nav-item child-item">
+        👨‍🏫 Instructors
+      </RouterLink>
 
-      <div v-if="!isCollapsed" class="nav-section-label">Knowledge</div>
+      <RouterLink to="/assignments" class="nav-item child-item">
+        📝 Assignments
+      </RouterLink>
+
+      <RouterLink to="/research" class="nav-item hub-item">
+        🔎 Resource Hub
+      </RouterLink>
+
+      <RouterLink to="/sources" class="nav-item child-item">
+        🧩 Sources Database
+      </RouterLink>
+
+      <RouterLink
+        to="/sources/relationships"
+        class="nav-item child-item"
+      >
+        🔗 Source Relationships
+      </RouterLink>
+
+      <RouterLink to="/research/audit" class="nav-item child-item">
+        📋 Research Audit
+      </RouterLink>
+
+      <RouterLink to="/books" class="nav-item child-item">
+        📘 Books Database
+      </RouterLink>
+
+      <RouterLink to="/journals" class="nav-item child-item">
+        📒 Journals Database
+      </RouterLink>
+
+      <RouterLink
+        to="/research/type/article"
+        class="nav-item child-item"
+      >
+        📰 Articles Database
+      </RouterLink>
+
+      <RouterLink
+        to="/research/type/dissertation"
+        class="nav-item child-item"
+      >
+        🎓 Dissertations
+      </RouterLink>
+
+      <RouterLink
+        to="/research/type/thesis"
+        class="nav-item child-item"
+      >
+        📄 Thesis
+      </RouterLink>
+
+      <RouterLink
+        to="/research/type/website"
+        class="nav-item child-item"
+      >
+        🌐 Webpages
+      </RouterLink>
+
+      <RouterLink
+        to="/research/type/blog"
+        class="nav-item child-item"
+      >
+        ✍️ Blogs
+      </RouterLink>
+
+      <RouterLink
+        to="/research/type/video"
+        class="nav-item child-item"
+      >
+        🎥 Video & Media
+      </RouterLink>
+
+      <RouterLink
+        to="/research/type/communication"
+        class="nav-item child-item"
+      >
+        💬 Communications
+      </RouterLink>
+
+      <RouterLink to="/writing" class="nav-item hub-item">
+        ✍️ Writing Hub
+      </RouterLink>
+
+      <div v-if="!isCollapsed" class="nav-section-label">
+        Knowledge
+      </div>
 
       <RouterLink to="/knowledge-tags" class="nav-item hub-item">
         🏷️ Knowledge Tags
@@ -79,7 +188,11 @@
           :value="selectedCitationStyle"
           @change="updateCitationStyle"
         >
-          <option v-for="style in citationStyles" :key="style.id" :value="style.id">
+          <option
+            v-for="style in citationStyles"
+            :key="style.id"
+            :value="style.id"
+          >
             {{ style.name }}
           </option>
         </select>
@@ -87,21 +200,36 @@
 
       <button class="bottom-btn">⚙️ Settings</button>
       <button class="bottom-btn">❔ Help</button>
-      <button class="bottom-btn logout-btn" @click="handleLogout">🚪 Log Out</button>
+
+      <button class="bottom-btn logout-btn" @click="handleLogout">
+        🚪 Log Out
+      </button>
 
       <div class="user-row">
-        <div class="user-avatar">{{ usernameInitial }}</div>
-        <span v-if="!isCollapsed" class="user-name">{{ username }}</span>
-        <button v-if="!isCollapsed" class="faq-btn">?</button>
+        <div class="user-avatar">
+          {{ usernameInitial }}
+        </div>
+
+        <span v-if="!isCollapsed" class="user-name">
+          {{ username }}
+        </span>
+
+        <button v-if="!isCollapsed" class="faq-btn">
+          ?
+        </button>
       </div>
     </div>
 
-    <JotModal :show="jotOpen" @close="jotOpen = false" @saved="onJotSaved" />
+    <JotModal
+      :show="jotOpen"
+      @close="jotOpen = false"
+      @saved="onJotSaved"
+    />
   </aside>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import JotModal from './JotModal.vue'
