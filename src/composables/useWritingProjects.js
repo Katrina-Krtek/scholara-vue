@@ -3,6 +3,7 @@
 import { computed, ref } from 'vue'
 
 const STORAGE_KEY = 'scholarory-writing-projects'
+const MAX_DRAFT_VERSIONS = 25
 
 const LEGACY_STORAGE_KEYS = [
   'scholarory_writing_projects',
@@ -160,6 +161,14 @@ function createProjectId() {
   return `writing-${Date.now()}-${randomPart}`
 }
 
+function createVersionId() {
+  const randomPart = Math.random()
+    .toString(36)
+    .slice(2, 8)
+
+  return `version-${Date.now()}-${randomPart}`
+}
+
 function createBlankDocument() {
   return '<p></p>'
 }
@@ -290,6 +299,115 @@ export function calculateReadingTime(wordCount = 0) {
     1,
     Math.ceil(normalizedWordCount / 225),
   )
+}
+
+function normalizeDraftVersion(version, index = 0) {
+  const timestamp = nowIso()
+
+  const contentHtml =
+    typeof version.contentHtml === 'string'
+      ? version.contentHtml
+      : typeof version.documentHtml === 'string'
+        ? version.documentHtml
+        : typeof version.content === 'string'
+          ? version.content
+          : createBlankDocument()
+
+  const plainText =
+    htmlToPlainText(contentHtml)
+
+  const calculatedWordCount =
+    countWordsFromText(plainText)
+
+  return {
+    id: normalizeString(
+      version.id ||
+        version.versionId ||
+        `version-${Date.now()}-${index}`,
+    ),
+
+    name: normalizeString(
+      version.name ||
+        version.label ||
+        `Version ${index + 1}`,
+    ),
+
+    createdAt:
+      version.createdAt ||
+      version.created_at ||
+      timestamp,
+
+    documentTitle: normalizeString(
+      version.documentTitle ||
+        version.title ||
+        'Untitled Writing Project',
+    ),
+
+    contentHtml,
+    plainText,
+
+    wordCount: normalizeNumber(
+      version.wordCount ??
+        version.currentWords ??
+        calculatedWordCount,
+      calculatedWordCount,
+    ),
+
+    source: normalizeString(
+      version.source ||
+        'manual',
+      'manual',
+    ),
+  }
+}
+
+function normalizeDraftVersions(project) {
+  const rawVersions =
+    Array.isArray(project.draftVersions)
+      ? project.draftVersions
+      : Array.isArray(project.versionHistory)
+        ? project.versionHistory
+        : Array.isArray(project.versions)
+          ? project.versions
+          : []
+
+  return rawVersions
+    .map(normalizeDraftVersion)
+    .sort(
+      (firstVersion, secondVersion) =>
+        new Date(secondVersion.createdAt).getTime() -
+        new Date(firstVersion.createdAt).getTime(),
+    )
+    .slice(0, MAX_DRAFT_VERSIONS)
+}
+
+function createVersionSnapshot(
+  project,
+  name,
+  source = 'manual',
+) {
+  const contentHtml =
+    typeof project.contentHtml === 'string'
+      ? project.contentHtml
+      : createBlankDocument()
+
+  const plainText =
+    htmlToPlainText(contentHtml)
+
+  return normalizeDraftVersion({
+    id: createVersionId(),
+    name,
+    createdAt: nowIso(),
+    documentTitle:
+      project.documentTitle ||
+      project.title ||
+      'Untitled Writing Project',
+    contentHtml,
+    plainText,
+    wordCount:
+      countWordsFromText(plainText),
+    source,
+  })
 }
 
 function normalizeProject(project, index = 0) {
@@ -426,6 +544,9 @@ function normalizeProject(project, index = 0) {
     tags: Array.isArray(project.tags)
       ? project.tags
       : [],
+
+    draftVersions:
+      normalizeDraftVersions(project),
 
     editorSettings: {
       focusMode:
@@ -753,6 +874,281 @@ function updateProjectContent(
   )
 }
 
+function getDraftVersions(projectId) {
+  const project =
+    getProjectById(projectId)
+
+  if (!project) {
+    return []
+  }
+
+  return [...project.draftVersions].sort(
+    (firstVersion, secondVersion) =>
+      new Date(secondVersion.createdAt).getTime() -
+      new Date(firstVersion.createdAt).getTime(),
+  )
+}
+
+function getDraftVersionById(
+  projectId,
+  versionId,
+) {
+  const project =
+    getProjectById(projectId)
+
+  if (!project) {
+    return null
+  }
+
+  return (
+    project.draftVersions.find(
+      (version) =>
+        String(version.id) ===
+        String(versionId),
+    ) || null
+  )
+}
+
+function createDraftVersion(
+  projectId,
+  versionName = '',
+) {
+  const project =
+    getProjectById(projectId)
+
+  if (!project) {
+    return null
+  }
+
+  const nextVersionNumber =
+    project.draftVersions.length + 1
+
+  const normalizedName =
+    normalizeString(
+      versionName,
+      `Version ${nextVersionNumber}`,
+    ) || `Version ${nextVersionNumber}`
+
+  const version =
+    createVersionSnapshot(
+      project,
+      normalizedName,
+      'manual',
+    )
+
+  const updatedProject =
+    updateProject(
+      projectId,
+      {
+        draftVersions: [
+          version,
+          ...project.draftVersions,
+        ].slice(0, MAX_DRAFT_VERSIONS),
+      },
+    )
+
+  if (!updatedProject) {
+    return null
+  }
+
+  return (
+    updatedProject.draftVersions.find(
+      (draftVersion) =>
+        draftVersion.id === version.id,
+    ) || version
+  )
+}
+
+function renameDraftVersion(
+  projectId,
+  versionId,
+  versionName,
+) {
+  const project =
+    getProjectById(projectId)
+
+  if (!project) {
+    return null
+  }
+
+  const normalizedName =
+    normalizeString(versionName)
+
+  if (!normalizedName) {
+    return null
+  }
+
+  let renamedVersion = null
+
+  const draftVersions =
+    project.draftVersions.map(
+      (version) => {
+        if (
+          String(version.id) !==
+          String(versionId)
+        ) {
+          return version
+        }
+
+        renamedVersion = {
+          ...version,
+          name: normalizedName,
+        }
+
+        return renamedVersion
+      },
+    )
+
+  if (!renamedVersion) {
+    return null
+  }
+
+  const updatedProject =
+    updateProject(
+      projectId,
+      {
+        draftVersions,
+      },
+    )
+
+  if (!updatedProject) {
+    return null
+  }
+
+  return (
+    updatedProject.draftVersions.find(
+      (version) =>
+        String(version.id) ===
+        String(versionId),
+    ) || renamedVersion
+  )
+}
+
+function deleteDraftVersion(
+  projectId,
+  versionId,
+) {
+  const project =
+    getProjectById(projectId)
+
+  if (!project) {
+    return false
+  }
+
+  const draftVersions =
+    project.draftVersions.filter(
+      (version) =>
+        String(version.id) !==
+        String(versionId),
+    )
+
+  if (
+    draftVersions.length ===
+    project.draftVersions.length
+  ) {
+    return false
+  }
+
+  return Boolean(
+    updateProject(
+      projectId,
+      {
+        draftVersions,
+      },
+    ),
+  )
+}
+
+function restoreDraftVersion(
+  projectId,
+  versionId,
+  options = {},
+) {
+  const project =
+    getProjectById(projectId)
+
+  if (!project) {
+    return null
+  }
+
+  const version =
+    getDraftVersionById(
+      projectId,
+      versionId,
+    )
+
+  if (!version) {
+    return null
+  }
+
+  const createSafetyCopy =
+    options.createSafetyCopy !== false
+
+  let draftVersions =
+    [...project.draftVersions]
+
+  const currentTitle =
+    project.documentTitle ||
+    project.title ||
+    'Untitled Writing Project'
+
+  const documentChanged =
+    project.contentHtml !==
+      version.contentHtml ||
+    currentTitle !==
+      version.documentTitle
+
+  if (
+    createSafetyCopy &&
+    documentChanged
+  ) {
+    const safetyVersion =
+      createVersionSnapshot(
+        project,
+        `Before restoring ${version.name}`,
+        'restore-safety',
+      )
+
+    draftVersions = [
+      safetyVersion,
+      ...draftVersions,
+    ].slice(0, MAX_DRAFT_VERSIONS)
+  }
+
+  return updateProject(
+    projectId,
+    {
+      title:
+        version.documentTitle ||
+        currentTitle,
+
+      documentTitle:
+        version.documentTitle ||
+        currentTitle,
+
+      contentHtml:
+        version.contentHtml,
+
+      plainText:
+        version.plainText ||
+        htmlToPlainText(
+          version.contentHtml,
+        ),
+
+      currentWords:
+        normalizeNumber(
+          version.wordCount,
+          countWordsFromHtml(
+            version.contentHtml,
+          ),
+        ),
+
+      draftVersions,
+      lastSavedAt: nowIso(),
+    },
+  )
+}
+
 function deleteProject(projectId) {
   const projectIndex =
     getProjectIndex(projectId)
@@ -785,6 +1181,7 @@ function duplicateProject(projectId) {
     title: `${originalProject.title} Copy`,
     status: 'planning',
     completedAt: '',
+    draftVersions: [],
   })
 }
 
@@ -1015,6 +1412,14 @@ export function useWritingProjects() {
     addProject,
     updateProject,
     updateProjectContent,
+
+    getDraftVersions,
+    getDraftVersionById,
+    createDraftVersion,
+    renameDraftVersion,
+    deleteDraftVersion,
+    restoreDraftVersion,
+
     deleteProject,
     duplicateProject,
     markProjectComplete,

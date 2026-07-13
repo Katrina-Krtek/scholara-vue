@@ -448,6 +448,136 @@
             </button>
           </section>
 
+          <section class="sidebar-card version-card">
+            <div class="sidebar-card-heading">
+              <div>
+                <p class="eyebrow">Draft Management</p>
+                <h2>Draft versions</h2>
+              </div>
+
+              <strong>{{ draftVersions.length }}</strong>
+            </div>
+
+            <p class="version-help">
+              Save a named snapshot before major revisions. Scholarory keeps
+              up to 25 versions for this project.
+            </p>
+
+            <div class="version-create-row">
+              <input
+                v-model="versionName"
+                type="text"
+                maxlength="80"
+                placeholder="Version name (optional)"
+                aria-label="Draft version name"
+                @keydown.enter.prevent="createVersion"
+              />
+
+              <button
+                class="version-create-btn"
+                type="button"
+                @click="createVersion"
+              >
+                Save Version
+              </button>
+            </div>
+
+            <div v-if="draftVersions.length" class="version-list">
+              <article
+                v-for="version in draftVersions"
+                :key="version.id"
+                class="version-item"
+              >
+                <template v-if="versionBeingRenamedId === version.id">
+                  <label class="version-rename-field">
+                    Version name
+
+                    <input
+                      v-model="renameVersionName"
+                      type="text"
+                      maxlength="80"
+                      @keydown.enter.prevent="saveVersionRename(version.id)"
+                      @keydown.esc.prevent="cancelVersionRename"
+                    />
+                  </label>
+
+                  <div class="version-actions">
+                    <button
+                      type="button"
+                      @click="saveVersionRename(version.id)"
+                    >
+                      Save name
+                    </button>
+
+                    <button
+                      type="button"
+                      @click="cancelVersionRename"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </template>
+
+                <template v-else>
+                  <button
+                    class="version-summary"
+                    type="button"
+                    @click="previewVersion(version.id)"
+                  >
+                    <span class="version-name">{{ version.name }}</span>
+                    <span class="version-date">
+                      {{ formatVersionDate(version.createdAt) }}
+                    </span>
+                    <span class="version-meta">
+                      {{ Number(version.wordCount || 0).toLocaleString() }}
+                      {{ Number(version.wordCount || 0) === 1 ? 'word' : 'words' }}
+                      <template v-if="version.source === 'restore-safety'">
+                        · Safety copy
+                      </template>
+                    </span>
+                  </button>
+
+                  <div class="version-actions">
+                    <button
+                      type="button"
+                      @click="previewVersion(version.id)"
+                    >
+                      Preview
+                    </button>
+
+                    <button
+                      type="button"
+                      @click="startVersionRename(version)"
+                    >
+                      Rename
+                    </button>
+
+                    <button
+                      class="version-restore-btn"
+                      type="button"
+                      @click="restoreVersion(version.id)"
+                    >
+                      Restore
+                    </button>
+
+                    <button
+                      class="version-delete-btn"
+                      type="button"
+                      @click="removeVersion(version.id)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </template>
+              </article>
+            </div>
+
+            <div v-else class="version-empty-state">
+              <span>🕘</span>
+              <p>No draft versions saved yet.</p>
+            </div>
+          </section>
+
           <section class="sidebar-card">
             <div class="sidebar-card-heading">
               <div>
@@ -557,6 +687,70 @@
       </button>
     </section>
 
+    <div
+      v-if="selectedVersion"
+      class="version-modal-backdrop"
+      role="presentation"
+      @click.self="closeVersionPreview"
+    >
+      <section
+        class="version-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="version-preview-title"
+      >
+        <header class="version-modal-header">
+          <div>
+            <p class="eyebrow">Draft Version Preview</p>
+            <h2 id="version-preview-title">
+              {{ selectedVersion.name }}
+            </h2>
+            <p>
+              {{ formatVersionDate(selectedVersion.createdAt) }} ·
+              {{ Number(selectedVersion.wordCount || 0).toLocaleString() }}
+              {{ Number(selectedVersion.wordCount || 0) === 1 ? 'word' : 'words' }}
+            </p>
+          </div>
+
+          <button
+            class="version-modal-close"
+            type="button"
+            aria-label="Close version preview"
+            @click="closeVersionPreview"
+          >
+            ×
+          </button>
+        </header>
+
+        <div class="version-preview-title">
+          {{ selectedVersion.documentTitle || 'Untitled Writing Project' }}
+        </div>
+
+        <div
+          class="version-preview-document"
+          v-html="selectedVersion.contentHtml"
+        ></div>
+
+        <footer class="version-modal-footer">
+          <button
+            class="secondary-btn"
+            type="button"
+            @click="closeVersionPreview"
+          >
+            Close Preview
+          </button>
+
+          <button
+            class="primary-btn"
+            type="button"
+            @click="restoreVersion(selectedVersion.id)"
+          >
+            Restore This Version
+          </button>
+        </footer>
+      </section>
+    </div>
+
     <div v-if="toastMessage" class="save-toast">
       {{ toastMessage }}
     </div>
@@ -583,6 +777,12 @@ const router = useRouter()
 const {
   getProjectById,
   updateProjectContent,
+  getDraftVersions,
+  getDraftVersionById,
+  createDraftVersion,
+  renameDraftVersion,
+  deleteDraftVersion,
+  restoreDraftVersion,
   getTypeLabel,
   writingStatuses,
   writingPriorities,
@@ -612,11 +812,35 @@ const lastSavedAt = ref('')
 const toastMessage = ref('')
 const hydratedProjectId = ref('')
 
+const versionName = ref('')
+const selectedVersionId = ref('')
+const versionBeingRenamedId = ref('')
+const renameVersionName = ref('')
+
 let autosaveTimer = null
 let toastTimer = null
 
 const project = computed(() => {
   return getProjectById(route.params.id)
+})
+
+const draftVersions = computed(() => {
+  if (!project.value) {
+    return []
+  }
+
+  return getDraftVersions(project.value.id)
+})
+
+const selectedVersion = computed(() => {
+  if (!project.value || !selectedVersionId.value) {
+    return null
+  }
+
+  return getDraftVersionById(
+    project.value.id,
+    selectedVersionId.value,
+  )
 })
 
 const editorSubtitle = computed(() => {
@@ -799,6 +1023,10 @@ watch(
   () => route.params.id,
   () => {
     hydratedProjectId.value = ''
+    selectedVersionId.value = ''
+    versionBeingRenamedId.value = ''
+    renameVersionName.value = ''
+    versionName.value = ''
 
     nextTick(() => {
       hydrateProject()
@@ -912,7 +1140,7 @@ function saveNow(showToast = true) {
   clearTimeout(autosaveTimer)
 
   if (!project.value) {
-    return
+    return null
   }
 
   syncEditorHtml()
@@ -971,6 +1199,8 @@ function saveNow(showToast = true) {
     if (showToast) {
       showToastMessage('Writing project saved.')
     }
+
+    return updatedProject
   } catch (error) {
     console.error('Scholarory Writing Editor save failed.', error)
     saveState.value = 'error'
@@ -978,6 +1208,8 @@ function saveNow(showToast = true) {
     if (showToast) {
       showToastMessage('The document could not be saved.')
     }
+
+    return null
   }
 }
 
@@ -1128,6 +1360,213 @@ function toggleComplete() {
   )
 }
 
+function createVersion() {
+  if (!project.value) {
+    return
+  }
+
+  const savedProject = saveNow(false)
+
+  if (!savedProject) {
+    showToastMessage(
+      'Save the document before creating a version.',
+    )
+    return
+  }
+
+  const createdVersion = createDraftVersion(
+    savedProject.id,
+    versionName.value,
+  )
+
+  if (!createdVersion) {
+    showToastMessage('The draft version could not be created.')
+    return
+  }
+
+  versionName.value = ''
+  showToastMessage(`Saved “${createdVersion.name}”.`)
+}
+
+function previewVersion(versionId) {
+  selectedVersionId.value = String(versionId)
+}
+
+function closeVersionPreview() {
+  selectedVersionId.value = ''
+}
+
+function startVersionRename(version) {
+  versionBeingRenamedId.value = version.id
+  renameVersionName.value = version.name
+}
+
+function cancelVersionRename() {
+  versionBeingRenamedId.value = ''
+  renameVersionName.value = ''
+}
+
+function saveVersionRename(versionId) {
+  if (!project.value) {
+    return
+  }
+
+  const newName = renameVersionName.value.trim()
+
+  if (!newName) {
+    showToastMessage('Enter a name for this version.')
+    return
+  }
+
+  const renamedVersion = renameDraftVersion(
+    project.value.id,
+    versionId,
+    newName,
+  )
+
+  if (!renamedVersion) {
+    showToastMessage('The version could not be renamed.')
+    return
+  }
+
+  cancelVersionRename()
+  showToastMessage('Draft version renamed.')
+}
+
+function removeVersion(versionId) {
+  if (!project.value) {
+    return
+  }
+
+  const version = getDraftVersionById(
+    project.value.id,
+    versionId,
+  )
+
+  if (!version) {
+    return
+  }
+
+  const shouldDelete = window.confirm(
+    `Delete “${version.name}”? This cannot be undone.`,
+  )
+
+  if (!shouldDelete) {
+    return
+  }
+
+  const deleted = deleteDraftVersion(
+    project.value.id,
+    versionId,
+  )
+
+  if (!deleted) {
+    showToastMessage('The draft version could not be deleted.')
+    return
+  }
+
+  if (selectedVersionId.value === String(versionId)) {
+    closeVersionPreview()
+  }
+
+  if (versionBeingRenamedId.value === String(versionId)) {
+    cancelVersionRename()
+  }
+
+  showToastMessage('Draft version deleted.')
+}
+
+function restoreVersion(versionId) {
+  if (!project.value) {
+    return
+  }
+
+  const version = getDraftVersionById(
+    project.value.id,
+    versionId,
+  )
+
+  if (!version) {
+    showToastMessage('That draft version could not be found.')
+    return
+  }
+
+  const shouldRestore = window.confirm(
+    `Restore “${version.name}”? Scholarory will first save your current document as a safety copy.`,
+  )
+
+  if (!shouldRestore) {
+    return
+  }
+
+  if (saveState.value === 'unsaved') {
+    const savedProject = saveNow(false)
+
+    if (!savedProject) {
+      showToastMessage(
+        'The current draft could not be saved before restoring.',
+      )
+      return
+    }
+  }
+
+  const restoredProject = restoreDraftVersion(
+    project.value.id,
+    versionId,
+    {
+      createSafetyCopy: true,
+    },
+  )
+
+  if (!restoredProject) {
+    showToastMessage('The draft version could not be restored.')
+    return
+  }
+
+  documentTitle.value =
+    restoredProject.documentTitle ||
+    restoredProject.title ||
+    'Untitled Writing Project'
+
+  editorHtml.value =
+    restoredProject.contentHtml || '<p></p>'
+
+  lastSavedAt.value =
+    restoredProject.lastSavedAt ||
+    restoredProject.updatedAt ||
+    new Date().toISOString()
+
+  saveState.value = 'saved'
+  closeVersionPreview()
+
+  nextTick(() => {
+    if (editorRef.value) {
+      editorRef.value.innerHTML = editorHtml.value
+      editorRef.value.focus()
+    }
+  })
+
+  showToastMessage(
+    `Restored “${version.name}”. Your previous draft was saved as a safety copy.`,
+  )
+}
+
+function formatVersionDate(dateValue) {
+  const date = new Date(dateValue)
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown date'
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}
+
 function goToDashboard() {
   if (saveState.value === 'unsaved') {
     saveNow(false)
@@ -1179,7 +1618,9 @@ function showToastMessage(message) {
 .primary-btn,
 .secondary-btn,
 .completion-btn,
-.editor-toolbar button {
+.editor-toolbar button,
+.version-card button,
+.version-modal button {
   font: inherit;
   cursor: pointer;
 }
@@ -1680,6 +2121,260 @@ function showToastMessage(message) {
   color: var(--text-secondary);
 }
 
+.version-help {
+  margin: -0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  line-height: 1.45;
+}
+
+.version-create-row {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.version-create-row input,
+.version-rename-field input {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  outline: none;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.version-create-row input:focus,
+.version-rename-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.version-create-btn {
+  min-height: 40px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.version-list {
+  display: grid;
+  gap: 0.55rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.version-item {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--input-bg);
+}
+
+.version-summary {
+  display: grid;
+  width: 100%;
+  gap: 0.16rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.version-summary:hover .version-name {
+  color: var(--accent-text);
+}
+
+.version-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.version-date,
+.version-meta {
+  color: var(--text-muted);
+  font-size: 0.61rem;
+}
+
+.version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.version-actions button {
+  min-height: 29px;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  font-size: 0.59rem;
+  font-weight: 750;
+}
+
+.version-actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.version-actions .version-restore-btn {
+  border-color: #bcdcca;
+  background: #edf8f2;
+  color: #246d50;
+}
+
+.version-actions .version-delete-btn {
+  border-color: #efc2bf;
+  background: #fff1f0;
+  color: #aa3e38;
+}
+
+.version-rename-field {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+  font-weight: 750;
+}
+
+.version-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 1rem 0.5rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.version-empty-state span {
+  font-size: 1.2rem;
+}
+
+.version-empty-state p {
+  margin: 0;
+  font-size: 0.66rem;
+}
+
+.version-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.version-modal {
+  display: grid;
+  width: min(900px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: var(--bg-card);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.35);
+}
+
+.version-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.version-modal-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.version-modal-header p:last-child {
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+}
+
+.version-modal-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  font-size: 1.25rem;
+}
+
+.version-preview-title {
+  padding: 0.8rem 1.1rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.version-preview-document {
+  min-height: 300px;
+  overflow-y: auto;
+  padding: clamp(1.5rem, 5vw, 4rem);
+  background: white;
+  color: #172033;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.version-preview-document :deep(p) {
+  margin: 0 0 1em;
+}
+
+.version-preview-document :deep(h1),
+.version-preview-document :deep(h2),
+.version-preview-document :deep(h3) {
+  line-height: 1.25;
+}
+
+.version-preview-document :deep(blockquote) {
+  margin: 1rem 0;
+  padding: 0.7rem 1rem;
+  border-left: 4px solid #c39a37;
+  background: #faf7ef;
+  color: #4b5563;
+}
+
+.version-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  padding: 0.85rem 1.1rem;
+  border-top: 1px solid var(--border-color);
+}
+
 .statistics-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1900,6 +2595,15 @@ function showToastMessage(message) {
   .focus-toolbar-actions {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .version-modal-footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .version-modal-footer button {
+    width: 100%;
   }
 }
 </style>
