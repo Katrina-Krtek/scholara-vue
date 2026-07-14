@@ -268,6 +268,13 @@
       </RouterLink>
 
       <RouterLink
+        to="/terms"
+        class="nav-item hub-item"
+      >
+        📖 Terms Database
+      </RouterLink>
+
+      <RouterLink
         to="/knowledge-tags"
         class="nav-item hub-item"
       >

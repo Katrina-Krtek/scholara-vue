@@ -60,6 +60,12 @@ import ArticleDetailView from '../views/articles/ArticleDetailView.vue'
 import ConceptsHub from '../views/concepts/ConceptsHub.vue'
 import ConceptDetailView from '../views/concepts/ConceptDetailView.vue'
 
+import TermsHub from '../views/terms/TermsHub.vue'
+import TermDetailView from '../views/terms/TermDetailView.vue'
+
+import CanvasHub from '../views/canvas/CanvasHub.vue'
+import CanvasDetailView from '../views/canvas/CanvasDetailView.vue'
+
 import KnowledgeTagsView from '../views/KnowledgeTagsView.vue'
 import KnowledgeTagDetail from '../views/KnowledgeTagDetail.vue'
 import KnowledgeGraphView from '../views/graph/KnowledgeGraphView.vue'
@@ -250,6 +256,48 @@ const routes = [
       title: 'Concept Detail',
       subtitle:
         'Develop definitions, notes, and concept relationships.',
+    },
+  },
+
+  {
+    path: '/terms',
+    name: 'TermsHub',
+    component: TermsHub,
+    meta: {
+      title: 'Terms Database',
+      subtitle:
+        'Build a searchable glossary of academic and technical vocabulary.',
+    },
+  },
+  {
+    path: '/terms/:id',
+    name: 'TermDetailView',
+    component: TermDetailView,
+    meta: {
+      title: 'Term Detail',
+      subtitle:
+        'Develop definitions, examples, notes, and term relationships.',
+    },
+  },
+
+  {
+    path: '/canvas',
+    name: 'CanvasHub',
+    component: CanvasHub,
+    meta: {
+      title: 'Canvas',
+      subtitle:
+        'Build visual maps from notes, ideas, sources, concepts, and connections.',
+    },
+  },
+  {
+    path: '/canvas/:id',
+    name: 'CanvasDetailView',
+    component: CanvasDetailView,
+    meta: {
+      title: 'Canvas Workspace',
+      subtitle:
+        'Arrange cards and connect related ideas in a visual workspace.',
     },
   },
 
