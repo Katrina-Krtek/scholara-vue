@@ -9,6 +9,15 @@
       },
     ]"
   >
+    <NodeResizer
+      :is-visible="selected"
+      :min-width="240"
+      :min-height="180"
+      :max-width="760"
+      :max-height="900"
+      color="#375d95"
+    />
+
     <Handle
       id="target-left"
       type="target"
@@ -85,7 +94,6 @@
       <textarea
         v-model="localContent"
         class="node-text"
-        rows="5"
         maxlength="20000"
         placeholder="Write a note, idea, question, quotation, or reminder..."
         aria-label="Card content"
@@ -101,14 +109,19 @@
       <strong>Card unavailable</strong>
 
       <p>
-        This canvas placement no longer has a matching Card Library record.
+        This canvas placement no longer has a matching Card Library
+        record.
       </p>
     </div>
 
     <footer class="node-footer">
       <span v-if="libraryCard">
         {{ characterCount }}
-        {{ characterCount === 1 ? 'character' : 'characters' }}
+        {{
+          characterCount === 1
+            ? 'character'
+            : 'characters'
+        }}
       </span>
 
       <span v-else>
@@ -144,7 +157,15 @@ import {
   Position,
 } from '@vue-flow/core'
 
-import { useCanvasCards } from '../../composables/useCanvasCards'
+import {
+  NodeResizer,
+} from '@vue-flow/node-resizer'
+
+import '@vue-flow/node-resizer/dist/style.css'
+
+import {
+  useCanvasCards,
+} from '../../composables/useCanvasCards.js'
 
 const props = defineProps({
   id: {
@@ -402,15 +423,23 @@ function requestDelete() {
 function formatSourceType(sourceType) {
   return String(sourceType)
     .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (letter) =>
-      letter.toUpperCase(),
+    .replace(
+      /\b\w/g,
+      (letter) =>
+        letter.toUpperCase(),
     )
 }
 </script>
 
 <style scoped>
 .canvas-node {
-  width: 290px;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  flex-direction: column;
   overflow: visible;
   border: 1px solid #cbd3df;
   border-top: 5px solid #75839a;
@@ -422,8 +451,7 @@ function formatSourceType(sourceType) {
   color: #17233a;
   transition:
     border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
+    box-shadow 0.15s ease;
 }
 
 .canvas-node:hover {
@@ -471,6 +499,7 @@ function formatSourceType(sourceType) {
 .node-header {
   display: flex;
   min-height: 44px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -588,6 +617,11 @@ function formatSourceType(sourceType) {
 
 .node-content {
   display: grid;
+  min-height: 0;
+  flex: 1 1 auto;
+  grid-template-rows:
+    auto
+    minmax(80px, 1fr);
   gap: 0.55rem;
   padding: 0.75rem;
 }
@@ -612,8 +646,8 @@ function formatSourceType(sourceType) {
 }
 
 .node-text {
-  min-height: 112px;
-  resize: vertical;
+  min-height: 0;
+  resize: none;
   padding: 0.45rem;
   color: #3f4b5e;
   font-size: 0.87rem;
@@ -640,6 +674,7 @@ function formatSourceType(sourceType) {
 }
 
 .missing-card-content {
+  flex: 1 1 auto;
   padding: 1rem;
 }
 
@@ -657,6 +692,7 @@ function formatSourceType(sourceType) {
 .node-footer {
   display: flex;
   min-height: 34px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
@@ -704,5 +740,21 @@ function formatSourceType(sourceType) {
 
 .canvas-handle--right {
   right: -7px;
+}
+
+:deep(.vue-flow__resize-control) {
+  z-index: 20;
+}
+
+:deep(.vue-flow__resize-control.handle) {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #ffffff;
+  border-radius: 3px;
+  background: #375d95;
+}
+
+:deep(.vue-flow__resize-control.line) {
+  border-color: #375d95;
 }
 </style>
