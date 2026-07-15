@@ -13,20 +13,22 @@
     </div>
 
     <div class="filter-section">
-      <label>Search</label>
+      <label for="graph-search">Search</label>
 
       <input
+        id="graph-search"
         v-model="localSearch"
-        type="text"
-        placeholder="Search graph..."
+        type="search"
+        placeholder="Search titles, descriptions, tags..."
         class="filter-input"
       />
     </div>
 
     <div class="filter-section">
-      <label>Node Type</label>
+      <label for="graph-node-type">Node Type</label>
 
       <select
+        id="graph-node-type"
         v-model="localType"
         class="filter-select"
       >
@@ -43,9 +45,10 @@
     </div>
 
     <div class="filter-section">
-      <label>Tag</label>
+      <label for="graph-tag">Tag</label>
 
       <select
+        id="graph-tag"
         v-model="localTag"
         class="filter-select"
       >
@@ -53,18 +56,19 @@
 
         <option
           v-for="tag in availableTags"
-          :key="tag"
-          :value="tag"
+          :key="tag.key"
+          :value="tag.name"
         >
-          {{ tag }}
+          {{ tag.name }}
         </option>
       </select>
     </div>
 
     <div class="filter-section">
-      <label>Course</label>
+      <label for="graph-course">Course</label>
 
       <select
+        id="graph-course"
         v-model="localCourse"
         class="filter-select"
       >
@@ -81,13 +85,17 @@
     </div>
 
     <div class="filter-section">
-      <label>Graph Density</label>
+      <label for="graph-density">
+        Graph Density
+      </label>
 
       <input
-        v-model="localDensity"
+        id="graph-density"
+        v-model.number="localDensity"
         type="range"
         min="1"
         max="10"
+        step="1"
         class="density-slider"
       />
 
@@ -103,7 +111,7 @@
           type="checkbox"
         />
 
-        Show Today's Learning Map
+        <span>Show Today’s Learning Map</span>
       </label>
     </div>
 
@@ -114,30 +122,34 @@
           type="checkbox"
         />
 
-        Show Connected Context
+        <span>Show Connected Context</span>
       </label>
 
       <p class="filter-help">
-        Include directly related nodes when searching or filtering.
+        Include records directly connected to the current matches.
       </p>
     </div>
 
     <div class="filter-summary">
       <div class="summary-item">
-        <span>Nodes</span>
-        <strong>{{ stats.nodeCount }}</strong>
+        <span>Visible Nodes</span>
+        <strong>{{ stats.nodeCount || 0 }}</strong>
       </div>
 
       <div class="summary-item">
         <span>Relationships</span>
-        <strong>{{ stats.relationshipCount }}</strong>
+        <strong>{{ stats.relationshipCount || 0 }}</strong>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import {
+  computed,
+  ref,
+  watch,
+} from 'vue'
 
 const props = defineProps({
   nodeTypes: {
@@ -178,17 +190,39 @@ const showTodayOnly = ref(false)
 const showConnectedContext = ref(false)
 
 const availableTags = computed(() => {
-  const tags = new Set()
+  const tags = new Map()
 
   props.nodes.forEach((node) => {
-    node.tags?.forEach((tag) => tags.add(tag))
+    ;(node.tags || []).forEach((tag) => {
+      const cleanName = String(tag || '').trim()
+      const key = normalizeTag(cleanName)
+
+      if (!cleanName || !key || tags.has(key)) {
+        return
+      }
+
+      tags.set(key, {
+        key,
+        name: cleanName,
+      })
+    })
   })
 
-  return [...tags].sort()
+  return [...tags.values()].sort((a, b) => {
+    return a.name.localeCompare(b.name)
+  })
 })
 
 const courses = computed(() => {
-  return props.nodes.filter((node) => node.type === 'course')
+  return props.nodes
+    .filter((node) => {
+      return node.type === 'course'
+    })
+    .sort((a, b) => {
+      return String(a.title || '').localeCompare(
+        String(b.title || ''),
+      )
+    })
 })
 
 watch(localSearch, (value) => {
@@ -208,7 +242,7 @@ watch(localCourse, (value) => {
 })
 
 watch(localDensity, (value) => {
-  emit('update:density', Number(value))
+  emit('update:density', Number(value) || 5)
 })
 
 watch(showTodayOnly, (value) => {
@@ -229,28 +263,39 @@ function resetFilters() {
   showConnectedContext.value = false
 }
 
+function normalizeTag(value) {
+  return String(value || '')
+    .toLowerCase()
+    .trim()
+    .replace(/^#+/, '')
+    .replace(/\s+/g, ' ')
+}
+
 function formatLabel(value) {
-  return value
+  return String(value || 'Record')
     .replaceAll('-', ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .replace(/\b\w/g, (character) => {
+      return character.toUpperCase()
+    })
 }
 </script>
 
 <style scoped>
 .graph-filters {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-secondary);
+  padding: 1rem;
 }
 
 .filter-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 1rem;
 }
 
 .filter-header h3 {
@@ -260,12 +305,13 @@ function formatLabel(value) {
 
 .reset-btn {
   border: 1px solid var(--border-color);
-  cursor: pointer;
-  padding: 0.45rem 0.8rem;
   border-radius: 8px;
   background: var(--btn-bg);
   color: var(--text-primary);
+  padding: 0.45rem 0.8rem;
+  font: inherit;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .reset-btn:hover {
@@ -286,11 +332,18 @@ function formatLabel(value) {
 .filter-input,
 .filter-select {
   width: 100%;
-  padding: 0.65rem;
-  border-radius: 10px;
   border: 1px solid var(--border-color);
+  border-radius: 10px;
   background: var(--bg-primary);
   color: var(--text-primary);
+  padding: 0.65rem;
+  font: inherit;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .density-slider {
@@ -299,19 +352,20 @@ function formatLabel(value) {
 
 .density-value {
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .checkbox-label {
   display: flex;
-  gap: 0.5rem;
   align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
 }
 
 .filter-help {
   margin: 0;
-  font-size: 0.75rem;
   color: var(--text-muted);
+  font-size: 0.75rem;
   line-height: 1.4;
 }
 
@@ -323,16 +377,16 @@ function formatLabel(value) {
 }
 
 .summary-item {
-  background: var(--bg-primary);
   border-radius: 10px;
+  background: var(--bg-primary);
   padding: 0.75rem;
   text-align: center;
 }
 
 .summary-item span {
   display: block;
-  font-size: 0.8rem;
   color: var(--text-secondary);
+  font-size: 0.75rem;
 }
 
 .summary-item strong {

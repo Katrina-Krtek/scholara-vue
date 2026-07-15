@@ -3,38 +3,49 @@
     <div class="panel-header">
       <div>
         <h3>🐾 Rory Notices...</h3>
-        <p>Helpful patterns, gaps, and suggested connections.</p>
+
+        <p>
+          Helpful patterns, gaps, and suggested connections.
+        </p>
       </div>
 
       <span class="notice-count">
-        {{ items.length }}
+        {{ validItems.length }}
       </span>
     </div>
 
     <div
-      v-if="items.length"
+      v-if="validItems.length"
       class="notice-list"
     >
       <button
-        v-for="item in items"
+        v-for="item in validItems"
         :key="item.id"
         class="notice-card"
-        :class="`priority-${item.priority}`"
+        :class="getPriorityClass(item.priority)"
+        type="button"
         @click="$emit('select-discovery', item)"
       >
         <div class="notice-topline">
           <span class="notice-category">
-            {{ formatLabel(item.category) }}
+            {{ formatLabel(item.category || 'discovery') }}
           </span>
 
           <span class="notice-priority">
-            {{ formatLabel(item.priority) }}
+            {{ formatLabel(item.priority || 'medium') }}
           </span>
         </div>
 
-        <h4>{{ item.title }}</h4>
+        <h4>
+          {{ item.title || 'Knowledge Graph Discovery' }}
+        </h4>
 
-        <p>{{ item.description }}</p>
+        <p>
+          {{
+            item.description ||
+            'Rory found a potentially useful graph connection.'
+          }}
+        </p>
 
         <div class="notice-action">
           View related node →
@@ -46,16 +57,22 @@
       v-else
       class="empty-state"
     >
+      <div class="empty-icon">🐾</div>
+
       <h4>No discoveries yet</h4>
+
       <p>
-        Rory will surface patterns once more notes, sources, assignments, and daily pages are connected.
+        Rory will surface patterns after more Scholarory records and
+        relationships are connected.
       </p>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   items: {
     type: Array,
     default: () => [],
@@ -66,20 +83,60 @@ defineEmits([
   'select-discovery',
 ])
 
-function formatLabel(value) {
-  if (!value) return ''
+const validItems = computed(() => {
+  const discoveries = new Map()
 
-  return value
+  props.items.forEach((item, index) => {
+    if (!item) {
+      return
+    }
+
+    const id = String(
+      item.id ||
+      `graph-discovery-${index}`,
+    )
+
+    if (!discoveries.has(id)) {
+      discoveries.set(id, {
+        ...item,
+        id,
+      })
+    }
+  })
+
+  return [...discoveries.values()]
+})
+
+function getPriorityClass(priority) {
+  const normalized = String(priority || 'medium')
+    .toLowerCase()
+    .trim()
+
+  if (normalized === 'high') {
+    return 'priority-high'
+  }
+
+  if (normalized === 'low') {
+    return 'priority-low'
+  }
+
+  return 'priority-medium'
+}
+
+function formatLabel(value) {
+  return String(value || '')
     .replaceAll('-', ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .replace(/\b\w/g, (character) => {
+      return character.toUpperCase()
+    })
 }
 </script>
 
 <style scoped>
 .discovery-panel {
-  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 16px;
+  background: var(--bg-secondary);
   padding: 1rem;
 }
 
@@ -97,18 +154,19 @@ function formatLabel(value) {
 
 .panel-header p {
   margin: 0.3rem 0 0;
-  font-size: 0.85rem;
   color: var(--text-secondary);
+  font-size: 0.83rem;
+  line-height: 1.4;
 }
 
 .notice-count {
-  min-width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
   display: grid;
   place-items: center;
-  background: var(--bg-primary);
+  min-width: 2rem;
+  height: 2rem;
   border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-primary);
   font-weight: 700;
 }
 
@@ -120,50 +178,55 @@ function formatLabel(value) {
 
 .notice-card {
   width: 100%;
-  text-align: left;
-  border-radius: 14px;
-  padding: 0.85rem;
-  cursor: pointer;
-  background: var(--bg-primary);
   border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-primary);
   color: var(--text-primary);
-  transition: 0.15s ease;
+  padding: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .notice-card:hover {
+  border-color: var(--accent);
   transform: translateY(-1px);
 }
 
 .notice-topline {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
   align-items: center;
+  gap: 0.75rem;
   margin-bottom: 0.5rem;
 }
 
 .notice-category,
 .notice-priority {
-  font-size: 0.72rem;
-  opacity: 0.75;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .notice-card h4 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.93rem;
 }
 
 .notice-card p {
   margin: 0.45rem 0 0;
-  font-size: 0.85rem;
-  line-height: 1.4;
   color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
 }
 
 .notice-action {
   margin-top: 0.65rem;
-  font-size: 0.78rem;
-  font-weight: 700;
+  color: var(--accent-text);
+  font-size: 0.76rem;
+  font-weight: 800;
 }
 
 .priority-high {
@@ -179,17 +242,25 @@ function formatLabel(value) {
 }
 
 .empty-state {
-  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 0.45rem;
   padding: 1.5rem 0.75rem;
+  text-align: center;
 }
 
-.empty-state h4 {
+.empty-state h4,
+.empty-state p {
   margin: 0;
 }
 
 .empty-state p {
-  margin: 0.5rem 0 0;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.empty-icon {
+  font-size: 1.5rem;
 }
 </style>
