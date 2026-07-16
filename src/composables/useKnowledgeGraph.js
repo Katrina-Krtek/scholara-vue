@@ -6,6 +6,7 @@ import {
 
 import { useBooks } from '@/composables/useBooks'
 import { useSources } from '@/composables/useSources'
+import { useJournals } from '@/composables/useJournals'
 
 import {
   graphNodeTypes as baseGraphNodeTypes,
@@ -302,6 +303,269 @@ function buildSourceDescription(source) {
   ]).join(' · ')
 }
 
+
+function buildJournalDescription(
+  journal,
+  matchingSource = null,
+) {
+  return uniqueStrings([
+    journal.subtitle,
+    journal.publisher
+      ? `Published by ${journal.publisher}`
+      : '',
+    journal.field,
+    journal.notes,
+    matchingSource?.summary,
+    matchingSource?.notes,
+    getSourceNoteText(matchingSource),
+  ]).join(' · ')
+}
+
+function buildArticleDescription(
+  article,
+  matchingSource = null,
+) {
+  return uniqueStrings([
+    article.subtitle,
+
+    firstValue(
+      article.author,
+      matchingSource?.author,
+    )
+      ? `By ${firstValue(
+          article.author,
+          matchingSource?.author,
+        )}`
+      : '',
+
+    article.abstract,
+    matchingSource?.abstract,
+    matchingSource?.summary,
+    article.sectionNotes,
+    article.keyQuotes,
+    article.useForWriting,
+    matchingSource?.notes,
+    getSourceNoteText(matchingSource),
+  ]).join(' · ')
+}
+
+function hasDirectSourceMatch(
+  record,
+  source,
+) {
+  const linkedSourceId = String(
+    record?.sourceId ?? '',
+  ).trim()
+
+  const sourceId = String(
+    source?.id ?? '',
+  ).trim()
+
+  return Boolean(
+    linkedSourceId &&
+    sourceId &&
+    linkedSourceId === sourceId,
+  )
+}
+
+function recordsRepresentSameJournal(
+  journal,
+  source,
+) {
+  if (
+    !journal ||
+    !source ||
+    normalizeSourceType(source.type) !== 'journal'
+  ) {
+    return false
+  }
+
+  if (hasDirectSourceMatch(journal, source)) {
+    return true
+  }
+
+  const journalName = normalizeSearchText(
+    journal.name,
+  )
+
+  const sourceTitle = normalizeSearchText(
+    firstValue(
+      source.title,
+      source.name,
+      source.journal,
+    ),
+  )
+
+  if (
+    !journalName ||
+    !sourceTitle ||
+    journalName !== sourceTitle
+  ) {
+    return false
+  }
+
+  const journalPublisher =
+    normalizeSearchText(journal.publisher)
+
+  const sourcePublisher =
+    normalizeSearchText(source.publisher)
+
+  if (
+    journalPublisher &&
+    sourcePublisher &&
+    journalPublisher !== sourcePublisher
+  ) {
+    return false
+  }
+
+  return true
+}
+
+function findMatchingSourceForJournal(
+  journal,
+  sources,
+) {
+  const directMatch = sources.find((source) => {
+    return hasDirectSourceMatch(
+      journal,
+      source,
+    )
+  })
+
+  if (directMatch) {
+    return directMatch
+  }
+
+  return (
+    sources.find((source) => {
+      return recordsRepresentSameJournal(
+        journal,
+        source,
+      )
+    }) || null
+  )
+}
+
+function recordsRepresentSameArticle(
+  article,
+  source,
+) {
+  if (
+    !article ||
+    !source ||
+    normalizeSourceType(source.type) !== 'article'
+  ) {
+    return false
+  }
+
+  if (hasDirectSourceMatch(article, source)) {
+    return true
+  }
+
+  const articleTitle = normalizeSearchText(
+    article.title,
+  )
+
+  const sourceTitle = normalizeSearchText(
+    source.title,
+  )
+
+  const articleAuthor = normalizeSearchText(
+    article.author,
+  )
+
+  const sourceAuthor = normalizeSearchText(
+    source.author,
+  )
+
+  if (
+    !articleTitle ||
+    !sourceTitle ||
+    articleTitle !== sourceTitle
+  ) {
+    return false
+  }
+
+  if (
+    articleAuthor &&
+    sourceAuthor &&
+    articleAuthor !== sourceAuthor
+  ) {
+    return false
+  }
+
+  const articleYear = normalizeText(
+    firstValue(
+      article.publicationYear,
+      article.year,
+    ),
+  )
+
+  const sourceYear = normalizeText(
+    firstValue(
+      source.publicationYear,
+      source.year,
+    ),
+  )
+
+  if (
+    articleYear &&
+    sourceYear &&
+    articleYear !== sourceYear
+  ) {
+    return false
+  }
+
+  const articleJournal = normalizeSearchText(
+    firstValue(
+      article.journalName,
+      article.journal,
+    ),
+  )
+
+  const sourceJournal = normalizeSearchText(
+    firstValue(
+      source.journalName,
+      source.journal,
+    ),
+  )
+
+  if (
+    articleJournal &&
+    sourceJournal &&
+    articleJournal !== sourceJournal
+  ) {
+    return false
+  }
+
+  return true
+}
+
+function findMatchingSourceForArticle(
+  article,
+  sources,
+) {
+  const directMatch = sources.find((source) => {
+    return hasDirectSourceMatch(
+      article,
+      source,
+    )
+  })
+
+  if (directMatch) {
+    return directMatch
+  }
+
+  return (
+    sources.find((source) => {
+      return recordsRepresentSameArticle(
+        article,
+        source,
+      )
+    }) || null
+  )
+}
+
 function recordsRepresentSameBook(
   book,
   source,
@@ -551,7 +815,8 @@ function createBookGraphNode(
       ),
 
     publisher,
-publisherAliases,
+    publisherAliases,
+
     publicationYear,
     year: publicationYear,
 
@@ -673,6 +938,447 @@ publisherAliases,
     forewordBy:
       matchingSource?.forewordBy ||
       '',
+  }
+}
+
+
+function createJournalGraphNode(
+  journal,
+  matchingSource = null,
+) {
+  const courseIds = getCourseIdVariants([
+    ...(journal.relatedCourseIds || []),
+    matchingSource?.courseId,
+  ])
+
+  const assignmentIds =
+    getAssignmentIdVariants([
+      ...(journal.relatedAssignmentIds || []),
+      matchingSource?.assignmentId,
+    ])
+
+  const publisher = firstValue(
+    journal.publisher,
+    matchingSource?.publisher,
+  )
+
+  const publisherAliases = uniqueStrings([
+    journal.publisher,
+    matchingSource?.publisher,
+  ])
+
+  const updatedAt = firstValue(
+    journal.updatedAt,
+    matchingSource?.updatedAt,
+    journal.createdAt,
+    matchingSource?.createdAt,
+  )
+
+  const website = firstValue(
+    journal.website,
+    matchingSource?.url,
+  )
+
+  return {
+    id: `journal:${journal.id}`,
+    entityId: String(journal.id),
+
+    sourceRecordId:
+      matchingSource?.id !== undefined
+        ? String(matchingSource.id)
+        : null,
+
+    title:
+      firstValue(
+        journal.name,
+        matchingSource?.title,
+      ) ||
+      'Untitled Journal',
+
+    name:
+      firstValue(
+        journal.name,
+        matchingSource?.title,
+      ) ||
+      'Untitled Journal',
+
+    type: 'journal',
+    sourceType: 'Journal',
+    recordType: 'Journal',
+
+    description:
+      buildJournalDescription(
+        journal,
+        matchingSource,
+      ) ||
+      'Academic journal from the Scholarory Journals Database.',
+
+    tags: uniqueStrings([
+      ...(journal.tags || []),
+      ...(matchingSource?.tags || []),
+      journal.field,
+    ]),
+
+    status:
+      firstValue(
+        journal.status,
+        matchingSource?.status,
+        'active',
+      ),
+
+    priority:
+      firstValue(
+        journal.priority,
+        matchingSource?.priority,
+      ),
+
+    updatedAt,
+
+    createdAt:
+      firstValue(
+        journal.createdAt,
+        matchingSource?.createdAt,
+      ),
+
+    date: getDateKey(updatedAt),
+
+    courseId:
+      courseIds[0] ||
+      null,
+
+    courseIds,
+    assignmentIds,
+
+    course:
+      matchingSource?.course ||
+      '',
+
+    assignment:
+      matchingSource?.assignment ||
+      '',
+
+    route: `/journals/${journal.id}`,
+
+    subtitle:
+      firstValue(
+        journal.subtitle,
+        matchingSource?.subtitle,
+      ),
+
+    publisher,
+    publisherAliases,
+
+    issn:
+      firstValue(
+        journal.issn,
+        matchingSource?.issn,
+      ),
+
+    website,
+    url: website,
+
+    field:
+      firstValue(
+        journal.field,
+        matchingSource?.field,
+        matchingSource?.discipline,
+      ),
+
+    peerReviewed:
+      journal.peerReviewed ??
+      matchingSource?.peerReviewed ??
+      false,
+
+    favorite:
+      journal.favorite ??
+      false,
+
+    notes:
+      firstValue(
+        journal.notes,
+        matchingSource?.notes,
+      ),
+
+    citation:
+      matchingSource?.citation ||
+      '',
+
+    sourceNotes:
+      Array.isArray(
+        matchingSource?.sourceNotes,
+      )
+        ? [...matchingSource.sourceNotes]
+        : [],
+
+    language:
+      matchingSource?.language ||
+      '',
+
+    frequency:
+      firstValue(
+        journal.frequency,
+        matchingSource?.frequency,
+      ),
+  }
+}
+
+function createArticleGraphNode(
+  article,
+  parentJournal = null,
+  matchingSource = null,
+) {
+  const courseIds = getCourseIdVariants([
+    ...(article.relatedCourseIds || []),
+    matchingSource?.courseId,
+  ])
+
+  const assignmentIds =
+    getAssignmentIdVariants([
+      ...(article.relatedAssignmentIds || []),
+      matchingSource?.assignmentId,
+    ])
+
+  const publicationYear = firstValue(
+    article.year,
+    article.publicationYear,
+    matchingSource?.year,
+    matchingSource?.publicationYear,
+  )
+
+  const publisher = firstValue(
+    matchingSource?.publisher,
+    parentJournal?.publisher,
+  )
+
+  const publisherAliases = uniqueStrings([
+    matchingSource?.publisher,
+    parentJournal?.publisher,
+  ])
+
+  const journalName = firstValue(
+    article.journalName,
+    parentJournal?.name,
+    matchingSource?.journal,
+    matchingSource?.journalName,
+  )
+
+  const updatedAt = firstValue(
+    article.updatedAt,
+    matchingSource?.updatedAt,
+    article.createdAt,
+    matchingSource?.createdAt,
+  )
+
+  return {
+    id: `article:${article.id}`,
+    entityId: String(article.id),
+
+    sourceRecordId:
+      matchingSource?.id !== undefined
+        ? String(matchingSource.id)
+        : null,
+
+    title:
+      firstValue(
+        article.title,
+        matchingSource?.title,
+      ) ||
+      'Untitled Article',
+
+    type: 'article',
+    sourceType: 'Journal Article',
+    recordType: 'Journal Article',
+
+    description:
+      buildArticleDescription(
+        article,
+        matchingSource,
+      ) ||
+      'Journal article from the Scholarory Articles Database.',
+
+    tags: uniqueStrings([
+      ...(article.tags || []),
+      ...(matchingSource?.tags || []),
+      parentJournal?.field,
+    ]),
+
+    status:
+      firstValue(
+        article.status,
+        matchingSource?.status,
+        'planned',
+      ),
+
+    priority:
+      firstValue(
+        article.priority,
+        matchingSource?.priority,
+      ),
+
+    updatedAt,
+
+    createdAt:
+      firstValue(
+        article.createdAt,
+        matchingSource?.createdAt,
+      ),
+
+    date: getDateKey(updatedAt),
+
+    courseId:
+      courseIds[0] ||
+      null,
+
+    courseIds,
+    assignmentIds,
+
+    course:
+      matchingSource?.course ||
+      '',
+
+    assignment:
+      matchingSource?.assignment ||
+      '',
+
+    route: `/articles/${article.id}`,
+
+    journalId:
+      article.journalId ||
+      parentJournal?.id ||
+      '',
+
+    journalNodeId:
+      article.journalId || parentJournal?.id
+        ? `journal:${
+            article.journalId ||
+            parentJournal?.id
+          }`
+        : '',
+
+    journalName,
+    journal: journalName,
+
+    subtitle:
+      firstValue(
+        article.subtitle,
+        matchingSource?.subtitle,
+      ),
+
+    author:
+      firstValue(
+        article.author,
+        matchingSource?.author,
+      ),
+
+    authors:
+      firstValue(
+        article.authors,
+        matchingSource?.authors,
+      ),
+
+    publisher,
+    publisherAliases,
+
+    publicationYear,
+    year: publicationYear,
+
+    volume:
+      firstValue(
+        article.volume,
+        matchingSource?.volume,
+      ),
+
+    issue:
+      firstValue(
+        article.issue,
+        matchingSource?.issue,
+      ),
+
+    pages:
+      firstValue(
+        article.pages,
+        matchingSource?.pages,
+      ),
+
+    pageRange:
+      firstValue(
+        article.pages,
+        article.pageRange,
+        matchingSource?.pages,
+        matchingSource?.pageRange,
+      ),
+
+    doi:
+      firstValue(
+        article.doi,
+        matchingSource?.doi,
+      ),
+
+    url:
+      firstValue(
+        article.url,
+        matchingSource?.url,
+      ),
+
+    issn:
+      firstValue(
+        matchingSource?.issn,
+        parentJournal?.issn,
+      ),
+
+    abstract:
+      firstValue(
+        article.abstract,
+        matchingSource?.abstract,
+      ),
+
+    sectionNotes:
+      article.sectionNotes ||
+      '',
+
+    keyQuotes:
+      article.keyQuotes ||
+      '',
+
+    useForWriting:
+      article.useForWriting ||
+      '',
+
+    notes:
+      firstValue(
+        matchingSource?.notes,
+        article.sectionNotes,
+      ),
+
+    citation:
+      matchingSource?.citation ||
+      '',
+
+    sourceNotes:
+      Array.isArray(
+        matchingSource?.sourceNotes,
+      )
+        ? [...matchingSource.sourceNotes]
+        : [],
+
+    accessDate:
+      matchingSource?.accessDate ||
+      '',
+
+    publicationDate:
+      firstValue(
+        article.publicationDate,
+        matchingSource?.publicationDate,
+      ),
+
+    language:
+      matchingSource?.language ||
+      '',
+
+    peerReviewed:
+      parentJournal?.peerReviewed ??
+      matchingSource?.peerReviewed ??
+      false,
   }
 }
 
@@ -974,6 +1680,13 @@ function nodeMatchesSearch(
 
     node.journalName,
     node.journal,
+    node.journalId,
+
+    node.website,
+    node.issn,
+    node.field,
+    node.peerReviewed,
+    node.favorite,
 
     node.volume,
     node.issue,
@@ -995,6 +1708,10 @@ function nodeMatchesSearch(
 
     node.citation,
     node.summary,
+    node.abstract,
+    node.sectionNotes,
+    node.keyQuotes,
+    node.useForWriting,
     node.notes,
     node.sourceNotes,
 
@@ -1038,6 +1755,11 @@ export function useKnowledgeGraph() {
   const {
     allSources,
   } = useSources()
+
+  const {
+    allJournals,
+    allArticles,
+  } = useJournals()
 
   const baseNodes = ref(
     mockKnowledgeGraphNodes.map((node) => ({
@@ -1092,23 +1814,93 @@ export function useKnowledgeGraph() {
     })
   })
 
+  const liveJournalNodes = computed(() => {
+    return allJournals.value.map((journal) => {
+      const matchingSource =
+        findMatchingSourceForJournal(
+          journal,
+          allSources.value,
+        )
+
+      return createJournalGraphNode(
+        journal,
+        matchingSource,
+      )
+    })
+  })
+
+  const journalById = computed(() => {
+    return new Map(
+      allJournals.value.map((journal) => {
+        return [
+          String(journal.id),
+          journal,
+        ]
+      }),
+    )
+  })
+
+  const liveArticleNodes = computed(() => {
+    return allArticles.value.map((article) => {
+      const parentJournal =
+        journalById.value.get(
+          String(article.journalId),
+        ) || null
+
+      const matchingSource =
+        findMatchingSourceForArticle(
+          article,
+          allSources.value,
+        )
+
+      return createArticleGraphNode(
+        article,
+        parentJournal,
+        matchingSource,
+      )
+    })
+  })
+
   const liveSourceNodes = computed(() => {
     return allSources.value
       .filter((source) => {
-        if (
+        const sourceType =
           normalizeSourceType(
             source.type,
-          ) !== 'book'
-        ) {
-          return true
+          )
+
+        if (sourceType === 'book') {
+          return !allBooks.value.some((book) => {
+            return recordsRepresentSameBook(
+              book,
+              source,
+            )
+          })
         }
 
-        return !allBooks.value.some((book) => {
-          return recordsRepresentSameBook(
-            book,
-            source,
+        if (sourceType === 'journal') {
+          return !allJournals.value.some(
+            (journal) => {
+              return recordsRepresentSameJournal(
+                journal,
+                source,
+              )
+            },
           )
-        })
+        }
+
+        if (sourceType === 'article') {
+          return !allArticles.value.some(
+            (article) => {
+              return recordsRepresentSameArticle(
+                article,
+                source,
+              )
+            },
+          )
+        }
+
+        return true
       })
       .map((source) => {
         return createSourceGraphNode(source)
@@ -1118,6 +1910,8 @@ export function useKnowledgeGraph() {
   const nodes = computed(() => {
     const hasLiveSources =
       liveBookNodes.value.length > 0 ||
+      liveJournalNodes.value.length > 0 ||
+      liveArticleNodes.value.length > 0 ||
       liveSourceNodes.value.length > 0
 
     const retainedBaseNodes =
@@ -1134,6 +1928,8 @@ export function useKnowledgeGraph() {
     return [
       ...retainedBaseNodes,
       ...liveBookNodes.value,
+      ...liveJournalNodes.value,
+      ...liveArticleNodes.value,
       ...liveSourceNodes.value,
     ]
   })
@@ -1254,6 +2050,144 @@ export function useKnowledgeGraph() {
     return relationships
   })
 
+  const liveJournalLinks = computed(() => {
+    const relationships = []
+
+    liveJournalNodes.value.forEach((journalNode) => {
+      uniqueStrings(
+        journalNode.courseIds || [],
+      ).forEach((courseId) => {
+        const courseNode =
+          findGraphNodeForEntity(
+            nodes.value,
+            'course',
+            courseId,
+          )
+
+        if (!courseNode) {
+          return
+        }
+
+        relationships.push({
+          id:
+            `journal-course:${journalNode.entityId}:${courseNode.id}`,
+
+          source: journalNode.id,
+          target: courseNode.id,
+          label: 'Used in course',
+          strength: 3,
+        })
+      })
+
+      uniqueStrings(
+        journalNode.assignmentIds || [],
+      ).forEach((assignmentId) => {
+        const assignmentNode =
+          findGraphNodeForEntity(
+            nodes.value,
+            'assignment',
+            assignmentId,
+          )
+
+        if (!assignmentNode) {
+          return
+        }
+
+        relationships.push({
+          id:
+            `journal-assignment:${journalNode.entityId}:${assignmentNode.id}`,
+
+          source: journalNode.id,
+          target: assignmentNode.id,
+          label: 'Supports assignment',
+          strength: 3,
+        })
+      })
+    })
+
+    return relationships
+  })
+
+  const liveArticleLinks = computed(() => {
+    const relationships = []
+
+    liveArticleNodes.value.forEach((articleNode) => {
+      if (articleNode.journalNodeId) {
+        const journalNode =
+          nodes.value.find((node) => {
+            return (
+              node.id ===
+              articleNode.journalNodeId
+            )
+          })
+
+        if (journalNode) {
+          relationships.push({
+            id:
+              `journal-article:${journalNode.entityId}:${articleNode.entityId}`,
+
+            source: journalNode.id,
+            target: articleNode.id,
+            label: 'Contains article',
+            strength: 5,
+          })
+        }
+      }
+
+      uniqueStrings(
+        articleNode.courseIds || [],
+      ).forEach((courseId) => {
+        const courseNode =
+          findGraphNodeForEntity(
+            nodes.value,
+            'course',
+            courseId,
+          )
+
+        if (!courseNode) {
+          return
+        }
+
+        relationships.push({
+          id:
+            `article-course:${articleNode.entityId}:${courseNode.id}`,
+
+          source: articleNode.id,
+          target: courseNode.id,
+          label: 'Used in course',
+          strength: 4,
+        })
+      })
+
+      uniqueStrings(
+        articleNode.assignmentIds || [],
+      ).forEach((assignmentId) => {
+        const assignmentNode =
+          findGraphNodeForEntity(
+            nodes.value,
+            'assignment',
+            assignmentId,
+          )
+
+        if (!assignmentNode) {
+          return
+        }
+
+        relationships.push({
+          id:
+            `article-assignment:${articleNode.entityId}:${assignmentNode.id}`,
+
+          source: articleNode.id,
+          target: assignmentNode.id,
+          label: 'Supports assignment',
+          strength: 4,
+        })
+      })
+    })
+
+    return relationships
+  })
+
   const links = computed(() => {
     const existingNodeIds = new Set(
       nodes.value.map((node) => {
@@ -1266,6 +2200,8 @@ export function useKnowledgeGraph() {
     return [
       ...baseLinks.value,
       ...liveBookLinks.value,
+      ...liveJournalLinks.value,
+      ...liveArticleLinks.value,
       ...liveSourceLinks.value,
     ].filter((link) => {
       if (
@@ -1826,3 +2762,4 @@ function buildStats(
     countsByType,
   }
 }
+
