@@ -7,6 +7,7 @@ import {
 import { useBooks } from '@/composables/useBooks'
 import { useSources } from '@/composables/useSources'
 import { useJournals } from '@/composables/useJournals'
+import { useResearch } from '@/composables/useResearch'
 
 import {
   graphNodeTypes as baseGraphNodeTypes,
@@ -38,10 +39,20 @@ const SOURCE_GRAPH_TYPES = [
   'media',
 ]
 
+const RESEARCH_ITEM_GRAPH_TYPES = [
+  'note',
+  'concept',
+  'person',
+  'assignment',
+  'quote',
+  'communication',
+]
+
 const SUPPORTED_GRAPH_NODE_TYPES = [
   ...new Set([
     ...baseGraphNodeTypes,
     ...SOURCE_GRAPH_TYPES,
+    ...RESEARCH_ITEM_GRAPH_TYPES,
   ]),
 ]
 
@@ -1565,6 +1576,54 @@ function createSourceGraphNode(source) {
       source.accessDate ||
       '',
 
+    institution:
+      source.institution ||
+      '',
+
+    degree:
+      source.degree ||
+      '',
+
+    department:
+      source.department ||
+      '',
+
+    advisor:
+      source.advisor ||
+      '',
+
+    database:
+      source.database ||
+      '',
+
+    repository:
+      source.repository ||
+      '',
+
+    publicationNumber:
+      source.publicationNumber ||
+      '',
+
+    abstract:
+      source.abstract ||
+      '',
+
+    language:
+      source.language ||
+      '',
+
+    website:
+      source.websiteName ||
+      '',
+
+    siteName:
+      source.websiteName ||
+      '',
+
+    publishedDate:
+      source.publishedDate ||
+      '',
+
     citation:
       source.citation ||
       '',
@@ -1578,6 +1637,591 @@ function createSourceGraphNode(source) {
         ? [...source.sourceNotes]
         : [],
   }
+}
+
+
+function normalizeResearchItemGraphType(value) {
+  const type = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+
+  if (
+    RESEARCH_ITEM_GRAPH_TYPES.includes(type)
+  ) {
+    return type
+  }
+
+  return normalizeSourceType(type)
+}
+
+function formatResearchPeople(people = []) {
+  if (!Array.isArray(people)) {
+    return String(people || '').trim()
+  }
+
+  return people
+    .map((person) => {
+      if (typeof person === 'string') {
+        return person.trim()
+      }
+
+      return [
+        person?.firstName,
+        person?.initial,
+        person?.lastName,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .trim()
+    })
+    .filter(Boolean)
+    .join(', ')
+}
+
+function getResearchItemAuthor(item) {
+  const metadata = item?.metadata || {}
+
+  return firstValue(
+    metadata.author,
+    formatResearchPeople(metadata.authors),
+    metadata.creator,
+    metadata.sender,
+  )
+}
+
+function getResearchTypeLabel(value) {
+  return String(value || 'Research Source')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (character) => {
+      return character.toUpperCase()
+    })
+}
+
+function buildResearchItemDescription(item) {
+  const metadata = item?.metadata || {}
+  const author = getResearchItemAuthor(item)
+
+  return uniqueStrings([
+    author
+      ? `By ${author}`
+      : '',
+
+    item?.summary,
+    metadata.abstract,
+    metadata.notes,
+    metadata.body,
+    metadata.definition,
+    metadata.quoteText,
+    metadata.requirements,
+  ]).join(' · ')
+}
+
+function createResearchItemGraphNode(item) {
+  const metadata = item?.metadata || {}
+  const graphType =
+    normalizeResearchItemGraphType(item?.type)
+
+  const courseIds = getCourseIdVariants([
+    item?.courseId,
+    metadata.courseId,
+    ...(metadata.relatedCourseIds || []),
+    ...(metadata.courseIds || []),
+  ])
+
+  const assignmentIds =
+    getAssignmentIdVariants([
+      item?.assignmentId,
+      metadata.assignmentId,
+      ...(metadata.relatedAssignmentIds || []),
+      ...(metadata.assignmentIds || []),
+    ])
+
+  const updatedAt = firstValue(
+    item?.updatedAt,
+    item?.updated_at,
+    item?.createdAt,
+    item?.created_at,
+  )
+
+  const publicationYear = firstValue(
+    metadata.year,
+    metadata.publicationYear,
+    metadata.publishedDate,
+    metadata.date,
+  )
+
+  const author =
+    getResearchItemAuthor(item)
+
+  const sourceType =
+    getResearchTypeLabel(item?.type)
+
+  const publisher = firstValue(
+    metadata.publisher,
+    metadata.institution,
+  )
+
+  return {
+    id: `research:${item.id}`,
+    entityId: String(item.id),
+    researchItemId: String(item.id),
+
+    title:
+      item.title ||
+      'Untitled Research Item',
+
+    type: graphType,
+    sourceType,
+    recordType: sourceType,
+
+    description:
+      buildResearchItemDescription(item) ||
+      'Supabase research item from the Scholarory Research Workspace.',
+
+    tags: uniqueStrings([
+      ...(item.topicTags || []),
+      ...(item.supertags || []),
+      ...(metadata.tags || []),
+      ...(metadata.topicTags || []),
+    ]),
+
+    topicTags: uniqueStrings(
+      item.topicTags || [],
+    ),
+
+    supertags: uniqueStrings(
+      item.supertags || [],
+    ),
+
+    status:
+      metadata.status ||
+      'inbox',
+
+    priority:
+      metadata.priority ||
+      '',
+
+    updatedAt,
+
+    createdAt:
+      firstValue(
+        item.createdAt,
+        item.created_at,
+      ),
+
+    date: getDateKey(updatedAt),
+
+    courseId:
+      courseIds[0] ||
+      null,
+
+    courseIds,
+    assignmentIds,
+
+    course:
+      firstValue(
+        metadata.course,
+        metadata.courseName,
+        metadata.courseCode,
+      ),
+
+    assignment:
+      firstValue(
+        metadata.assignment,
+        metadata.assignmentName,
+      ),
+
+    route:
+      `/research/items/${item.id}`,
+
+    author,
+
+    authors:
+      Array.isArray(metadata.authors)
+        ? metadata.authors.map((person) => ({
+            ...person,
+          }))
+        : metadata.authors || '',
+
+    editors:
+      Array.isArray(metadata.editors)
+        ? metadata.editors.map((person) => ({
+            ...person,
+          }))
+        : metadata.editors || '',
+
+    subtitle:
+      metadata.subtitle ||
+      '',
+
+    shortTitle:
+      metadata.shortTitle ||
+      '',
+
+    publisher,
+
+    publisherAliases: uniqueStrings([
+      metadata.publisher,
+      metadata.institution,
+      metadata.database,
+      metadata.repository,
+    ]),
+
+    publicationYear,
+    year: publicationYear,
+
+    publicationPlace:
+      firstValue(
+        metadata.placeOfPublication,
+        metadata.publicationLocation,
+      ),
+
+    publicationLocation:
+      firstValue(
+        metadata.publicationLocation,
+        metadata.placeOfPublication,
+      ),
+
+    institution:
+      metadata.institution ||
+      '',
+
+    degree:
+      metadata.degree ||
+      '',
+
+    department:
+      metadata.department ||
+      '',
+
+    advisor:
+      metadata.advisor ||
+      '',
+
+    database:
+      metadata.database ||
+      '',
+
+    repository:
+      metadata.repository ||
+      '',
+
+    publicationNumber:
+      metadata.publicationNumber ||
+      '',
+
+    journalName:
+      firstValue(
+        metadata.journalName,
+        metadata.journal,
+      ),
+
+    journal:
+      firstValue(
+        metadata.journal,
+        metadata.journalName,
+      ),
+
+    volume:
+      metadata.volume ||
+      '',
+
+    issue:
+      metadata.issue ||
+      '',
+
+    pages:
+      firstValue(
+        metadata.pages,
+        metadata.pageRange,
+      ),
+
+    pageRange:
+      firstValue(
+        metadata.pageRange,
+        metadata.pages,
+      ),
+
+    pageCount:
+      metadata.pageCount ||
+      '',
+
+    edition:
+      metadata.edition ||
+      '',
+
+    genre:
+      metadata.genre ||
+      '',
+
+    field:
+      firstValue(
+        metadata.field,
+        metadata.discipline,
+      ),
+
+    language:
+      metadata.language ||
+      '',
+
+    isbn:
+      metadata.isbn ||
+      '',
+
+    issn:
+      metadata.issn ||
+      '',
+
+    doi:
+      metadata.doi ||
+      '',
+
+    url:
+      metadata.url ||
+      '',
+
+    website:
+      firstValue(
+        metadata.siteName,
+        metadata.websiteName,
+      ),
+
+    siteName:
+      firstValue(
+        metadata.siteName,
+        metadata.websiteName,
+      ),
+
+    blogName:
+      metadata.blogName ||
+      '',
+
+    accessDate:
+      firstValue(
+        metadata.accessDate,
+        metadata.accessedDate,
+      ),
+
+    publishedDate:
+      metadata.publishedDate ||
+      '',
+
+    citation:
+      metadata.citation ||
+      '',
+
+    summary:
+      item.summary ||
+      '',
+
+    abstract:
+      metadata.abstract ||
+      '',
+
+    notes:
+      firstValue(
+        metadata.notes,
+        metadata.body,
+      ),
+
+    sourceNotes:
+      Array.isArray(metadata.sourceNotes)
+        ? [...metadata.sourceNotes]
+        : [],
+
+    creator:
+      metadata.creator ||
+      '',
+
+    platform:
+      metadata.platform ||
+      '',
+
+    sender:
+      metadata.sender ||
+      '',
+
+    recipient:
+      metadata.recipient ||
+      '',
+
+    format:
+      metadata.format ||
+      '',
+
+    definition:
+      metadata.definition ||
+      '',
+
+    relatedIdeas:
+      metadata.relatedIdeas ||
+      '',
+
+    role:
+      metadata.role ||
+      '',
+
+    requirements:
+      metadata.requirements ||
+      '',
+
+    quoteText:
+      metadata.quoteText ||
+      '',
+
+    pageNumber:
+      metadata.pageNumber ||
+      '',
+
+    coverImageUrl:
+      metadata.coverImageUrl ||
+      '',
+
+    bannerImageUrl:
+      metadata.bannerImageUrl ||
+      '',
+
+    researchLinks: uniqueStrings(
+      item.links || [],
+    ),
+
+    metadata: {
+      ...metadata,
+    },
+  }
+}
+
+function graphNodesRepresentSameEntity(
+  firstNode,
+  secondNode,
+) {
+  if (
+    !firstNode ||
+    !secondNode ||
+    firstNode.type !== secondNode.type
+  ) {
+    return false
+  }
+
+  const firstTitle =
+    normalizeSearchText(firstNode.title)
+
+  const secondTitle =
+    normalizeSearchText(secondNode.title)
+
+  if (
+    !firstTitle ||
+    !secondTitle ||
+    firstTitle !== secondTitle
+  ) {
+    return false
+  }
+
+  const firstAuthor =
+    normalizeSearchText(firstNode.author)
+
+  const secondAuthor =
+    normalizeSearchText(secondNode.author)
+
+  if (
+    firstAuthor &&
+    secondAuthor &&
+    firstAuthor !== secondAuthor
+  ) {
+    return false
+  }
+
+  return true
+}
+
+function hasMeaningfulGraphValue(value) {
+  if (Array.isArray(value)) {
+    return value.length > 0
+  }
+
+  if (
+    value &&
+    typeof value === 'object'
+  ) {
+    return Object.keys(value).length > 0
+  }
+
+  return (
+    value !== null &&
+    value !== undefined &&
+    String(value).trim() !== ''
+  )
+}
+
+function mergeResearchIntoGraphNode(
+  existingNode,
+  researchNode,
+) {
+  const mergedNode = {
+    ...existingNode,
+  }
+
+  Object.entries(researchNode).forEach(
+    ([key, value]) => {
+      if (
+        !hasMeaningfulGraphValue(
+          mergedNode[key],
+        ) &&
+        hasMeaningfulGraphValue(value)
+      ) {
+        mergedNode[key] = value
+      }
+    },
+  )
+
+  mergedNode.tags = uniqueStrings([
+    ...(existingNode.tags || []),
+    ...(researchNode.tags || []),
+  ])
+
+  mergedNode.topicTags = uniqueStrings([
+    ...(existingNode.topicTags || []),
+    ...(researchNode.topicTags || []),
+  ])
+
+  mergedNode.supertags = uniqueStrings([
+    ...(existingNode.supertags || []),
+    ...(researchNode.supertags || []),
+  ])
+
+  mergedNode.publisherAliases =
+    uniqueStrings([
+      ...(existingNode.publisherAliases || []),
+      ...(researchNode.publisherAliases || []),
+      existingNode.publisher,
+      researchNode.publisher,
+    ])
+
+  mergedNode.description =
+    uniqueStrings([
+      existingNode.description,
+      researchNode.description,
+    ]).join(' · ')
+
+  mergedNode.researchItemId =
+    researchNode.researchItemId
+
+  mergedNode.researchRoute =
+    researchNode.route
+
+  mergedNode.researchLinks =
+    uniqueStrings([
+      ...(existingNode.researchLinks || []),
+      ...(researchNode.researchLinks || []),
+    ])
+
+  mergedNode.metadata = {
+    ...(researchNode.metadata || {}),
+    ...(existingNode.metadata || {}),
+  }
+
+  return mergedNode
 }
 
 function findGraphNodeForEntity(
@@ -1722,6 +2366,30 @@ function nodeMatchesSearch(
     node.contributorsText,
     node.forewordBy,
 
+    node.institution,
+    node.degree,
+    node.department,
+    node.advisor,
+    node.database,
+    node.repository,
+    node.publicationNumber,
+
+    node.creator,
+    node.platform,
+    node.sender,
+    node.recipient,
+    node.format,
+    node.definition,
+    node.relatedIdeas,
+    node.role,
+    node.requirements,
+    node.quoteText,
+    node.pageNumber,
+
+    node.topicTags,
+    node.supertags,
+    node.metadata,
+
     ...(node.tags || []),
   ]
 
@@ -1760,6 +2428,22 @@ export function useKnowledgeGraph() {
     allJournals,
     allArticles,
   } = useJournals()
+
+  const {
+    allResearchItems,
+    loadResearchItems,
+  } = useResearch()
+
+  if (!allResearchItems.value.length) {
+    Promise.resolve(
+      loadResearchItems(),
+    ).catch((error) => {
+      console.error(
+        'Could not load Supabase research items for the knowledge graph:',
+        error,
+      )
+    })
+  }
 
   const baseNodes = ref(
     mockKnowledgeGraphNodes.map((node) => ({
@@ -1907,12 +2591,70 @@ export function useKnowledgeGraph() {
       })
   })
 
+  const liveResearchItemNodes = computed(() => {
+    return allResearchItems.value.map((item) => {
+      return createResearchItemGraphNode(item)
+    })
+  })
+
+  const integratedLiveNodes = computed(() => {
+    const canonicalNodes = [
+      ...liveBookNodes.value,
+      ...liveJournalNodes.value,
+      ...liveArticleNodes.value,
+      ...liveSourceNodes.value,
+    ].map((node) => ({
+      ...node,
+    }))
+
+    const researchNodeIdByItemId =
+      new Map()
+
+    liveResearchItemNodes.value.forEach(
+      (researchNode) => {
+        const matchingIndex =
+          canonicalNodes.findIndex((node) => {
+            return graphNodesRepresentSameEntity(
+              node,
+              researchNode,
+            )
+          })
+
+        if (matchingIndex >= 0) {
+          canonicalNodes[matchingIndex] =
+            mergeResearchIntoGraphNode(
+              canonicalNodes[matchingIndex],
+              researchNode,
+            )
+
+          researchNodeIdByItemId.set(
+            String(researchNode.entityId),
+            canonicalNodes[matchingIndex].id,
+          )
+
+          return
+        }
+
+        canonicalNodes.push(
+          researchNode,
+        )
+
+        researchNodeIdByItemId.set(
+          String(researchNode.entityId),
+          researchNode.id,
+        )
+      },
+    )
+
+    return {
+      nodes: canonicalNodes,
+      researchNodeIdByItemId,
+    }
+  })
+
   const nodes = computed(() => {
     const hasLiveSources =
-      liveBookNodes.value.length > 0 ||
-      liveJournalNodes.value.length > 0 ||
-      liveArticleNodes.value.length > 0 ||
-      liveSourceNodes.value.length > 0
+      integratedLiveNodes.value.nodes.length > 0
 
     const retainedBaseNodes =
       baseNodes.value.filter((node) => {
@@ -1927,10 +2669,7 @@ export function useKnowledgeGraph() {
 
     return [
       ...retainedBaseNodes,
-      ...liveBookNodes.value,
-      ...liveJournalNodes.value,
-      ...liveArticleNodes.value,
-      ...liveSourceNodes.value,
+      ...integratedLiveNodes.value.nodes,
     ]
   })
 
@@ -2188,6 +2927,117 @@ export function useKnowledgeGraph() {
     return relationships
   })
 
+  const liveResearchLinks = computed(() => {
+    const relationships = []
+
+    const researchNodeIdByItemId =
+      integratedLiveNodes.value
+        .researchNodeIdByItemId
+
+    allResearchItems.value.forEach((item) => {
+      const sourceNodeId =
+        researchNodeIdByItemId.get(
+          String(item.id),
+        )
+
+      if (!sourceNodeId) {
+        return
+      }
+
+      uniqueStrings(
+        item.links || [],
+      ).forEach((linkedItemId) => {
+        const targetNodeId =
+          researchNodeIdByItemId.get(
+            String(linkedItemId),
+          )
+
+        if (
+          !targetNodeId ||
+          targetNodeId === sourceNodeId
+        ) {
+          return
+        }
+
+        const relationshipPair = [
+          sourceNodeId,
+          targetNodeId,
+        ].sort()
+
+        relationships.push({
+          id:
+            `research-link:${relationshipPair[0]}:${relationshipPair[1]}`,
+
+          source: sourceNodeId,
+          target: targetNodeId,
+          label: 'Connected research',
+          strength: 4,
+        })
+      })
+
+      const sourceNode =
+        nodes.value.find((node) => {
+          return node.id === sourceNodeId
+        })
+
+      if (!sourceNode) {
+        return
+      }
+
+      uniqueStrings(
+        sourceNode.courseIds || [],
+      ).forEach((courseId) => {
+        const courseNode =
+          findGraphNodeForEntity(
+            nodes.value,
+            'course',
+            courseId,
+          )
+
+        if (!courseNode) {
+          return
+        }
+
+        relationships.push({
+          id:
+            `research-course:${item.id}:${courseNode.id}`,
+
+          source: sourceNodeId,
+          target: courseNode.id,
+          label: 'Used in course',
+          strength: 4,
+        })
+      })
+
+      uniqueStrings(
+        sourceNode.assignmentIds || [],
+      ).forEach((assignmentId) => {
+        const assignmentNode =
+          findGraphNodeForEntity(
+            nodes.value,
+            'assignment',
+            assignmentId,
+          )
+
+        if (!assignmentNode) {
+          return
+        }
+
+        relationships.push({
+          id:
+            `research-assignment:${item.id}:${assignmentNode.id}`,
+
+          source: sourceNodeId,
+          target: assignmentNode.id,
+          label: 'Supports assignment',
+          strength: 4,
+        })
+      })
+    })
+
+    return relationships
+  })
+
   const links = computed(() => {
     const existingNodeIds = new Set(
       nodes.value.map((node) => {
@@ -2203,6 +3053,7 @@ export function useKnowledgeGraph() {
       ...liveJournalLinks.value,
       ...liveArticleLinks.value,
       ...liveSourceLinks.value,
+      ...liveResearchLinks.value,
     ].filter((link) => {
       if (
         !existingNodeIds.has(link.source) ||
@@ -2762,4 +3613,3 @@ function buildStats(
     countsByType,
   }
 }
-
