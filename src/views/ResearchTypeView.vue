@@ -8,167 +8,282 @@
     <section class="toolbar-card">
       <div>
         <h2>{{ pageIcon }} {{ pageTitle }}</h2>
-        <p>{{ visibleItems.length }} item{{ visibleItems.length === 1 ? '' : 's' }}</p>
+        <p>
+          {{ visibleItems.length }}
+          item{{ visibleItems.length === 1 ? '' : 's' }}
+        </p>
       </div>
 
       <div class="toolbar-actions">
-        <RouterLink to="/research" class="back-link">
+        <RouterLink
+          to="/research"
+          class="back-link"
+        >
           ← Research Hub
         </RouterLink>
 
-        <button class="new-source-btn" type="button" @click="showCreateForm = !showCreateForm">
-          {{ showCreateForm ? 'Close' : '+ New Source' }}
+        <button
+          class="new-source-btn"
+          type="button"
+          @click="toggleCreateForm"
+        >
+          {{
+            showCreateForm
+              ? 'Close'
+              : `+ New ${pageTitle}`
+          }}
         </button>
       </div>
     </section>
 
-    <section v-if="showCreateForm" class="create-card">
+    <section
+      v-if="showCreateForm"
+      class="create-card"
+    >
       <div class="create-header">
-        <h2>Create {{ pageTitle }}</h2>
+        <div>
+          <p class="create-eyebrow">
+            {{ pageIcon }} {{ pageTitle }}
+          </p>
+
+          <h2>Create {{ pageTitle }}</h2>
+
+          <p>
+            This record will be saved to the Supabase Research Workspace
+            and will open in the unified academic source editor.
+          </p>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label>Title</label>
-        <input v-model="newTitle" type="text" placeholder="Enter a title..." />
+      <div class="form-grid">
+        <div class="form-group wide">
+          <label>Title</label>
+
+          <input
+            v-model="newTitle"
+            type="text"
+            placeholder="Enter a title..."
+          />
+        </div>
+
+        <div class="form-group wide">
+          <label>Summary</label>
+
+          <textarea
+            v-model="newSummary"
+            rows="4"
+            placeholder="Add a quick summary..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Status</label>
+
+          <select v-model="newStatus">
+            <option
+              v-for="status in researchStatuses"
+              :key="status.id"
+              :value="status.id"
+            >
+              {{ status.icon }} {{ status.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Topic Tags</label>
+
+          <input
+            v-model="topicTagsInput"
+            type="text"
+            placeholder="Theology, formation, methodology"
+          />
+        </div>
       </div>
 
-      <div class="form-group">
-        <label>Summary</label>
-        <textarea v-model="newSummary" placeholder="Add a quick summary..."></textarea>
-      </div>
+      <section class="source-details">
+        <div class="section-heading">
+          <div>
+            <p class="create-eyebrow">
+              Type-specific metadata
+            </p>
 
-      <div class="form-group">
-        <label>Status</label>
-        <select v-model="newStatus">
-          <option
-            v-for="status in researchStatuses"
-            :key="status.id"
-            :value="status.id"
-          >
-            {{ status.icon }} {{ status.name }}
-          </option>
-        </select>
-      </div>
+            <h3>{{ pageTitle }} Details</h3>
+          </div>
 
-      <div class="form-group">
-        <label>Topic Tags</label>
-        <input v-model="topicTagsInput" type="text" placeholder="Paul, Messiah, Theology" />
-      </div>
+          <span>
+            {{ activeFieldDefinitions.length }}
+            field{{ activeFieldDefinitions.length === 1 ? '' : 's' }}
+          </span>
+        </div>
 
-      <section v-if="typeId === 'book'" class="source-details">
-        <h3>Book Details</h3>
-
-        <div class="form-grid">
+        <div class="form-grid media-grid">
           <div class="form-group">
             <label>Cover Image URL</label>
-            <input v-model="bookFields.coverImageUrl" type="text" placeholder="Paste book cover image URL..." />
+
+            <input
+              v-model="mediaFields.coverImageUrl"
+              type="url"
+              placeholder="https://..."
+            />
           </div>
 
           <div class="form-group">
             <label>Banner Image URL</label>
-            <input v-model="bookFields.bannerImageUrl" type="text" placeholder="Paste banner image URL..." />
+
+            <input
+              v-model="mediaFields.bannerImageUrl"
+              type="url"
+              placeholder="https://..."
+            />
           </div>
         </div>
 
-        <div class="people-section">
+        <div
+          v-if="usesAuthors"
+          class="people-section"
+        >
           <label>Authors</label>
 
-          <div v-for="(author, index) in authors" :key="index" class="person-row">
-            <input v-model="author.firstName" placeholder="First name" />
-            <input v-model="author.initial" placeholder="Initial" />
-            <input v-model="author.lastName" placeholder="Last name" />
+          <div
+            v-for="(author, index) in authors"
+            :key="`author-${index}`"
+            class="person-row"
+          >
+            <input
+              v-model="author.firstName"
+              placeholder="First name"
+            />
 
-            <button type="button" class="remove-btn" @click="removeAuthor(index)">
+            <input
+              v-model="author.initial"
+              placeholder="Initial"
+            />
+
+            <input
+              v-model="author.lastName"
+              placeholder="Last name"
+            />
+
+            <button
+              type="button"
+              class="remove-btn"
+              @click="removeAuthor(index)"
+            >
               ×
             </button>
           </div>
 
-          <button type="button" class="small-btn" @click="addAuthor">
+          <button
+            type="button"
+            class="small-btn"
+            @click="addAuthor"
+          >
             + Add Author
           </button>
         </div>
 
-        <div class="people-section">
+        <div
+          v-if="usesEditors"
+          class="people-section"
+        >
           <label>Editors</label>
 
-          <div v-for="(editor, index) in editors" :key="index" class="person-row">
-            <input v-model="editor.firstName" placeholder="First name" />
-            <input v-model="editor.initial" placeholder="Initial" />
-            <input v-model="editor.lastName" placeholder="Last name" />
+          <div
+            v-for="(editor, index) in editors"
+            :key="`editor-${index}`"
+            class="person-row"
+          >
+            <input
+              v-model="editor.firstName"
+              placeholder="First name"
+            />
 
-            <button type="button" class="remove-btn" @click="removeEditor(index)">
+            <input
+              v-model="editor.initial"
+              placeholder="Initial"
+            />
+
+            <input
+              v-model="editor.lastName"
+              placeholder="Last name"
+            />
+
+            <button
+              type="button"
+              class="remove-btn"
+              @click="removeEditor(index)"
+            >
               ×
             </button>
           </div>
 
-          <button type="button" class="small-btn" @click="addEditor">
+          <button
+            type="button"
+            class="small-btn"
+            @click="addEditor"
+          >
             + Add Editor
           </button>
         </div>
 
         <div class="form-grid">
-          <div class="form-group">
-            <label>Short Title</label>
-            <input v-model="bookFields.shortTitle" type="text" placeholder="Short title..." />
-          </div>
+          <div
+            v-for="field in editableFieldDefinitions"
+            :key="field.key"
+            class="form-group"
+            :class="{ wide: field.wide }"
+          >
+            <label :for="`create-${field.key}`">
+              {{ field.label }}
+            </label>
 
-          <div class="form-group">
-            <label>Publisher</label>
-            <input v-model="bookFields.publisher" type="text" placeholder="Publisher..." />
-          </div>
+            <textarea
+              v-if="field.control === 'textarea'"
+              :id="`create-${field.key}`"
+              v-model="metadata[field.key]"
+              :rows="field.rows || 5"
+              :placeholder="field.placeholder"
+            ></textarea>
 
-          <div class="form-group">
-            <label>Place of Publication</label>
-            <input v-model="bookFields.placeOfPublication" type="text" placeholder="Grand Rapids, MI" />
-          </div>
-
-          <div class="form-group">
-            <label>Year</label>
-            <input v-model="bookFields.year" type="text" placeholder="2026" />
-          </div>
-
-          <div class="form-group">
-            <label>Edition</label>
-            <input v-model="bookFields.edition" type="text" placeholder="2nd ed." />
-          </div>
-
-          <div class="form-group">
-            <label>ISBN</label>
-            <input v-model="bookFields.isbn" type="text" placeholder="ISBN..." />
-          </div>
-
-          <div class="form-group">
-            <label>Page Range</label>
-            <input v-model="bookFields.pageRange" type="text" placeholder="1–250" />
-          </div>
-
-          <div class="form-group">
-            <label>Library Location</label>
-            <input v-model="bookFields.libraryLocation" type="text" placeholder="Shelf, room, Logos, Kindle..." />
+            <input
+              v-else
+              :id="`create-${field.key}`"
+              v-model="metadata[field.key]"
+              :type="field.control || 'text'"
+              :placeholder="field.placeholder"
+            />
           </div>
         </div>
       </section>
 
-      <section v-else-if="researchType" class="source-details">
-        <h3>{{ pageTitle }} Details</h3>
-
-        <div v-for="field in researchType.fields" :key="field" class="form-group">
-          <label>{{ formatFieldName(field) }}</label>
-          <input
-            v-model="metadata[field]"
-            type="text"
-            :placeholder="`Enter ${formatFieldName(field)}`"
-          />
-        </div>
-      </section>
+      <div
+        v-if="createError"
+        class="error-box"
+      >
+        {{ createError }}
+      </div>
 
       <div class="create-actions">
-        <button class="secondary-btn" type="button" @click="showCreateForm = false">
+        <button
+          class="secondary-btn"
+          type="button"
+          @click="cancelCreate"
+        >
           Cancel
         </button>
 
-        <button class="create-btn" @click="createItem">
-          Create {{ pageTitle }}
+        <button
+          class="create-btn"
+          type="button"
+          :disabled="isCreating"
+          @click="createItem"
+        >
+          {{
+            isCreating
+              ? 'Creating...'
+              : `Create ${pageTitle}`
+          }}
         </button>
       </div>
     </section>
@@ -178,25 +293,45 @@
         <input
           v-model="searchQuery"
           class="search-input"
-          type="text"
+          type="search"
           :placeholder="`Search ${pageTitle.toLowerCase()}...`"
         />
 
-        <select v-model="sortMode" class="sort-select">
-          <option value="recent">Recently Added</option>
-          <option value="title">Title A–Z</option>
-          <option value="yearDesc">Year Newest</option>
-          <option value="yearAsc">Year Oldest</option>
+        <select
+          v-model="sortMode"
+          class="sort-select"
+        >
+          <option value="recent">
+            Recently Added
+          </option>
+
+          <option value="title">
+            Title A–Z
+          </option>
+
+          <option value="yearDesc">
+            Year Newest
+          </option>
+
+          <option value="yearAsc">
+            Year Oldest
+          </option>
         </select>
       </div>
 
       <ViewSwitcher v-model="selectedView" />
 
-      <div v-if="visibleItems.length === 0" class="empty">
+      <div
+        v-if="visibleItems.length === 0"
+        class="empty"
+      >
         No matching {{ pageTitle.toLowerCase() }} found.
       </div>
 
-      <div v-else-if="selectedView === 'board'" class="board-view">
+      <div
+        v-else-if="selectedView === 'board'"
+        class="board-view"
+      >
         <section
           v-for="status in researchStatuses"
           :key="status.id"
@@ -206,8 +341,13 @@
           @drop.prevent="handleDrop(status.id)"
         >
           <div class="board-column-header">
-            <span>{{ status.icon }} {{ status.name }}</span>
-            <span>{{ getItemsByStatus(status.id).length }}</span>
+            <span>
+              {{ status.icon }} {{ status.name }}
+            </span>
+
+            <span>
+              {{ getItemsByStatus(status.id).length }}
+            </span>
           </div>
 
           <div class="board-cards">
@@ -225,15 +365,21 @@
               </div>
 
               <div class="board-card-meta">
-                {{ formatAuthors(item) }}
-                <span v-if="item.metadata?.year"> · {{ item.metadata.year }}</span>
+                {{ formatCreators(item) }}
+
+                <span v-if="getItemYear(item)">
+                  · {{ getItemYear(item) }}
+                </span>
               </div>
             </RouterLink>
           </div>
         </section>
       </div>
 
-      <div v-else-if="selectedView === 'gallery'" class="gallery-grid">
+      <div
+        v-else-if="selectedView === 'gallery'"
+        class="gallery-grid"
+      >
         <RouterLink
           v-for="item in visibleItems"
           :key="item.id"
@@ -241,31 +387,51 @@
           class="gallery-link"
         >
           <article class="gallery-card">
-            <div class="gallery-banner" :style="getGalleryBannerStyle(item)">
+            <div
+              class="gallery-banner"
+              :style="getGalleryBannerStyle(item)"
+            >
               <img
                 v-if="item.metadata?.coverImageUrl"
                 :src="item.metadata.coverImageUrl"
                 alt=""
                 class="book-cover"
               />
+
+              <span
+                v-else
+                class="gallery-icon"
+              >
+                {{ getItemIcon(item) }}
+              </span>
             </div>
 
             <div class="gallery-body">
               <div class="gallery-title">
-                {{ getItemIcon(item) }} {{ item.title }}
+                {{ item.title }}
               </div>
 
               <div class="gallery-meta">
-                {{ formatAuthors(item) }}
-                <span v-if="item.metadata?.year"> · {{ item.metadata.year }}</span>
+                {{ formatCreators(item) }}
+
+                <span v-if="getItemYear(item)">
+                  · {{ getItemYear(item) }}
+                </span>
               </div>
 
               <div class="gallery-summary">
-                {{ item.summary }}
+                {{ item.summary || 'No summary added.' }}
               </div>
 
-              <div v-if="item.topicTags?.length" class="topic-row">
-                <span v-for="tag in item.topicTags" :key="tag" class="topic-tag">
+              <div
+                v-if="item.topicTags?.length"
+                class="topic-row"
+              >
+                <span
+                  v-for="tag in item.topicTags"
+                  :key="tag"
+                  class="topic-tag"
+                >
                   {{ tag }}
                 </span>
               </div>
@@ -274,24 +440,35 @@
         </RouterLink>
       </div>
 
-      <div v-else-if="selectedView === 'list'" class="list-view">
+      <div
+        v-else-if="selectedView === 'list'"
+        class="list-view"
+      >
         <RouterLink
           v-for="item in visibleItems"
           :key="item.id"
           :to="getDetailRoute(item)"
           class="list-row"
         >
-          <span>{{ getItemIcon(item) }} {{ item.title }}</span>
-          <span class="list-summary">{{ formatAuthors(item) }}</span>
+          <span>
+            {{ getItemIcon(item) }} {{ item.title }}
+          </span>
+
+          <span class="list-summary">
+            {{ formatCreators(item) }}
+          </span>
         </RouterLink>
       </div>
 
-      <div v-else-if="selectedView === 'table'" class="table-wrapper">
+      <div
+        v-else-if="selectedView === 'table'"
+        class="table-wrapper"
+      >
         <table class="items-table">
           <thead>
             <tr>
               <th>Title</th>
-              <th>Authors</th>
+              <th>Author / Creator</th>
               <th>Status</th>
               <th>Year</th>
               <th>Topics</th>
@@ -299,23 +476,40 @@
           </thead>
 
           <tbody>
-            <tr v-for="item in visibleItems" :key="item.id">
+            <tr
+              v-for="item in visibleItems"
+              :key="item.id"
+            >
               <td>
                 <RouterLink :to="getDetailRoute(item)">
                   {{ getItemIcon(item) }} {{ item.title }}
                 </RouterLink>
               </td>
 
-              <td>{{ formatAuthors(item) }}</td>
-              <td>{{ getStatusLabel(item.metadata?.status) }}</td>
-              <td>{{ item.metadata?.year || '—' }}</td>
-              <td>{{ item.topicTags?.join(', ') }}</td>
+              <td>
+                {{ formatCreators(item) }}
+              </td>
+
+              <td>
+                {{ getStatusLabel(item.metadata?.status) }}
+              </td>
+
+              <td>
+                {{ getItemYear(item) || '—' }}
+              </td>
+
+              <td>
+                {{ item.topicTags?.join(', ') || '—' }}
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div v-else class="placeholder-view">
+      <div
+        v-else
+        class="placeholder-view"
+      >
         {{ selectedView }} view coming next.
       </div>
     </section>
@@ -323,44 +517,82 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import {
+  computed,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
+
+import {
+  RouterLink,
+  useRoute,
+  useRouter,
+} from 'vue-router'
 
 import AppLayout from '../components/AppLayout.vue'
 import ViewSwitcher from '../components/ViewSwitcher.vue'
 
-import { useResearch } from '../composables/useResearch'
-import { useBoardDrag } from '../composables/useBoardDrag'
-import { useViewPreferences } from '../composables/useViewPreferences'
-import { getResearchTypeById } from '../data/researchTypes'
-import { researchStatuses, getResearchStatusById } from '../data/researchStatuses'
+import {
+  useResearch,
+} from '../composables/useResearch'
+
+import {
+  useBoardDrag,
+} from '../composables/useBoardDrag'
+
+import {
+  useViewPreferences,
+} from '../composables/useViewPreferences'
+
+import {
+  getResearchTypeById,
+} from '../data/researchTypes'
+
+import {
+  getResearchStatusById,
+  researchStatuses,
+} from '../data/researchStatuses'
 
 const route = useRoute()
+const router = useRouter()
 
 const {
   allResearchItems,
   loadResearchItems,
   addResearchItem,
-  updateResearchItem
+  updateResearchItem,
+  researchError,
 } = useResearch()
 
 const {
   draggedItemId,
   handleDragStart,
   handleDragEnd,
-  handleDrop
-} = useBoardDrag(updateResearchItem)
+  handleDrop,
+} = useBoardDrag(
+  updateResearchItem,
+)
 
-const typeId = computed(() => route.params.type)
+const typeId = computed(() => {
+  return String(
+    route.params.type ||
+    '',
+  )
+})
 
-const { selectedView } = useViewPreferences(
+const {
+  selectedView,
+} = useViewPreferences(
   `research-type-${typeId.value}`,
-  'gallery'
+  'gallery',
 )
 
 const showCreateForm = ref(false)
 const searchQuery = ref('')
 const sortMode = ref('recent')
+const isCreating = ref(false)
+const createError = ref('')
 
 const newTitle = ref('')
 const newSummary = ref('')
@@ -368,151 +600,526 @@ const newStatus = ref('inbox')
 const topicTagsInput = ref('')
 const metadata = ref({})
 
+const mediaFields = ref({
+  coverImageUrl: '',
+  bannerImageUrl: '',
+})
+
 const authors = ref([
-  { firstName: '', initial: '', lastName: '' }
+  {
+    firstName: '',
+    initial: '',
+    lastName: '',
+  },
 ])
 
 const editors = ref([])
 
-const bookFields = ref({
-  coverImageUrl: '',
-  bannerImageUrl: '',
-  shortTitle: '',
-  publisher: '',
-  placeOfPublication: '',
-  year: '',
-  edition: '',
-  isbn: '',
-  pageRange: '',
-  libraryLocation: ''
-})
-
-onMounted(() => {
-  loadResearchItems()
-})
+const FIELD_DEFINITIONS = {
+  author: {
+    key: 'author',
+    label: 'Author',
+    placeholder: 'Author name',
+  },
+  shortTitle: {
+    key: 'shortTitle',
+    label: 'Short Title',
+    placeholder: 'Shortened title for notes',
+  },
+  publisher: {
+    key: 'publisher',
+    label: 'Publisher',
+    placeholder: 'Publisher',
+  },
+  placeOfPublication: {
+    key: 'placeOfPublication',
+    label: 'Place of Publication',
+    placeholder: 'City, State or Country',
+  },
+  year: {
+    key: 'year',
+    label: 'Publication Year',
+    placeholder: '2026',
+  },
+  edition: {
+    key: 'edition',
+    label: 'Edition',
+    placeholder: '2nd edition',
+  },
+  isbn: {
+    key: 'isbn',
+    label: 'ISBN',
+    placeholder: 'ISBN',
+  },
+  pageRange: {
+    key: 'pageRange',
+    label: 'Page Range / Count',
+    placeholder: '1–250',
+  },
+  libraryLocation: {
+    key: 'libraryLocation',
+    label: 'Library Location',
+    placeholder: 'Shelf, library, or collection',
+  },
+  journal: {
+    key: 'journal',
+    label: 'Journal',
+    placeholder: 'Journal title',
+  },
+  volume: {
+    key: 'volume',
+    label: 'Volume',
+    placeholder: 'Volume',
+  },
+  issue: {
+    key: 'issue',
+    label: 'Issue',
+    placeholder: 'Issue',
+  },
+  pages: {
+    key: 'pages',
+    label: 'Pages',
+    placeholder: '45–68',
+  },
+  doi: {
+    key: 'doi',
+    label: 'DOI',
+    placeholder: '10.xxxx/xxxxx',
+  },
+  url: {
+    key: 'url',
+    label: 'URL',
+    control: 'url',
+    placeholder: 'https://...',
+  },
+  abstract: {
+    key: 'abstract',
+    label: 'Abstract',
+    control: 'textarea',
+    rows: 7,
+    wide: true,
+    placeholder: 'Paste or summarize the abstract.',
+  },
+  language: {
+    key: 'language',
+    label: 'Language',
+    placeholder: 'English',
+  },
+  institution: {
+    key: 'institution',
+    label: 'University / Institution',
+    placeholder: 'Liberty University',
+  },
+  degree: {
+    key: 'degree',
+    label: 'Degree',
+    placeholder: 'Doctor of Ministry, PhD, ThM, MA, etc.',
+  },
+  department: {
+    key: 'department',
+    label: 'Department / Program',
+    placeholder: 'School, department, or program',
+  },
+  advisor: {
+    key: 'advisor',
+    label: 'Advisor / Committee Chair',
+    placeholder: 'Advisor or committee chair',
+  },
+  database: {
+    key: 'database',
+    label: 'Database',
+    placeholder: 'ProQuest Dissertations & Theses Global',
+  },
+  repository: {
+    key: 'repository',
+    label: 'Repository',
+    placeholder: 'Institutional repository or archive',
+  },
+  publicationNumber: {
+    key: 'publicationNumber',
+    label: 'Publication / Document Number',
+    placeholder: 'Publication or document number',
+  },
+  siteName: {
+    key: 'siteName',
+    label: 'Website Name',
+    placeholder: 'Website or organization',
+  },
+  publishedDate: {
+    key: 'publishedDate',
+    label: 'Published Date',
+    control: 'date',
+  },
+  accessedDate: {
+    key: 'accessedDate',
+    label: 'Accessed Date',
+    control: 'date',
+  },
+  blogName: {
+    key: 'blogName',
+    label: 'Blog Name',
+    placeholder: 'Blog title',
+  },
+  creator: {
+    key: 'creator',
+    label: 'Creator',
+    placeholder: 'Creator, director, or presenter',
+  },
+  platform: {
+    key: 'platform',
+    label: 'Platform',
+    placeholder: 'YouTube, Vimeo, podcast platform, etc.',
+  },
+  sender: {
+    key: 'sender',
+    label: 'Sender',
+    placeholder: 'Sender',
+  },
+  recipient: {
+    key: 'recipient',
+    label: 'Recipient',
+    placeholder: 'Recipient',
+  },
+  date: {
+    key: 'date',
+    label: 'Date',
+    control: 'date',
+  },
+  format: {
+    key: 'format',
+    label: 'Format',
+    placeholder: 'Email, letter, interview, etc.',
+  },
+  body: {
+    key: 'body',
+    label: 'Body',
+    control: 'textarea',
+    rows: 8,
+    wide: true,
+    placeholder: 'Write the note.',
+  },
+  definition: {
+    key: 'definition',
+    label: 'Definition',
+    control: 'textarea',
+    rows: 6,
+    wide: true,
+    placeholder: 'Define the concept.',
+  },
+  relatedIdeas: {
+    key: 'relatedIdeas',
+    label: 'Related Ideas',
+    control: 'textarea',
+    rows: 5,
+    wide: true,
+    placeholder: 'List related ideas or concepts.',
+  },
+  role: {
+    key: 'role',
+    label: 'Role',
+    placeholder: 'Role or relationship',
+  },
+  notes: {
+    key: 'notes',
+    label: 'Notes',
+    control: 'textarea',
+    rows: 6,
+    wide: true,
+    placeholder: 'Add notes.',
+  },
+  course: {
+    key: 'course',
+    label: 'Course',
+    placeholder: 'Course',
+  },
+  dueDate: {
+    key: 'dueDate',
+    label: 'Due Date',
+    control: 'date',
+  },
+  requirements: {
+    key: 'requirements',
+    label: 'Requirements',
+    control: 'textarea',
+    rows: 6,
+    wide: true,
+    placeholder: 'Assignment requirements.',
+  },
+  quoteText: {
+    key: 'quoteText',
+    label: 'Quote',
+    control: 'textarea',
+    rows: 6,
+    wide: true,
+    placeholder: 'Quote text',
+  },
+  sourceId: {
+    key: 'sourceId',
+    label: 'Source ID',
+    placeholder: 'Linked source ID',
+  },
+  pageNumber: {
+    key: 'pageNumber',
+    label: 'Page Number',
+    placeholder: 'Page number',
+  },
+}
 
 const researchType = computed(() => {
-  return getResearchTypeById(typeId.value)
+  return getResearchTypeById(
+    typeId.value,
+  )
 })
 
 const pageTitle = computed(() => {
-  return researchType.value?.name || 'Research Items'
+  return (
+    researchType.value?.name ||
+    'Research Items'
+  )
 })
 
 const pageIcon = computed(() => {
-  return researchType.value?.icon || '🔎'
+  return (
+    researchType.value?.icon ||
+    '🔎'
+  )
 })
+
+const activeFieldDefinitions =
+  computed(() => {
+    const fieldKeys =
+      researchType.value?.fields ||
+      []
+
+    return fieldKeys.map((key) => {
+      return (
+        FIELD_DEFINITIONS[key] ||
+        {
+          key,
+          label:
+            formatFieldName(key),
+          placeholder:
+            '',
+        }
+      )
+    })
+  })
+
+const usesAuthors = computed(() => {
+  return researchType.value
+    ?.fields
+    ?.includes('authors')
+})
+
+const usesEditors = computed(() => {
+  return researchType.value
+    ?.fields
+    ?.includes('editors')
+})
+
+const editableFieldDefinitions =
+  computed(() => {
+    return activeFieldDefinitions.value.filter(
+      (field) => {
+        return (
+          field.key !== 'authors' &&
+          field.key !== 'editors'
+        )
+      },
+    )
+  })
 
 const filteredItems = computed(() => {
   return allResearchItems.value.filter(
-    (item) => item.type === typeId.value
+    (item) => {
+      return (
+        item.type ===
+        typeId.value
+      )
+    },
   )
 })
 
 const visibleItems = computed(() => {
-  const query = searchQuery.value.toLowerCase().trim()
-
-  let items = filteredItems.value.filter((item) => {
-    const searchable = [
-      item.title,
-      item.summary,
-      item.metadata?.shortTitle,
-      item.metadata?.publisher,
-      item.metadata?.placeOfPublication,
-      item.metadata?.year,
-      item.metadata?.libraryLocation,
-      item.metadata?.status,
-      formatAuthors(item),
-      ...(item.topicTags || [])
-    ]
-      .filter(Boolean)
-      .join(' ')
+  const query =
+    searchQuery.value
       .toLowerCase()
+      .trim()
 
-    return searchable.includes(query)
-  })
+  let items =
+    filteredItems.value.filter(
+      (item) => {
+        if (!query) {
+          return true
+        }
+
+        return buildItemSearchText(
+          item,
+        ).includes(query)
+      },
+    )
 
   items = [...items]
 
   if (sortMode.value === 'title') {
-    items.sort((a, b) => a.title.localeCompare(b.title))
+    items.sort((a, b) => {
+      return String(
+        a.title || '',
+      ).localeCompare(
+        String(
+          b.title || '',
+        ),
+      )
+    })
   }
 
   if (sortMode.value === 'yearDesc') {
-    items.sort((a, b) =>
-      String(b.metadata?.year || '').localeCompare(String(a.metadata?.year || ''))
-    )
+    items.sort((a, b) => {
+      return String(
+        getItemYear(b),
+      ).localeCompare(
+        String(
+          getItemYear(a),
+        ),
+      )
+    })
   }
 
   if (sortMode.value === 'yearAsc') {
-    items.sort((a, b) =>
-      String(a.metadata?.year || '').localeCompare(String(b.metadata?.year || ''))
-    )
+    items.sort((a, b) => {
+      return String(
+        getItemYear(a),
+      ).localeCompare(
+        String(
+          getItemYear(b),
+        ),
+      )
+    })
   }
 
   if (sortMode.value === 'recent') {
-    items.sort((a, b) =>
-      String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
-    )
+    items.sort((a, b) => {
+      return String(
+        b.createdAt || '',
+      ).localeCompare(
+        String(
+          a.createdAt || '',
+        ),
+      )
+    })
   }
 
   return items
 })
 
-watch(typeId, () => {
-  resetForm()
-  showCreateForm.value = false
-  searchQuery.value = ''
+onMounted(async () => {
+  await loadResearchItems()
+  initializeMetadataFields()
 })
 
+watch(
+  typeId,
+  () => {
+    resetForm()
+    showCreateForm.value = false
+    searchQuery.value = ''
+  },
+)
+
+function toggleCreateForm() {
+  showCreateForm.value =
+    !showCreateForm.value
+
+  if (showCreateForm.value) {
+    initializeMetadataFields()
+  }
+}
+
+function initializeMetadataFields() {
+  const nextMetadata = {
+    ...metadata.value,
+  }
+
+  editableFieldDefinitions.value.forEach(
+    (field) => {
+      if (
+        nextMetadata[field.key] ===
+          undefined ||
+        nextMetadata[field.key] ===
+          null
+      ) {
+        nextMetadata[field.key] = ''
+      }
+    },
+  )
+
+  metadata.value = nextMetadata
+}
+
 function getDetailRoute(item) {
-  if (item.type === 'article') {
-    return `/articles/${item.id}`
-  }
-
-  if (item.type === 'book') {
-    return `/books/${item.id}`
-  }
-
-  if (item.type === 'journal') {
-    return `/journals/${item.id}`
-  }
-
   return `/research/items/${item.id}`
 }
 
 function getItemsByStatus(statusId) {
-  return visibleItems.value.filter((item) => {
-    return (item.metadata?.status || 'inbox') === statusId
-  })
+  return visibleItems.value.filter(
+    (item) => {
+      return (
+        (
+          item.metadata?.status ||
+          'inbox'
+        ) === statusId
+      )
+    },
+  )
 }
 
-function getStatusLabel(statusId = 'inbox') {
-  const status = getResearchStatusById(statusId || 'inbox')
-  return status ? `${status.icon} ${status.name}` : '📥 Inbox'
+function getStatusLabel(
+  statusId = 'inbox',
+) {
+  const status =
+    getResearchStatusById(
+      statusId ||
+      'inbox',
+    )
+
+  return status
+    ? `${status.icon} ${status.name}`
+    : '📥 Inbox'
 }
 
 function parseTopicTags(text) {
-  return text
+  return String(text || '')
     .split(',')
-    .map((tag) => tag.trim())
+    .map((tag) => {
+      return tag.trim()
+    })
     .filter(Boolean)
 }
 
 function addAuthor() {
-  authors.value.push({ firstName: '', initial: '', lastName: '' })
+  authors.value.push({
+    firstName: '',
+    initial: '',
+    lastName: '',
+  })
 }
 
 function removeAuthor(index) {
   authors.value.splice(index, 1)
 
-  if (authors.value.length === 0) {
+  if (
+    authors.value.length === 0
+  ) {
     addAuthor()
   }
 }
 
 function addEditor() {
-  editors.value.push({ firstName: '', initial: '', lastName: '' })
+  editors.value.push({
+    firstName: '',
+    initial: '',
+    lastName: '',
+  })
 }
 
 function removeEditor(index) {
@@ -521,54 +1128,158 @@ function removeEditor(index) {
 
 function cleanPeopleList(people) {
   return people
-    .map((person) => ({
-      firstName: person.firstName.trim(),
-      initial: person.initial.trim(),
-      lastName: person.lastName.trim()
-    }))
-    .filter((person) => person.firstName || person.initial || person.lastName)
+    .map((person) => {
+      return {
+        firstName:
+          String(
+            person.firstName ||
+            '',
+          ).trim(),
+
+        initial:
+          String(
+            person.initial ||
+            '',
+          ).trim(),
+
+        lastName:
+          String(
+            person.lastName ||
+            '',
+          ).trim(),
+      }
+    })
+    .filter((person) => {
+      return (
+        person.firstName ||
+        person.initial ||
+        person.lastName
+      )
+    })
 }
 
-function buildBookMetadata() {
-  return {
-    status: newStatus.value,
-    coverImageUrl: bookFields.value.coverImageUrl,
-    bannerImageUrl: bookFields.value.bannerImageUrl,
-    authors: cleanPeopleList(authors.value),
-    editors: cleanPeopleList(editors.value),
-    shortTitle: bookFields.value.shortTitle,
-    publisher: bookFields.value.publisher,
-    placeOfPublication: bookFields.value.placeOfPublication,
-    year: bookFields.value.year,
-    edition: bookFields.value.edition,
-    isbn: bookFields.value.isbn,
-    pageRange: bookFields.value.pageRange,
-    libraryLocation: bookFields.value.libraryLocation
+function buildMetadata() {
+  const finalMetadata = {
+    ...metadata.value,
+
+    status:
+      newStatus.value,
+
+    coverImageUrl:
+      mediaFields.value
+        .coverImageUrl,
+
+    bannerImageUrl:
+      mediaFields.value
+        .bannerImageUrl,
+
+    bannerObjectPositionY:
+      50,
   }
+
+  if (usesAuthors.value) {
+    finalMetadata.authors =
+      cleanPeopleList(
+        authors.value,
+      )
+  }
+
+  if (usesEditors.value) {
+    finalMetadata.editors =
+      cleanPeopleList(
+        editors.value,
+      )
+  }
+
+  return finalMetadata
 }
 
 async function createItem() {
-  if (!newTitle.value.trim()) return
-  if (!researchType.value) return
+  createError.value = ''
 
-  const finalMetadata =
-    typeId.value === 'book'
-      ? buildBookMetadata()
-      : {
-          ...metadata.value,
-          status: newStatus.value
-        }
+  if (!newTitle.value.trim()) {
+    createError.value =
+      'Add a title before creating the record.'
 
-  await addResearchItem({
-    title: newTitle.value,
-    summary: newSummary.value,
-    type: typeId.value,
-    supertags: researchType.value.defaultSupertags || ['source'],
-    topicTags: parseTopicTags(topicTagsInput.value),
-    links: [],
-    metadata: finalMetadata
-  })
+    return
+  }
 
+  if (!researchType.value) {
+    createError.value =
+      'Scholarory could not identify this research type.'
+
+    return
+  }
+
+  isCreating.value = true
+
+  try {
+    await addResearchItem({
+      title:
+        newTitle.value.trim(),
+
+      summary:
+        newSummary.value.trim(),
+
+      type:
+        typeId.value,
+
+      supertags:
+        researchType.value
+          .defaultSupertags ||
+        ['source'],
+
+      topicTags:
+        parseTopicTags(
+          topicTagsInput.value,
+        ),
+
+      links:
+        [],
+
+      metadata:
+        buildMetadata(),
+    })
+
+    if (researchError.value) {
+      createError.value =
+        researchError.value
+
+      return
+    }
+
+    const createdItem =
+      allResearchItems.value[0]
+
+    resetForm()
+    showCreateForm.value = false
+
+    if (
+      createdItem?.id &&
+      createdItem.type ===
+        typeId.value
+    ) {
+      await router.push(
+        getDetailRoute(
+          createdItem,
+        ),
+      )
+    }
+  } catch (error) {
+    console.error(
+      'Could not create research item:',
+      error,
+    )
+
+    createError.value =
+      error?.message ||
+      'Scholarory could not create this research item.'
+  } finally {
+    isCreating.value = false
+  }
+}
+
+function cancelCreate() {
   resetForm()
   showCreateForm.value = false
 }
@@ -578,52 +1289,100 @@ function resetForm() {
   newSummary.value = ''
   newStatus.value = 'inbox'
   topicTagsInput.value = ''
+  createError.value = ''
+
   metadata.value = {}
 
+  mediaFields.value = {
+    coverImageUrl: '',
+    bannerImageUrl: '',
+  }
+
   authors.value = [
-    { firstName: '', initial: '', lastName: '' }
+    {
+      firstName: '',
+      initial: '',
+      lastName: '',
+    },
   ]
 
   editors.value = []
 
-  bookFields.value = {
-    coverImageUrl: '',
-    bannerImageUrl: '',
-    shortTitle: '',
-    publisher: '',
-    placeOfPublication: '',
-    year: '',
-    edition: '',
-    isbn: '',
-    pageRange: '',
-    libraryLocation: ''
-  }
+  initializeMetadataFields()
 }
 
-function formatAuthors(item) {
-  const people = item.metadata?.authors || []
+function formatCreators(item) {
+  const itemMetadata =
+    item.metadata || {}
 
-  if (!people.length) return 'No author listed'
+  const people =
+    itemMetadata.authors
 
-  return people
-    .map((person) => {
-      const parts = [
-        person.firstName,
-        person.initial,
-        person.lastName
-      ].filter(Boolean)
+  if (
+    Array.isArray(people) &&
+    people.length
+  ) {
+    const formatted =
+      people
+        .map((person) => {
+          if (
+            typeof person === 'string'
+          ) {
+            return person
+          }
 
-      return parts.join(' ')
-    })
-    .join(', ')
+          return [
+            person.firstName,
+            person.initial,
+            person.lastName,
+          ]
+            .filter(Boolean)
+            .join(' ')
+        })
+        .filter(Boolean)
+        .join(', ')
+
+    if (formatted) {
+      return formatted
+    }
+  }
+
+  return (
+    itemMetadata.author ||
+    itemMetadata.creator ||
+    itemMetadata.sender ||
+    'No author listed'
+  )
+}
+
+function getItemYear(item) {
+  return (
+    item.metadata?.year ||
+    item.metadata?.publishedDate ||
+    item.metadata?.date ||
+    ''
+  )
 }
 
 function getGalleryBannerStyle(item) {
-  if (item.metadata?.bannerImageUrl) {
+  if (
+    item.metadata
+      ?.bannerImageUrl
+  ) {
+    const positionY =
+      item.metadata
+        ?.bannerObjectPositionY ??
+      50
+
     return {
-      backgroundImage: `url(${item.metadata.bannerImageUrl})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center'
+      backgroundImage:
+        `url(${item.metadata.bannerImageUrl})`,
+
+      backgroundSize:
+        'cover',
+
+      backgroundPosition:
+        `center ${positionY}%`,
     }
   }
 
@@ -631,14 +1390,77 @@ function getGalleryBannerStyle(item) {
 }
 
 function getItemIcon(item) {
-  const type = getResearchTypeById(item.type)
-  return type?.icon || '📄'
+  const type =
+    getResearchTypeById(
+      item.type,
+    )
+
+  return type?.icon ||
+    '📄'
+}
+
+function buildItemSearchText(item) {
+  const values = [
+    item.title,
+    item.summary,
+    item.type,
+    item.topicTags,
+    item.supertags,
+    item.metadata,
+  ]
+
+  return flattenSearchValues(
+    values,
+  )
+    .join(' ')
+    .toLowerCase()
+}
+
+function flattenSearchValues(value) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return []
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(
+      (entry) => {
+        return flattenSearchValues(
+          entry,
+        )
+      },
+    )
+  }
+
+  if (
+    typeof value === 'object'
+  ) {
+    return Object.values(
+      value,
+    ).flatMap((entry) => {
+      return flattenSearchValues(
+        entry,
+      )
+    })
+  }
+
+  return [
+    String(value),
+  ]
 }
 
 function formatFieldName(field) {
-  return field
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, (str) => str.toUpperCase())
+  return String(field || '')
+    .replace(
+      /([a-z])([A-Z])/g,
+      '$1 $2',
+    )
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (character) => {
+      return character.toUpperCase()
+    })
 }
 </script>
 
@@ -646,11 +1468,11 @@ function formatFieldName(field) {
 .toolbar-card,
 .create-card,
 .content-card {
-  background: var(--bg-card);
+  margin-bottom: 1rem;
   border: 1px solid var(--border-color);
   border-radius: 14px;
+  background: var(--bg-card);
   padding: 1.2rem;
-  margin-bottom: 1rem;
   box-shadow: var(--shadow);
 }
 
@@ -661,11 +1483,14 @@ function formatFieldName(field) {
   gap: 1rem;
 }
 
-.toolbar-card h2 {
+.toolbar-card h2,
+.create-header h2,
+.source-details h3 {
   margin: 0;
 }
 
-.toolbar-card p {
+.toolbar-card p,
+.create-header p {
   margin: 0.25rem 0 0;
   color: var(--text-muted);
   font-size: 0.85rem;
@@ -686,10 +1511,10 @@ function formatFieldName(field) {
 .search-input,
 .sort-select,
 .form-group select {
-  background: var(--btn-bg);
   border: 1px solid var(--border-color);
-  color: var(--text-primary);
   border-radius: 8px;
+  background: var(--btn-bg);
+  color: var(--text-primary);
   padding: 0.65rem 0.75rem;
   font: inherit;
 }
@@ -700,8 +1525,8 @@ function formatFieldName(field) {
 
 .back-link {
   color: var(--accent);
-  text-decoration: none;
   font-size: 0.85rem;
+  text-decoration: none;
 }
 
 .new-source-btn,
@@ -709,45 +1534,81 @@ function formatFieldName(field) {
 .secondary-btn {
   border-radius: 8px;
   padding: 0.65rem 0.85rem;
-  cursor: pointer;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .new-source-btn,
 .create-btn {
+  border: none;
   background: var(--accent);
   color: white;
-  border: none;
+}
+
+.create-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .secondary-btn {
+  border: 1px solid var(--border-color);
   background: var(--btn-bg);
   color: var(--text-secondary);
-  border: 1px solid var(--border-color);
 }
 
 .create-card {
   display: flex;
   flex-direction: column;
-  gap: 0.9rem;
+  gap: 1rem;
 }
 
-.create-header h2,
-.source-details h3 {
-  margin: 0;
+.create-eyebrow {
+  margin: 0 0 0.25rem !important;
+  color: var(--accent-text) !important;
+  font-size: 0.73rem !important;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
 .source-details {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  padding-top: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--btn-bg);
+  padding: 1rem;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.section-heading > span {
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(220px, 1fr)
+    );
   gap: 0.9rem;
+}
+
+.media-grid {
+  padding-bottom: 0.25rem;
 }
 
 .form-group,
@@ -757,20 +1618,24 @@ function formatFieldName(field) {
   gap: 0.35rem;
 }
 
+.form-group.wide {
+  grid-column: 1 / -1;
+}
+
 .form-group label,
 .people-section label {
-  font-size: 0.82rem;
   color: var(--text-secondary);
+  font-size: 0.82rem;
 }
 
 .form-group input,
 .form-group textarea,
 .person-row input {
-  background: var(--btn-bg);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  padding: 0.7rem;
+  background: var(--bg-card);
   color: var(--text-primary);
+  padding: 0.7rem;
   font: inherit;
 }
 
@@ -781,17 +1646,21 @@ function formatFieldName(field) {
 
 .person-row {
   display: grid;
-  grid-template-columns: 1fr 90px 1fr 36px;
-  gap: 0.5rem;
+  grid-template-columns:
+    minmax(0, 1fr)
+    90px
+    minmax(0, 1fr)
+    36px;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .small-btn,
 .remove-btn {
   border: 1px solid var(--border-color);
-  background: var(--btn-bg);
-  color: var(--text-secondary);
   border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -804,9 +1673,22 @@ function formatFieldName(field) {
   height: 38px;
 }
 
+.error-box {
+  border: 1px solid #ef4444;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+}
+
 .board-view {
   display: grid;
-  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  grid-template-columns:
+    repeat(
+      5,
+      minmax(220px, 1fr)
+    );
   gap: 1rem;
   overflow-x: auto;
   padding-bottom: 0.5rem;
@@ -814,9 +1696,9 @@ function formatFieldName(field) {
 
 .board-column {
   min-width: 220px;
-  background: var(--btn-bg);
   border: 1px solid var(--border-color);
   border-radius: 14px;
+  background: var(--btn-bg);
   padding: 0.8rem;
   transition: 0.2s ease;
 }
@@ -829,10 +1711,10 @@ function formatFieldName(field) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 0.75rem;
   color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 700;
-  margin-bottom: 0.75rem;
 }
 
 .board-cards {
@@ -844,9 +1726,9 @@ function formatFieldName(field) {
 
 .board-card {
   display: block;
-  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 10px;
+  background: var(--bg-card);
   padding: 0.75rem;
   color: inherit;
   text-decoration: none;
@@ -862,14 +1744,14 @@ function formatFieldName(field) {
 }
 
 .board-card-title {
-  font-weight: 700;
   font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .board-card-meta {
+  margin-top: 0.25rem;
   color: var(--text-muted);
   font-size: 0.76rem;
-  margin-top: 0.25rem;
 }
 
 .empty {
@@ -878,23 +1760,27 @@ function formatFieldName(field) {
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
-  gap: 1rem;
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(220px, 260px)
+    );
   align-items: start;
+  gap: 1rem;
 }
 
 .gallery-link {
-  text-decoration: none;
   color: inherit;
+  text-decoration: none;
 }
 
 .gallery-card {
   overflow: hidden;
+  max-width: 260px;
   border: 1px solid var(--border-color);
   border-radius: 14px;
   background: var(--bg-card);
   transition: 0.2s ease;
-  max-width: 260px;
 }
 
 .gallery-card:hover {
@@ -903,23 +1789,28 @@ function formatFieldName(field) {
 }
 
 .gallery-banner {
-  height: 90px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(
-    135deg,
-    rgba(59, 130, 246, 0.12),
-    rgba(168, 85, 247, 0.12)
-  );
+  height: 90px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(59, 130, 246, 0.12),
+      rgba(168, 85, 247, 0.12)
+    );
 }
 
 .book-cover {
   width: 58px;
   height: 84px;
-  object-fit: cover;
   border-radius: 6px;
+  object-fit: cover;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+}
+
+.gallery-icon {
+  font-size: 2rem;
 }
 
 .gallery-body {
@@ -927,21 +1818,26 @@ function formatFieldName(field) {
 }
 
 .gallery-title {
-  font-weight: 700;
   font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .gallery-meta {
+  margin-top: 0.25rem;
   color: var(--text-muted);
   font-size: 0.76rem;
-  margin-top: 0.25rem;
 }
 
 .gallery-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 0.35rem;
   color: var(--text-secondary);
   font-size: 0.8rem;
-  margin-top: 0.35rem;
   line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 .list-view {
@@ -952,10 +1848,11 @@ function formatFieldName(field) {
 .list-row {
   display: flex;
   justify-content: space-between;
-  padding: 0.8rem 0;
+  gap: 1rem;
   border-bottom: 1px solid var(--border-color);
-  text-decoration: none;
+  padding: 0.8rem 0;
   color: inherit;
+  text-decoration: none;
 }
 
 .list-summary {
@@ -986,8 +1883,8 @@ function formatFieldName(field) {
 
 .placeholder-view {
   padding: 2rem;
-  text-align: center;
   color: var(--text-muted);
+  text-align: center;
 }
 
 .topic-row {
@@ -998,11 +1895,42 @@ function formatFieldName(field) {
 }
 
 .topic-tag {
-  background: var(--btn-bg);
   border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--btn-bg);
   color: var(--text-secondary);
   padding: 0.2rem 0.45rem;
-  border-radius: 999px;
   font-size: 0.72rem;
 }
+
+@media (max-width: 760px) {
+  .toolbar-card,
+  .section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .toolbar-actions,
+  .browse-toolbar,
+  .create-actions {
+    flex-wrap: wrap;
+  }
+
+  .person-row {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-card {
+    max-width: none;
+  }
+
+  .list-row {
+    flex-direction: column;
+  }
+}
 </style>
+
