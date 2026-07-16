@@ -7,6 +7,8 @@ import {
 const STORAGE_KEY = 'scholarory_sources'
 
 const sourceMetadataDefaults = {
+  subtitle: '',
+  shortTitle: '',
   isbn: '',
   doi: '',
   url: '',
@@ -17,13 +19,27 @@ const sourceMetadataDefaults = {
   edition: '',
   accessDate: '',
   publicationLocation: '',
+  websiteName: '',
+
+  institution: '',
+  degree: '',
+  department: '',
+  advisor: '',
+  database: '',
+  repository: '',
+  publicationNumber: '',
+  abstract: '',
+  language: '',
+
   firstAuthorFirstName: '',
   firstAuthorLastName: '',
   secondAuthorFirstName: '',
   secondAuthorLastName: '',
   contributorsText: '',
   forewordBy: '',
+
   sourceNotes: [],
+  templateNotes: {},
 }
 
 const defaultSources = [
@@ -78,6 +94,8 @@ const defaultSources = [
 
 const fallbackStringFields = [
   'title',
+  'subtitle',
+  'shortTitle',
   'author',
   'type',
   'year',
@@ -92,12 +110,25 @@ const fallbackStringFields = [
   'edition',
   'accessDate',
   'publicationLocation',
+  'websiteName',
+
+  'institution',
+  'degree',
+  'department',
+  'advisor',
+  'database',
+  'repository',
+  'publicationNumber',
+  'abstract',
+  'language',
+
   'firstAuthorFirstName',
   'firstAuthorLastName',
   'secondAuthorFirstName',
   'secondAuthorLastName',
   'contributorsText',
   'forewordBy',
+
   'course',
   'assignment',
   'status',
@@ -145,26 +176,31 @@ function copyArray(value) {
   })
 }
 
-function findMatchingDefaultSource(
-  source = {},
-) {
-  const directMatch =
-    defaultSources.find((starterSource) => {
-      return (
-        String(starterSource.id) ===
-        String(source.id)
-      )
-    })
+function copyObject(value) {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value)
+  ) {
+    return {}
+  }
+
+  return {
+    ...value,
+  }
+}
+
+function findMatchingDefaultSource(source = {}) {
+  const directMatch = defaultSources.find((starterSource) => {
+    return String(starterSource.id) === String(source.id)
+  })
 
   if (directMatch) {
     return directMatch
   }
 
-  const sourceTitle =
-    normalizeText(source.title)
-
-  const sourceAuthor =
-    normalizeText(source.author)
+  const sourceTitle = normalizeText(source.title)
+  const sourceAuthor = normalizeText(source.author)
 
   if (!sourceTitle) {
     return null
@@ -173,14 +209,9 @@ function findMatchingDefaultSource(
   return (
     defaultSources.find((starterSource) => {
       const sameTitle =
-        normalizeText(
-          starterSource.title,
-        ) === sourceTitle
+        normalizeText(starterSource.title) === sourceTitle
 
-      const starterAuthor =
-        normalizeText(
-          starterSource.author,
-        )
+      const starterAuthor = normalizeText(starterSource.author)
 
       const sameAuthor =
         !sourceAuthor ||
@@ -212,12 +243,11 @@ function normalizeSource(
   }
 
   fallbackStringFields.forEach((field) => {
-    normalized[field] =
-      firstNonBlank(
-        source[field],
-        starterSource?.[field],
-        sourceMetadataDefaults[field],
-      )
+    normalized[field] = firstNonBlank(
+      source[field],
+      starterSource?.[field],
+      sourceMetadataDefaults[field],
+    )
   })
 
   normalized.id =
@@ -257,9 +287,7 @@ function normalizeSource(
       'tags',
     )
       ? copyArray(source.tags)
-      : copyArray(
-          starterSource?.tags,
-        )
+      : copyArray(starterSource?.tags)
 
   normalized.sourceNotes =
     Object.prototype.hasOwnProperty.call(
@@ -267,9 +295,15 @@ function normalizeSource(
       'sourceNotes',
     )
       ? copyArray(source.sourceNotes)
-      : copyArray(
-          starterSource?.sourceNotes,
-        )
+      : copyArray(starterSource?.sourceNotes)
+
+  normalized.templateNotes =
+    Object.prototype.hasOwnProperty.call(
+      source,
+      'templateNotes',
+    )
+      ? copyObject(source.templateNotes)
+      : copyObject(starterSource?.templateNotes)
 
   normalized.notes =
     Object.prototype.hasOwnProperty.call(
@@ -277,9 +311,22 @@ function normalizeSource(
       'notes',
     )
       ? String(source.notes || '')
-      : String(
-          starterSource?.notes || '',
-        )
+      : String(starterSource?.notes || '')
+
+  const normalizedType = normalizeText(normalized.type)
+
+  if (
+    (
+      normalizedType === 'dissertation' ||
+      normalizedType === 'thesis'
+    ) &&
+    !normalized.institution &&
+    normalized.publisher
+  ) {
+    // Older Scholarory records stored the university in publisher.
+    // Copy it into institution without deleting the original value.
+    normalized.institution = normalized.publisher
+  }
 
   normalized.updatedAt =
     source.updatedAt ||
@@ -293,27 +340,21 @@ function normalizeSource(
 function loadSources() {
   try {
     const storedSources =
-      localStorage.getItem(
-        STORAGE_KEY,
-      )
+      localStorage.getItem(STORAGE_KEY)
 
     if (!storedSources) {
-      return defaultSources.map(
-        (source) => {
-          return normalizeSource(source)
-        },
-      )
+      return defaultSources.map((source) => {
+        return normalizeSource(source)
+      })
     }
 
     const parsedSources =
       JSON.parse(storedSources)
 
     if (!Array.isArray(parsedSources)) {
-      return defaultSources.map(
-        (source) => {
-          return normalizeSource(source)
-        },
-      )
+      return defaultSources.map((source) => {
+        return normalizeSource(source)
+      })
     }
 
     return parsedSources.map((source) => {
@@ -325,18 +366,14 @@ function loadSources() {
       error,
     )
 
-    return defaultSources.map(
-      (source) => {
-        return normalizeSource(source)
-      },
-    )
+    return defaultSources.map((source) => {
+      return normalizeSource(source)
+    })
   }
 }
 
 const sources = ref(loadSources())
 
-// Immediately save normalized records so older localStorage
-// entries receive newly added or missing starter metadata.
 localStorage.setItem(
   STORAGE_KEY,
   JSON.stringify(sources.value),
@@ -361,107 +398,101 @@ export function useSources() {
   })
 
   const activeSources = computed(() => {
-    return sources.value.filter(
-      (source) => {
-        return (
-          source.status !==
-          'archived'
-        )
-      },
-    )
+    return sources.value.filter((source) => {
+      return source.status !== 'archived'
+    })
   })
 
   function getSourceById(id) {
-    return sources.value.find(
-      (source) => {
-        return (
-          String(source.id) ===
-          String(id)
-        )
-      },
-    )
+    return sources.value.find((source) => {
+      return String(source.id) === String(id)
+    })
   }
 
   function addSource(source = {}) {
-    const now =
-      new Date().toISOString()
+    const now = new Date().toISOString()
 
-    const newSource =
-      normalizeSource(
-        {
-          id: Date.now(),
-          title:
-            source.title ||
-            'Untitled Source',
+    const newSource = normalizeSource(
+      {
+        id: Date.now(),
+        title:
+          source.title ||
+          'Untitled Source',
 
-          author:
-            source.author ||
-            '',
+        author:
+          source.author ||
+          '',
 
-          type:
-            source.type ||
-            'Book',
+        type:
+          source.type ||
+          'Book',
 
-          year:
-            source.year ||
-            '',
+        year:
+          source.year ||
+          '',
 
-          publisher:
-            source.publisher ||
-            '',
+        publisher:
+          source.publisher ||
+          '',
 
-          courseId:
-            source.courseId ??
-            null,
+        courseId:
+          source.courseId ??
+          null,
 
-          course:
-            source.course ||
-            '',
+        course:
+          source.course ||
+          '',
 
-          assignmentId:
-            source.assignmentId ??
-            null,
+        assignmentId:
+          source.assignmentId ??
+          null,
 
-          assignment:
-            source.assignment ||
-            '',
+        assignment:
+          source.assignment ||
+          '',
 
-          status:
-            source.status ||
-            'planned',
+        status:
+          source.status ||
+          'planned',
 
-          priority:
-            source.priority ||
-            'medium',
+        priority:
+          source.priority ||
+          'medium',
 
-          tags:
-            source.tags ||
-            [],
+        tags:
+          source.tags ||
+          [],
 
-          notes:
-            source.notes ||
-            '',
+        notes:
+          source.notes ||
+          '',
 
-          citation:
-            source.citation ||
-            '',
+        citation:
+          source.citation ||
+          '',
 
-          createdAt:
-            source.createdAt ||
-            now,
+        sourceNotes:
+          source.sourceNotes ||
+          [],
 
-          updatedAt: now,
+        templateNotes:
+          source.templateNotes ||
+          {},
 
-          ...source,
-        },
-        {
-          useStarterFallback: false,
-        },
-      )
+        createdAt:
+          source.createdAt ||
+          now,
 
-    sources.value.unshift(
-      newSource,
+        updatedAt: now,
+
+        ...source,
+      },
+      {
+        useStarterFallback: false,
+      },
     )
+
+    sources.value.unshift(newSource)
 
     return newSource
   }
@@ -470,46 +501,33 @@ export function useSources() {
     id,
     updates,
   ) {
-    const index =
-      sources.value.findIndex(
-        (source) => {
-          return (
-            String(source.id) ===
-            String(id)
-          )
-        },
-      )
+    const index = sources.value.findIndex((source) => {
+      return String(source.id) === String(id)
+    })
 
     if (index === -1) {
       return null
     }
 
-    sources.value[index] =
-      normalizeSource(
-        {
-          ...sources.value[index],
-          ...updates,
-          updatedAt:
-            new Date().toISOString(),
-        },
-        {
-          useStarterFallback: false,
-        },
-      )
+    sources.value[index] = normalizeSource(
+      {
+        ...sources.value[index],
+        ...updates,
+        updatedAt:
+          new Date().toISOString(),
+      },
+      {
+        useStarterFallback: false,
+      },
+    )
 
     return sources.value[index]
   }
 
   function deleteSource(id) {
-    sources.value =
-      sources.value.filter(
-        (source) => {
-          return (
-            String(source.id) !==
-            String(id)
-          )
-        },
-      )
+    sources.value = sources.value.filter((source) => {
+      return String(source.id) !== String(id)
+    })
   }
 
   return {
@@ -522,3 +540,4 @@ export function useSources() {
     deleteSource,
   }
 }
+

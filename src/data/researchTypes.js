@@ -14,95 +14,170 @@ export const researchTypes = [
       'edition',
       'isbn',
       'pageRange',
-      'libraryLocation'
-    ]
+      'libraryLocation',
+      'language',
+    ],
   },
   {
     id: 'article',
     name: 'Article',
     icon: '📰',
     defaultSupertags: ['article', 'source'],
-    fields: ['author', 'journal', 'year', 'volume', 'issue', 'pages', 'doi', 'url']
+    fields: [
+      'author',
+      'journal',
+      'year',
+      'volume',
+      'issue',
+      'pages',
+      'doi',
+      'url',
+      'abstract',
+      'language',
+    ],
   },
   {
     id: 'dissertation',
     name: 'Dissertation',
     icon: '🎓',
     defaultSupertags: ['dissertation', 'source'],
-    fields: ['author', 'institution', 'year', 'degree', 'database', 'url']
+    fields: [
+      'author',
+      'institution',
+      'year',
+      'degree',
+      'department',
+      'advisor',
+      'database',
+      'repository',
+      'publicationNumber',
+      'doi',
+      'url',
+      'abstract',
+      'language',
+    ],
   },
   {
     id: 'thesis',
     name: 'Thesis',
     icon: '📄',
     defaultSupertags: ['thesis', 'source'],
-    fields: ['author', 'institution', 'year', 'degree', 'database', 'url']
+    fields: [
+      'author',
+      'institution',
+      'year',
+      'degree',
+      'department',
+      'advisor',
+      'database',
+      'repository',
+      'publicationNumber',
+      'doi',
+      'url',
+      'abstract',
+      'language',
+    ],
   },
   {
     id: 'website',
     name: 'Website',
     icon: '🌐',
     defaultSupertags: ['website', 'source'],
-    fields: ['author', 'siteName', 'publishedDate', 'accessedDate', 'url']
+    fields: [
+      'author',
+      'siteName',
+      'publishedDate',
+      'accessedDate',
+      'url',
+      'language',
+    ],
   },
   {
     id: 'blog',
     name: 'Blog',
     icon: '✍️',
     defaultSupertags: ['blog', 'source'],
-    fields: ['author', 'blogName', 'publishedDate', 'accessedDate', 'url']
+    fields: [
+      'author',
+      'blogName',
+      'publishedDate',
+      'accessedDate',
+      'url',
+      'language',
+    ],
   },
   {
     id: 'video',
     name: 'Video & Media',
     icon: '🎥',
     defaultSupertags: ['video', 'media', 'source'],
-    fields: ['creator', 'platform', 'publishedDate', 'accessedDate', 'url']
+    fields: [
+      'creator',
+      'platform',
+      'publishedDate',
+      'accessedDate',
+      'url',
+      'language',
+    ],
   },
   {
     id: 'communication',
     name: 'Communication',
     icon: '💬',
     defaultSupertags: ['communication', 'source'],
-    fields: ['sender', 'recipient', 'date', 'format']
+    fields: [
+      'sender',
+      'recipient',
+      'date',
+      'format',
+    ],
   },
   {
     id: 'note',
     name: 'Note',
     icon: '📓',
     defaultSupertags: ['note'],
-    fields: ['body']
+    fields: ['body'],
   },
   {
     id: 'concept',
     name: 'Concept',
     icon: '💡',
     defaultSupertags: ['concept'],
-    fields: ['definition', 'relatedIdeas']
+    fields: ['definition', 'relatedIdeas'],
   },
   {
     id: 'person',
     name: 'Person',
     icon: '👤',
     defaultSupertags: ['person'],
-    fields: ['role', 'notes']
+    fields: ['role', 'notes'],
   },
   {
     id: 'assignment',
     name: 'Assignment',
     icon: '📝',
     defaultSupertags: ['assignment'],
-    fields: ['course', 'dueDate', 'status', 'requirements']
+    fields: [
+      'course',
+      'dueDate',
+      'requirements',
+    ],
   },
   {
     id: 'quote',
     name: 'Quote',
     icon: '❝',
     defaultSupertags: ['quote', 'note'],
-    fields: ['quoteText', 'sourceId', 'pageNumber']
-  }
+    fields: [
+      'quoteText',
+      'sourceId',
+      'pageNumber',
+    ],
+  },
 ]
 
 export function getResearchTypeById(id) {
   return researchTypes.find((type) => type.id === id)
 }
+
