@@ -1,8 +1,3 @@
-Library
-/
-Scholarory App Build
-/ResearchDetail_dynamic_sources.txt
-
 <template>
   <AppLayout
     :title="item?.title || 'Research Item'"
@@ -29,10 +24,11 @@ Scholarory App Build
           </button>
 
           <button
-            class="ghost-btn"
+            class="danger-btn"
             type="button"
+            @click="handleDeleteItem"
           >
-            •••
+            Delete Item
           </button>
 
           <button
@@ -687,14 +683,26 @@ Scholarory App Build
                 This item does not link to anything yet.
               </p>
 
-              <RouterLink
+              <div
                 v-for="link in linkedItems"
                 :key="link.id"
-                :to="`/research/items/${link.id}`"
-                class="connection-link"
+                class="connection-row"
               >
-                {{ getItemIcon(link) }} {{ link.title }}
-              </RouterLink>
+                <RouterLink
+                  :to="`/research/items/${link.id}`"
+                  class="connection-link"
+                >
+                  {{ getItemIcon(link) }} {{ link.title }}
+                </RouterLink>
+
+                <button
+                  class="connection-remove-btn"
+                  type="button"
+                  @click="removeDirectConnection(link)"
+                >
+                  Remove
+                </button>
+              </div>
 
               <h3 class="backlink-heading">
                 Backlinks
@@ -707,15 +715,27 @@ Scholarory App Build
                 Nothing links back to this item yet.
               </p>
 
-              <RouterLink
+              <div
                 v-for="backlink in backlinks"
                 :key="backlink.id"
-                :to="`/research/items/${backlink.id}`"
-                class="connection-link"
+                class="connection-row"
               >
-                {{ getItemIcon(backlink) }}
-                {{ backlink.title }}
-              </RouterLink>
+                <RouterLink
+                  :to="`/research/items/${backlink.id}`"
+                  class="connection-link"
+                >
+                  {{ getItemIcon(backlink) }}
+                  {{ backlink.title }}
+                </RouterLink>
+
+                <button
+                  class="connection-remove-btn"
+                  type="button"
+                  @click="removeBacklink(backlink)"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           </div>
         </details>
@@ -754,6 +774,7 @@ import {
 import {
   RouterLink,
   useRoute,
+  useRouter,
 } from 'vue-router'
 
 import AppLayout from '../components/AppLayout.vue'
@@ -798,6 +819,7 @@ import {
 } from '../lib/userPreferences'
 
 const route = useRoute()
+const router = useRouter()
 
 const {
   allResearchItems,
@@ -805,7 +827,9 @@ const {
   getResearchItemById,
   getBacklinks,
   addLinkToItem,
+  removeLinkFromItem,
   updateResearchItem,
+  deleteResearchItem,
 } = useResearch()
 
 const {
@@ -835,6 +859,7 @@ const selectedLinkId = ref('')
 const selectedKnowledgeTagId = ref('')
 const editorBlocks = ref([])
 const hasLoadedBlocks = ref(false)
+const activeBlocksItemId = ref('')
 const isEditing = ref(false)
 const copiedCitationType = ref('')
 const isKnowledgeTagModalOpen = ref(false)
@@ -1282,8 +1307,22 @@ const backlinks = computed(() => {
     return []
   }
 
+  const directLinkIds =
+    new Set(
+      (item.value.links || [])
+        .map((id) =>
+          String(id),
+        ),
+    )
+
   return getBacklinks(
     item.value.id,
+  ).filter(
+    (backlink) => {
+      return !directLinkIds.has(
+        String(backlink.id),
+      )
+    },
   )
 })
 
@@ -1300,11 +1339,33 @@ const linkedItems = computed(() => {
 })
 
 const availableItems = computed(() => {
+  const currentId =
+    String(
+      item.value?.id ||
+      '',
+    )
+
+  const linkedIds =
+    new Set(
+      (item.value?.links || [])
+        .map((id) =>
+          String(id),
+        ),
+    )
+
   return allResearchItems.value.filter(
     (researchItem) => {
+      const researchItemId =
+        String(
+          researchItem.id,
+        )
+
       return (
-        researchItem.id !==
-        item.value?.id
+        researchItemId !==
+          currentId &&
+        !linkedIds.has(
+          researchItemId,
+        )
       )
     },
   )
@@ -1326,13 +1387,72 @@ onMounted(async () => {
   await loadKnowledgeTags()
   await loadResearchItemTags()
 
-  if (!route.params.id) {
+  await loadItemBlocks(
+    route.params.id,
+  )
+})
+
+watch(
+  () =>
+    JSON.stringify(
+      editorBlocks.value,
+    ),
+
+  async () => {
+    if (!hasLoadedBlocks.value) {
+      return
+    }
+
+    if (
+      !activeBlocksItemId.value
+    ) {
+      return
+    }
+
+    await saveBlocks(
+      activeBlocksItemId.value,
+      editorBlocks.value,
+    )
+  },
+)
+
+watch(
+  () => route.params.id,
+
+  async (nextId, previousId) => {
+    if (
+      !nextId ||
+      String(nextId) ===
+        String(previousId)
+    ) {
+      return
+    }
+
+    selectedLinkId.value = ''
+    selectedKnowledgeTagId.value = ''
+    isEditing.value = false
+
+    await loadItemBlocks(nextId)
+  },
+)
+
+async function loadItemBlocks(
+  itemId,
+) {
+  const cleanItemId =
+    String(itemId || '').trim()
+
+  hasLoadedBlocks.value = false
+  activeBlocksItemId.value = ''
+
+  if (!cleanItemId) {
+    editorBlocks.value = []
     return
   }
 
   const loadedBlocks =
     await loadBlocks(
-      route.params.id,
+      cleanItemId,
     )
 
   if (loadedBlocks.length > 0) {
@@ -1359,31 +1479,11 @@ onMounted(async () => {
     ]
   }
 
-  hasLoadedBlocks.value =
-    true
-})
+  activeBlocksItemId.value =
+    cleanItemId
 
-watch(
-  () =>
-    JSON.stringify(
-      editorBlocks.value,
-    ),
-
-  async () => {
-    if (!hasLoadedBlocks.value) {
-      return
-    }
-
-    if (!route.params.id) {
-      return
-    }
-
-    await saveBlocks(
-      route.params.id,
-      editorBlocks.value,
-    )
-  },
-)
+  hasLoadedBlocks.value = true
+}
 
 function getEmptyEditForm() {
   return {
@@ -1896,7 +1996,7 @@ async function copyCitation(
   }, 1600)
 }
 
-function connectItem() {
+async function connectItem() {
   if (
     !selectedLinkId.value ||
     !item.value
@@ -1904,13 +2004,85 @@ function connectItem() {
     return
   }
 
-  addLinkToItem(
-    item.value.id,
-    selectedLinkId.value,
-  )
+  const connected =
+    await addLinkToItem(
+      item.value.id,
+      selectedLinkId.value,
+    )
 
-  selectedLinkId.value =
-    ''
+  if (connected) {
+    selectedLinkId.value = ''
+  }
+}
+
+async function removeDirectConnection(
+  linkedItem,
+) {
+  if (!item.value) {
+    return
+  }
+
+  const confirmed =
+    window.confirm(
+      `Remove the connection between "${item.value.title}" and "${linkedItem.title}"?`,
+    )
+
+  if (!confirmed) {
+    return
+  }
+
+  await removeLinkFromItem(
+    item.value.id,
+    linkedItem.id,
+  )
+}
+
+async function removeBacklink(
+  backlink,
+) {
+  if (!item.value) {
+    return
+  }
+
+  const confirmed =
+    window.confirm(
+      `Remove the connection between "${backlink.title}" and "${item.value.title}"?`,
+    )
+
+  if (!confirmed) {
+    return
+  }
+
+  await removeLinkFromItem(
+    backlink.id,
+    item.value.id,
+  )
+}
+
+async function handleDeleteItem() {
+  if (!item.value) {
+    return
+  }
+
+  const confirmed =
+    window.confirm(
+      `Delete "${item.value.title}"? Scholarory will also remove links and backlinks pointing to this research item. This cannot be undone.`,
+    )
+
+  if (!confirmed) {
+    return
+  }
+
+  const deleted =
+    await deleteResearchItem(
+      item.value.id,
+    )
+
+  if (deleted) {
+    router.push(
+      '/research/workspace',
+    )
+  }
 }
 
 async function addKnowledgeTag() {
@@ -2143,6 +2315,7 @@ function getTypeName(
 
 .ghost-btn,
 .share-btn,
+.danger-btn,
 .secondary-btn,
 .save-btn,
 .small-btn,
@@ -2192,6 +2365,18 @@ function getTypeName(
   color: white;
   padding: 0.55rem 0.8rem;
 }
+.danger-btn {
+  border: 1px solid rgba(190, 18, 60, 0.28);
+  background: rgba(190, 18, 60, 0.08);
+  color: #be123c;
+  padding: 0.45rem 0.7rem;
+}
+
+.danger-btn:hover {
+  border-color: #be123c;
+  background: rgba(190, 18, 60, 0.14);
+}
+
 
 .error-box {
   margin-bottom: 1rem;
@@ -2601,11 +2786,44 @@ function getTypeName(
   color: var(--text-secondary);
 }
 
+.connection-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  margin: 0.45rem 0;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--bg-card);
+  padding: 0.45rem 0.55rem;
+}
+
 .connection-link {
   display: block;
-  margin: 0.45rem 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
   color: var(--text-secondary);
   text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-remove-btn {
+  flex: 0 0 auto;
+  border: 1px solid rgba(190, 18, 60, 0.24);
+  border-radius: 7px;
+  background: rgba(190, 18, 60, 0.07);
+  color: #be123c;
+  padding: 0.3rem 0.45rem;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.connection-remove-btn:hover {
+  border-color: #be123c;
 }
 
 .connection-link:hover {
