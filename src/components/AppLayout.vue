@@ -3,7 +3,35 @@
     <AppSidebar />
 
     <main class="app-main">
-      <header class="app-topbar">
+      <PageBanner
+        v-if="bannerKey"
+        :banner-key="bannerKey"
+        :icon-key="bannerKey"
+        :default-icon="defaultIcon"
+      >
+        <template #title>
+          <div class="page-header-row">
+            <div class="page-title-copy">
+              <slot name="header">
+                <div>
+                  <h1>{{ title }}</h1>
+                  <p v-if="subtitle">{{ subtitle }}</p>
+                </div>
+              </slot>
+            </div>
+
+            <div class="topbar-actions">
+              <slot name="actions" />
+
+              <button class="width-toggle" @click="toggleFullWidth">
+                {{ isFullWidth ? 'Normal width' : 'Full width' }}
+              </button>
+            </div>
+          </div>
+        </template>
+      </PageBanner>
+
+      <header v-else class="app-topbar">
         <div class="topbar-left">
           <slot name="header">
             <div>
@@ -32,24 +60,45 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import AppSidebar from './AppSidebar.vue'
+import PageBanner from './PageBanner.vue'
 
 defineProps({
-  title: { type: String, default: '' },
-  subtitle: { type: String, default: '' },
-  bannerKey: { type: String, default: '' },
-  defaultIcon: { type: String, default: '📄' },
+  title: {
+    type: String,
+    default: '',
+  },
+
+  subtitle: {
+    type: String,
+    default: '',
+  },
+
+  bannerKey: {
+    type: String,
+    default: '',
+  },
+
+  defaultIcon: {
+    type: String,
+    default: '📄',
+  },
 })
 
 const STORAGE_KEY = 'scholarory_full_width'
 const isFullWidth = ref(false)
 
 onMounted(() => {
-  isFullWidth.value = localStorage.getItem(STORAGE_KEY) === 'true'
+  isFullWidth.value =
+    localStorage.getItem(STORAGE_KEY) === 'true'
 })
 
 function toggleFullWidth() {
   isFullWidth.value = !isFullWidth.value
-  localStorage.setItem(STORAGE_KEY, String(isFullWidth.value))
+
+  localStorage.setItem(
+    STORAGE_KEY,
+    String(isFullWidth.value),
+  )
 }
 </script>
 
@@ -79,16 +128,28 @@ function toggleFullWidth() {
   background: var(--bg-primary);
 }
 
+.page-header-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.page-title-copy,
 .topbar-left {
   min-width: 0;
 }
 
+.page-title-copy h1,
 .topbar-left h1,
 .app-topbar h1 {
   margin: 0;
   font-size: 1.15rem;
 }
 
+.page-title-copy p,
 .topbar-left p,
 .app-topbar p {
   margin: 0.2rem 0 0;
@@ -146,7 +207,8 @@ function toggleFullWidth() {
 }
 
 @media (max-width: 760px) {
-  .app-topbar {
+  .app-topbar,
+  .page-header-row {
     flex-direction: column;
     align-items: flex-start;
   }
