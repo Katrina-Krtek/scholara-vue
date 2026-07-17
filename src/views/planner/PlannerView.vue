@@ -667,13 +667,51 @@ import {
 } from 'vue'
 
 import AppLayout from '../../components/AppLayout.vue'
-import {
-  plannerBlocks as mockPlannerBlocks,
-} from '../../data/mockPlannerData.js'
 
 const PLANNER_STORAGE_KEY = 'scholarory-planner-blocks'
 const SETTINGS_STORAGE_KEY = 'scholarory-planner-settings'
 const LEGACY_TIME_FORMAT_KEY = 'scholarory_time_format'
+const LEGACY_SEED_CLEANUP_KEY =
+  'scholarory-planner-legacy-seed-cleanup-v1'
+
+const LEGACY_SEED_SIGNATURES = [
+  {
+    id: '1',
+    title: 'DMIN Reading',
+    start: '08:00',
+    end: '09:30',
+  },
+  {
+    id: '2',
+    title: 'Book Review Draft',
+    start: '10:00',
+    end: '11:30',
+  },
+  {
+    id: '3',
+    title: 'Lunch',
+    start: '12:00',
+    end: '13:00',
+  },
+  {
+    id: '4',
+    title: 'Scholarory Development',
+    start: '14:00',
+    end: '16:00',
+  },
+  {
+    id: '5',
+    title: 'Gym',
+    start: '17:00',
+    end: '18:00',
+  },
+  {
+    id: '6',
+    title: 'Bible Reading',
+    start: '20:00',
+    end: '20:30',
+  },
+]
 
 const HOUR_HEIGHT = 72
 
@@ -1031,10 +1069,12 @@ function loadPlannerItems() {
     )
 
     if (Array.isArray(storedItems)) {
-      plannerItems.value = storedItems.map(
-        normalizePlannerItem,
-      )
+      plannerItems.value =
+        storedItems.map(
+          normalizePlannerItem,
+        )
 
+      removeLegacySeedItems()
       writePlannerItems()
       return
     }
@@ -1045,26 +1085,49 @@ function loadPlannerItems() {
     )
   }
 
-  const seedItems = Array.isArray(mockPlannerBlocks)
-    ? mockPlannerBlocks.map((block, index) => {
-        return normalizePlannerItem({
-          ...block,
-          id:
-            block.id ||
-            `planner-seed-${index}`,
-          date: getTodayKey(),
-          category: normalizeCategory(
-            block.category || block.type,
-          ),
-          notes: block.notes || '',
-          completed:
-            block.completed === true,
-        })
-      })
-    : []
-
-  plannerItems.value = seedItems
+  plannerItems.value = []
   writePlannerItems()
+
+  window.localStorage.setItem(
+    LEGACY_SEED_CLEANUP_KEY,
+    'true',
+  )
+}
+
+function removeLegacySeedItems() {
+  const cleanupComplete =
+    window.localStorage.getItem(
+      LEGACY_SEED_CLEANUP_KEY,
+    ) === 'true'
+
+  if (cleanupComplete) {
+    return
+  }
+
+  plannerItems.value =
+    plannerItems.value.filter(
+      (item) => {
+        return !LEGACY_SEED_SIGNATURES.some(
+          (seed) => {
+            return (
+              String(item.id) ===
+                seed.id &&
+              item.title ===
+                seed.title &&
+              item.start ===
+                seed.start &&
+              item.end ===
+                seed.end
+            )
+          },
+        )
+      },
+    )
+
+  window.localStorage.setItem(
+    LEGACY_SEED_CLEANUP_KEY,
+    'true',
+  )
 }
 
 function writePlannerItems() {
@@ -2737,3 +2800,4 @@ function showToastMessage(message) {
   }
 }
 </style>
+

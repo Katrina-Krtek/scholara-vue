@@ -23,7 +23,6 @@ import InstructorDetailView from '../views/instructors/InstructorDetailView.vue'
 
 import NotesHub from '../views/NotesHub.vue'
 import CalendarHub from '../views/CalendarHub.vue'
-import DailyPagesView from '../views/DailyPagesView.vue'
 
 import PlannerView from '../views/planner/PlannerView.vue'
 import WeeklyPlannerView from '../views/planner/WeeklyPlannerView.vue'
@@ -109,12 +108,10 @@ const routes = [
     path: '/daily-page',
     redirect: '/daily',
   },
-  {
-    path: '/daily-pages',
-    name: 'DailyPagesView',
-    component: DailyPagesView,
-  },
-
+{
+  path: '/daily-pages',
+  redirect: '/daily',
+},
   {
     path: '/tasks',
     name: 'TasksHub',
