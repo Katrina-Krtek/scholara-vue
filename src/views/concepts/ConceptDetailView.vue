@@ -831,12 +831,46 @@ const notesSaveLabel = computed(() => {
 })
 
 watch(
-  concept,
-  (currentConcept) => {
+  () => concept.value?.id || '',
+  (currentId, previousId) => {
+    window.clearTimeout(notesSaveTimer)
+    notesSaveTimer = null
+
+    if (
+      previousId &&
+      previousId !== currentId
+    ) {
+      const previousConcept =
+        getConceptById(previousId)
+
+      if (
+        previousConcept &&
+        editableNotes.value !==
+          previousConcept.notes
+      ) {
+        updateConcept(
+          previousId,
+          {
+            notes:
+              editableNotes.value,
+          },
+        )
+      }
+    }
+
+    const currentConcept =
+      currentId
+        ? getConceptById(currentId)
+        : null
+
     editableNotes.value =
       currentConcept?.notes || ''
 
-    selectedRelatedConceptId.value = ''
+    notesSaveState.value =
+      'saved'
+
+    selectedRelatedConceptId.value =
+      ''
   },
   {
     immediate: true,
@@ -878,20 +912,41 @@ onBeforeUnmount(() => {
 })
 
 function saveNotes() {
-  if (!concept.value) {
+  window.clearTimeout(
+    notesSaveTimer,
+  )
+
+  notesSaveTimer = null
+
+  const currentConcept =
+    concept.value
+
+  if (!currentConcept) {
     return
   }
 
-  notesSaveState.value = 'saving'
+  if (
+    editableNotes.value ===
+    currentConcept.notes
+  ) {
+    notesSaveState.value =
+      'saved'
+
+    return
+  }
+
+  notesSaveState.value =
+    'saving'
 
   updateConcept(
-    concept.value.id,
+    currentConcept.id,
     {
       notes: editableNotes.value,
     },
   )
 
-  notesSaveState.value = 'saved'
+  notesSaveState.value =
+    'saved'
 }
 
 function openEditModal() {

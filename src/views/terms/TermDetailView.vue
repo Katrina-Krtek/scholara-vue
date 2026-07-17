@@ -769,15 +769,20 @@
             <label>
               Discipline
 
-              <select v-model="editForm.discipline">
+              <input
+                v-model.trim="editForm.discipline"
+                type="text"
+                list="term-detail-discipline-options"
+                placeholder="Choose or enter any discipline"
+              />
+
+              <datalist id="term-detail-discipline-options">
                 <option
-                  v-for="discipline in termDisciplines"
+                  v-for="discipline in disciplineSuggestions"
                   :key="discipline"
                   :value="discipline"
-                >
-                  {{ discipline }}
-                </option>
-              </select>
+                ></option>
+              </datalist>
             </label>
 
             <label>
@@ -949,21 +954,48 @@ import { useTerms } from '@/composables/useTerms'
 const route = useRoute()
 const router = useRouter()
 
-const termDisciplines = [
+const defaultTermDisciplines = [
   'General',
+  'Agriculture',
+  'Anthropology',
+  'Architecture',
+  'Arts & Humanities',
+  'Biology',
+  'Business',
+  'Chemistry',
+  'Communication',
+  'Computer Science',
+  'Criminal Justice',
+  'Economics',
+  'Education',
+  'Engineering',
+  'Environmental Science',
+  'Finance',
+  'Health Sciences',
+  'History',
+  'Law',
+  'Languages & Linguistics',
+  'Literature',
+  'Mathematics',
+  'Medicine',
+  'Music',
+  'Nursing',
+  'Philosophy',
+  'Physics',
+  'Political Science',
+  'Psychology',
+  'Public Health',
+  'Religious Studies',
+  'Research Methodology',
+  'Social Sciences',
+  'Sociology',
   'Theology',
   'Biblical Studies',
   'Spiritual Formation',
   'Church History',
   'Ministry',
-  'Leadership',
-  'Research Methodology',
-  'Writing',
-  'Education',
-  'Philosophy',
-  'Psychology',
-  'Sociology',
   'Original Languages',
+  'Writing',
   'Other',
 ]
 
@@ -1067,6 +1099,32 @@ const relatedTerms = computed(() => {
   return getRelatedTerms(termRecord.value.id)
 })
 
+const disciplineSuggestions = computed(() => {
+  const usedDisciplines =
+    terms.value
+      .map((item) =>
+        String(
+          item.discipline || '',
+        ).trim(),
+      )
+      .filter(Boolean)
+
+  return [
+    ...new Set([
+      ...defaultTermDisciplines,
+      ...usedDisciplines,
+    ]),
+  ].sort((a, b) =>
+    a.localeCompare(
+      b,
+      undefined,
+      {
+        sensitivity: 'base',
+      },
+    ),
+  )
+})
+
 const availableRelatedTerms = computed(() => {
   if (!termRecord.value) {
     return []
@@ -1109,13 +1167,49 @@ const notesSaveLabel = computed(() => {
 })
 
 watch(
-  termRecord,
-  (currentTerm) => {
+  () => termRecord.value?.id || '',
+  (currentId, previousId) => {
+    window.clearTimeout(notesSaveTimer)
+    notesSaveTimer = null
+
+    if (
+      previousId &&
+      previousId !== currentId
+    ) {
+      const previousTerm =
+        getTermById(previousId)
+
+      if (
+        previousTerm &&
+        editableNotes.value !==
+          previousTerm.notes
+      ) {
+        updateTerm(
+          previousId,
+          {
+            notes:
+              editableNotes.value,
+          },
+        )
+      }
+    }
+
+    const currentTerm =
+      currentId
+        ? getTermById(currentId)
+        : null
+
     editableNotes.value =
       currentTerm?.notes || ''
 
-    selectedRelatedTermId.value = ''
-    newExample.value = ''
+    notesSaveState.value =
+      'saved'
+
+    selectedRelatedTermId.value =
+      ''
+
+    newExample.value =
+      ''
   },
   {
     immediate: true,
@@ -1158,17 +1252,42 @@ onBeforeUnmount(() => {
 })
 
 function saveNotes() {
-  if (!termRecord.value) {
+  window.clearTimeout(
+    notesSaveTimer,
+  )
+
+  notesSaveTimer = null
+
+  const currentTerm =
+    termRecord.value
+
+  if (!currentTerm) {
     return
   }
 
-  notesSaveState.value = 'saving'
+  if (
+    editableNotes.value ===
+    currentTerm.notes
+  ) {
+    notesSaveState.value =
+      'saved'
 
-  updateTerm(termRecord.value.id, {
-    notes: editableNotes.value,
-  })
+    return
+  }
 
-  notesSaveState.value = 'saved'
+  notesSaveState.value =
+    'saving'
+
+  updateTerm(
+    currentTerm.id,
+    {
+      notes:
+        editableNotes.value,
+    },
+  )
+
+  notesSaveState.value =
+    'saved'
 }
 
 function handleAddExample() {
@@ -1336,7 +1455,8 @@ function saveTermChanges() {
       editForm.partOfSpeech || 'Other',
 
     discipline:
-      editForm.discipline || 'General',
+      editForm.discipline.trim() ||
+      'General',
 
     status:
       editForm.status || 'developing',
@@ -2375,3 +2495,4 @@ function showToast(message) {
   }
 }
 </style>
+

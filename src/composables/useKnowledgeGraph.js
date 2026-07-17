@@ -8,6 +8,8 @@ import { useBooks } from '@/composables/useBooks'
 import { useSources } from '@/composables/useSources'
 import { useJournals } from '@/composables/useJournals'
 import { useResearch } from '@/composables/useResearch'
+import { useConcepts } from '@/composables/useConcepts'
+import { useTerms } from '@/composables/useTerms'
 
 import {
   graphNodeTypes as baseGraphNodeTypes,
@@ -42,6 +44,7 @@ const SOURCE_GRAPH_TYPES = [
 const RESEARCH_ITEM_GRAPH_TYPES = [
   'note',
   'concept',
+  'term',
   'person',
   'assignment',
   'quote',
@@ -2092,6 +2095,511 @@ function createResearchItemGraphNode(item) {
   }
 }
 
+
+function createConceptGraphNode(concept) {
+  const updatedAt = firstValue(
+    concept.updatedAt,
+    concept.createdAt,
+  )
+
+  const courseIds =
+    getCourseIdVariants(
+      concept.linkedCourseIds || [],
+    )
+
+  const assignmentIds =
+    getAssignmentIdVariants(
+      concept.linkedAssignmentIds || [],
+    )
+
+  return {
+    id: `concept:${concept.id}`,
+    entityId: String(concept.id),
+
+    title:
+      concept.name ||
+      'Untitled Concept',
+
+    type: 'concept',
+    sourceType: 'Concept',
+    recordType: 'Concept',
+
+    description:
+      uniqueStrings([
+        concept.definition,
+        concept.notes,
+      ]).join(' · ') ||
+      'Concept from the Scholarory Concepts Database.',
+
+    tags: uniqueStrings([
+      ...(concept.tags || []),
+      ...(concept.aliases || []),
+      concept.category,
+    ]),
+
+    aliases: uniqueStrings(
+      concept.aliases || [],
+    ),
+
+    category:
+      concept.category ||
+      'General',
+
+    definition:
+      concept.definition ||
+      '',
+
+    notes:
+      concept.notes ||
+      '',
+
+    summary:
+      concept.definition ||
+      '',
+
+    status:
+      concept.archived
+        ? 'archived'
+        : concept.status ||
+          'developing',
+
+    priority:
+      concept.pinned
+        ? 'pinned'
+        : '',
+
+    pinned:
+      concept.pinned === true,
+
+    archived:
+      concept.archived === true,
+
+    updatedAt,
+
+    createdAt:
+      concept.createdAt ||
+      '',
+
+    date: getDateKey(updatedAt),
+
+    courseId:
+      courseIds[0] ||
+      null,
+
+    courseIds,
+    assignmentIds,
+
+    route:
+      `/concepts/${encodeURIComponent(
+        concept.id,
+      )}`,
+
+    relatedConceptIds:
+      uniqueStrings(
+        concept.relatedConceptIds || [],
+      ),
+
+    linkedSourceIds:
+      uniqueStrings(
+        concept.linkedSourceIds || [],
+      ),
+
+    linkedCourseIds:
+      uniqueStrings(
+        concept.linkedCourseIds || [],
+      ),
+
+    linkedAssignmentIds:
+      uniqueStrings(
+        concept.linkedAssignmentIds || [],
+      ),
+
+    linkedWritingProjectIds:
+      uniqueStrings(
+        concept.linkedWritingProjectIds || [],
+      ),
+
+    metadata: {
+      aliases: uniqueStrings(
+        concept.aliases || [],
+      ),
+
+      category:
+        concept.category ||
+        'General',
+
+      definition:
+        concept.definition ||
+        '',
+
+      notes:
+        concept.notes ||
+        '',
+
+      pinned:
+        concept.pinned === true,
+
+      archived:
+        concept.archived === true,
+
+      relatedConceptIds:
+        uniqueStrings(
+          concept.relatedConceptIds || [],
+        ),
+
+      linkedSourceIds:
+        uniqueStrings(
+          concept.linkedSourceIds || [],
+        ),
+
+      linkedCourseIds:
+        uniqueStrings(
+          concept.linkedCourseIds || [],
+        ),
+
+      linkedAssignmentIds:
+        uniqueStrings(
+          concept.linkedAssignmentIds || [],
+        ),
+
+      linkedWritingProjectIds:
+        uniqueStrings(
+          concept.linkedWritingProjectIds || [],
+        ),
+    },
+  }
+}
+
+
+function createTermGraphNode(termRecord) {
+  const updatedAt = firstValue(
+    termRecord.updatedAt,
+    termRecord.createdAt,
+  )
+
+  const courseIds =
+    getCourseIdVariants(
+      termRecord.linkedCourseIds || [],
+    )
+
+  const assignmentIds =
+    getAssignmentIdVariants(
+      termRecord.linkedAssignmentIds || [],
+    )
+
+  return {
+    id: `term:${termRecord.id}`,
+    entityId: String(termRecord.id),
+
+    title:
+      termRecord.term ||
+      'Untitled Term',
+
+    term:
+      termRecord.term ||
+      'Untitled Term',
+
+    type: 'term',
+    sourceType: 'Term',
+    recordType: 'Term',
+
+    description:
+      uniqueStrings([
+        termRecord.definition,
+        termRecord.extendedDefinition,
+        ...(termRecord.examples || []),
+        termRecord.notes,
+      ]).join(' · ') ||
+      'Term from the Scholarory Terms Database.',
+
+    tags: uniqueStrings([
+      ...(termRecord.tags || []),
+      ...(termRecord.aliases || []),
+      termRecord.discipline,
+      termRecord.partOfSpeech,
+      termRecord.originalLanguage,
+    ]),
+
+    aliases: uniqueStrings(
+      termRecord.aliases || [],
+    ),
+
+    definition:
+      termRecord.definition ||
+      '',
+
+    extendedDefinition:
+      termRecord.extendedDefinition ||
+      '',
+
+    pronunciation:
+      termRecord.pronunciation ||
+      '',
+
+    originalLanguage:
+      termRecord.originalLanguage ||
+      '',
+
+    originalSpelling:
+      termRecord.originalSpelling ||
+      '',
+
+    transliteration:
+      termRecord.transliteration ||
+      '',
+
+    partOfSpeech:
+      termRecord.partOfSpeech ||
+      'Other',
+
+    discipline:
+      termRecord.discipline ||
+      'General',
+
+    examples:
+      uniqueStrings(
+        termRecord.examples || [],
+      ),
+
+    notes:
+      termRecord.notes ||
+      '',
+
+    summary:
+      termRecord.definition ||
+      '',
+
+    status:
+      termRecord.archived
+        ? 'archived'
+        : termRecord.status ||
+          'developing',
+
+    priority:
+      termRecord.pinned
+        ? 'pinned'
+        : '',
+
+    pinned:
+      termRecord.pinned === true,
+
+    archived:
+      termRecord.archived === true,
+
+    updatedAt,
+
+    createdAt:
+      termRecord.createdAt ||
+      '',
+
+    date: getDateKey(updatedAt),
+
+    courseId:
+      courseIds[0] ||
+      null,
+
+    courseIds,
+    assignmentIds,
+
+    route:
+      `/terms/${encodeURIComponent(
+        termRecord.id,
+      )}`,
+
+    relatedTermIds:
+      uniqueStrings(
+        termRecord.relatedTermIds || [],
+      ),
+
+    linkedConceptIds:
+      uniqueStrings(
+        termRecord.linkedConceptIds || [],
+      ),
+
+    linkedSourceIds:
+      uniqueStrings(
+        termRecord.linkedSourceIds || [],
+      ),
+
+    linkedCourseIds:
+      uniqueStrings(
+        termRecord.linkedCourseIds || [],
+      ),
+
+    linkedAssignmentIds:
+      uniqueStrings(
+        termRecord.linkedAssignmentIds || [],
+      ),
+
+    linkedWritingProjectIds:
+      uniqueStrings(
+        termRecord.linkedWritingProjectIds || [],
+      ),
+
+    metadata: {
+      aliases: uniqueStrings(
+        termRecord.aliases || [],
+      ),
+
+      definition:
+        termRecord.definition ||
+        '',
+
+      extendedDefinition:
+        termRecord.extendedDefinition ||
+        '',
+
+      pronunciation:
+        termRecord.pronunciation ||
+        '',
+
+      originalLanguage:
+        termRecord.originalLanguage ||
+        '',
+
+      originalSpelling:
+        termRecord.originalSpelling ||
+        '',
+
+      transliteration:
+        termRecord.transliteration ||
+        '',
+
+      partOfSpeech:
+        termRecord.partOfSpeech ||
+        'Other',
+
+      discipline:
+        termRecord.discipline ||
+        'General',
+
+      examples: uniqueStrings(
+        termRecord.examples || [],
+      ),
+
+      notes:
+        termRecord.notes ||
+        '',
+
+      pinned:
+        termRecord.pinned === true,
+
+      archived:
+        termRecord.archived === true,
+
+      relatedTermIds:
+        uniqueStrings(
+          termRecord.relatedTermIds || [],
+        ),
+
+      linkedConceptIds:
+        uniqueStrings(
+          termRecord.linkedConceptIds || [],
+        ),
+
+      linkedSourceIds:
+        uniqueStrings(
+          termRecord.linkedSourceIds || [],
+        ),
+
+      linkedCourseIds:
+        uniqueStrings(
+          termRecord.linkedCourseIds || [],
+        ),
+
+      linkedAssignmentIds:
+        uniqueStrings(
+          termRecord.linkedAssignmentIds || [],
+        ),
+
+      linkedWritingProjectIds:
+        uniqueStrings(
+          termRecord.linkedWritingProjectIds || [],
+        ),
+    },
+  }
+}
+
+function findGraphNodeForSourceRecord(
+  nodes,
+  sourceId,
+) {
+  const cleanId = String(
+    sourceId || '',
+  ).trim()
+
+  if (!cleanId) {
+    return null
+  }
+
+  return (
+    nodes.find((node) => {
+      if (
+        !SOURCE_GRAPH_TYPES.includes(
+          node.type,
+        )
+      ) {
+        return false
+      }
+
+      return [
+        node.entityId,
+        node.sourceRecordId,
+      ].some((value) => {
+        return (
+          String(value || '').trim() ===
+          cleanId
+        )
+      })
+    }) ||
+    null
+  )
+}
+
+function findGraphNodeForWritingProject(
+  nodes,
+  projectId,
+) {
+  const cleanId = String(
+    projectId || '',
+  ).trim()
+
+  if (!cleanId) {
+    return null
+  }
+
+  return (
+    nodes.find((node) => {
+      const nodeType =
+        String(node.type || '')
+          .toLowerCase()
+
+      const isWritingNode =
+        nodeType.includes('writing') ||
+        nodeType === 'project'
+
+      if (!isWritingNode) {
+        return false
+      }
+
+      return [
+        node.id,
+        node.entityId,
+      ].some((value) => {
+        return (
+          String(value || '').trim() ===
+            cleanId ||
+          String(value || '').trim() ===
+            `writing-project:${cleanId}` ||
+          String(value || '').trim() ===
+            `writing-project-${cleanId}`
+        )
+      })
+    }) ||
+    null
+  )
+}
+
 function graphNodesRepresentSameEntity(
   firstNode,
   secondNode,
@@ -2386,6 +2894,27 @@ function nodeMatchesSearch(
     node.quoteText,
     node.pageNumber,
 
+    node.aliases,
+    node.category,
+    node.term,
+    node.extendedDefinition,
+    node.pronunciation,
+    node.originalLanguage,
+    node.originalSpelling,
+    node.transliteration,
+    node.partOfSpeech,
+    node.discipline,
+    node.examples,
+    node.pinned,
+    node.archived,
+    node.relatedConceptIds,
+    node.relatedTermIds,
+    node.linkedConceptIds,
+    node.linkedSourceIds,
+    node.linkedCourseIds,
+    node.linkedAssignmentIds,
+    node.linkedWritingProjectIds,
+
     node.topicTags,
     node.supertags,
     node.metadata,
@@ -2433,6 +2962,14 @@ export function useKnowledgeGraph() {
     allResearchItems,
     loadResearchItems,
   } = useResearch()
+
+  const {
+    activeConcepts,
+  } = useConcepts()
+
+  const {
+    activeTerms,
+  } = useTerms()
 
   if (!allResearchItems.value.length) {
     Promise.resolve(
@@ -2591,6 +3128,18 @@ export function useKnowledgeGraph() {
       })
   })
 
+  const liveConceptNodes = computed(() => {
+    return activeConcepts.value.map((concept) => {
+      return createConceptGraphNode(concept)
+    })
+  })
+
+  const liveTermNodes = computed(() => {
+    return activeTerms.value.map((termRecord) => {
+      return createTermGraphNode(termRecord)
+    })
+  })
+
   const liveResearchItemNodes = computed(() => {
     return allResearchItems.value.map((item) => {
       return createResearchItemGraphNode(item)
@@ -2603,6 +3152,8 @@ export function useKnowledgeGraph() {
       ...liveJournalNodes.value,
       ...liveArticleNodes.value,
       ...liveSourceNodes.value,
+      ...liveConceptNodes.value,
+      ...liveTermNodes.value,
     ].map((node) => ({
       ...node,
     }))
@@ -2654,17 +3205,60 @@ export function useKnowledgeGraph() {
 
   const nodes = computed(() => {
     const hasLiveSources =
-      integratedLiveNodes.value.nodes.length > 0
+      liveBookNodes.value.length > 0 ||
+      liveJournalNodes.value.length > 0 ||
+      liveArticleNodes.value.length > 0 ||
+      liveSourceNodes.value.length > 0 ||
+      liveResearchItemNodes.value.some(
+        (node) => {
+          return SOURCE_GRAPH_TYPES.includes(
+            node.type,
+          )
+        },
+      )
+
+    const hasLiveConcepts =
+      liveConceptNodes.value.length > 0 ||
+      liveResearchItemNodes.value.some(
+        (node) => {
+          return node.type === 'concept'
+        },
+      )
+
+    const hasLiveTerms =
+      liveTermNodes.value.length > 0 ||
+      liveResearchItemNodes.value.some(
+        (node) => {
+          return node.type === 'term'
+        },
+      )
 
     const retainedBaseNodes =
       baseNodes.value.filter((node) => {
-        if (!hasLiveSources) {
-          return true
+        if (
+          hasLiveSources &&
+          SOURCE_GRAPH_TYPES.includes(
+            node.type,
+          )
+        ) {
+          return false
         }
 
-        return !SOURCE_GRAPH_TYPES.includes(
-          node.type,
-        )
+        if (
+          hasLiveConcepts &&
+          node.type === 'concept'
+        ) {
+          return false
+        }
+
+        if (
+          hasLiveTerms &&
+          node.type === 'term'
+        ) {
+          return false
+        }
+
+        return true
       })
 
     return [
@@ -3038,6 +3632,359 @@ export function useKnowledgeGraph() {
     return relationships
   })
 
+
+  const liveConceptLinks = computed(() => {
+    const relationships = []
+    const seenRelationshipIds = new Set()
+
+    function addRelationship(
+      relationship,
+    ) {
+      if (
+        !relationship?.source ||
+        !relationship?.target ||
+        relationship.source ===
+          relationship.target ||
+        seenRelationshipIds.has(
+          relationship.id,
+        )
+      ) {
+        return
+      }
+
+      seenRelationshipIds.add(
+        relationship.id,
+      )
+
+      relationships.push(
+        relationship,
+      )
+    }
+
+    liveConceptNodes.value.forEach(
+      (conceptNode) => {
+        uniqueStrings(
+          conceptNode.relatedConceptIds || [],
+        ).forEach((relatedConceptId) => {
+          const relatedNode =
+            findGraphNodeForEntity(
+              nodes.value,
+              'concept',
+              relatedConceptId,
+            )
+
+          if (!relatedNode) {
+            return
+          }
+
+          const pair = [
+            conceptNode.id,
+            relatedNode.id,
+          ].sort()
+
+          addRelationship({
+            id:
+              `concept-related:${pair[0]}:${pair[1]}`,
+
+            source: pair[0],
+            target: pair[1],
+            label: 'Related concept',
+            strength: 5,
+          })
+        })
+
+        uniqueStrings(
+          conceptNode.linkedSourceIds || [],
+        ).forEach((sourceId) => {
+          const sourceNode =
+            findGraphNodeForSourceRecord(
+              nodes.value,
+              sourceId,
+            )
+
+          if (!sourceNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `concept-source:${conceptNode.entityId}:${sourceNode.id}`,
+
+            source: conceptNode.id,
+            target: sourceNode.id,
+            label: 'Supported by source',
+            strength: 4,
+          })
+        })
+
+        uniqueStrings(
+          conceptNode.courseIds || [],
+        ).forEach((courseId) => {
+          const courseNode =
+            findGraphNodeForEntity(
+              nodes.value,
+              'course',
+              courseId,
+            )
+
+          if (!courseNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `concept-course:${conceptNode.entityId}:${courseNode.id}`,
+
+            source: conceptNode.id,
+            target: courseNode.id,
+            label: 'Used in course',
+            strength: 4,
+          })
+        })
+
+        uniqueStrings(
+          conceptNode.assignmentIds || [],
+        ).forEach((assignmentId) => {
+          const assignmentNode =
+            findGraphNodeForEntity(
+              nodes.value,
+              'assignment',
+              assignmentId,
+            )
+
+          if (!assignmentNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `concept-assignment:${conceptNode.entityId}:${assignmentNode.id}`,
+
+            source: conceptNode.id,
+            target: assignmentNode.id,
+            label: 'Supports assignment',
+            strength: 4,
+          })
+        })
+
+        uniqueStrings(
+          conceptNode.linkedWritingProjectIds || [],
+        ).forEach((projectId) => {
+          const writingNode =
+            findGraphNodeForWritingProject(
+              nodes.value,
+              projectId,
+            )
+
+          if (!writingNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `concept-writing:${conceptNode.entityId}:${writingNode.id}`,
+
+            source: conceptNode.id,
+            target: writingNode.id,
+            label: 'Used in writing',
+            strength: 4,
+          })
+        })
+      },
+    )
+
+    return relationships
+  })
+
+
+  const liveTermLinks = computed(() => {
+    const relationships = []
+    const seenRelationshipIds = new Set()
+
+    function addRelationship(
+      relationship,
+    ) {
+      if (
+        !relationship?.source ||
+        !relationship?.target ||
+        relationship.source ===
+          relationship.target ||
+        seenRelationshipIds.has(
+          relationship.id,
+        )
+      ) {
+        return
+      }
+
+      seenRelationshipIds.add(
+        relationship.id,
+      )
+
+      relationships.push(
+        relationship,
+      )
+    }
+
+    liveTermNodes.value.forEach(
+      (termNode) => {
+        uniqueStrings(
+          termNode.relatedTermIds || [],
+        ).forEach((relatedTermId) => {
+          const relatedNode =
+            findGraphNodeForEntity(
+              nodes.value,
+              'term',
+              relatedTermId,
+            )
+
+          if (!relatedNode) {
+            return
+          }
+
+          const pair = [
+            termNode.id,
+            relatedNode.id,
+          ].sort()
+
+          addRelationship({
+            id:
+              `term-related:${pair[0]}:${pair[1]}`,
+
+            source: pair[0],
+            target: pair[1],
+            label: 'Related term',
+            strength: 5,
+          })
+        })
+
+        uniqueStrings(
+          termNode.linkedConceptIds || [],
+        ).forEach((conceptId) => {
+          const conceptNode =
+            findGraphNodeForEntity(
+              nodes.value,
+              'concept',
+              conceptId,
+            )
+
+          if (!conceptNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `term-concept:${termNode.entityId}:${conceptNode.id}`,
+
+            source: termNode.id,
+            target: conceptNode.id,
+            label: 'Defines concept',
+            strength: 5,
+          })
+        })
+
+        uniqueStrings(
+          termNode.linkedSourceIds || [],
+        ).forEach((sourceId) => {
+          const sourceNode =
+            findGraphNodeForSourceRecord(
+              nodes.value,
+              sourceId,
+            )
+
+          if (!sourceNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `term-source:${termNode.entityId}:${sourceNode.id}`,
+
+            source: termNode.id,
+            target: sourceNode.id,
+            label: 'Supported by source',
+            strength: 4,
+          })
+        })
+
+        uniqueStrings(
+          termNode.courseIds || [],
+        ).forEach((courseId) => {
+          const courseNode =
+            findGraphNodeForEntity(
+              nodes.value,
+              'course',
+              courseId,
+            )
+
+          if (!courseNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `term-course:${termNode.entityId}:${courseNode.id}`,
+
+            source: termNode.id,
+            target: courseNode.id,
+            label: 'Used in course',
+            strength: 4,
+          })
+        })
+
+        uniqueStrings(
+          termNode.assignmentIds || [],
+        ).forEach((assignmentId) => {
+          const assignmentNode =
+            findGraphNodeForEntity(
+              nodes.value,
+              'assignment',
+              assignmentId,
+            )
+
+          if (!assignmentNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `term-assignment:${termNode.entityId}:${assignmentNode.id}`,
+
+            source: termNode.id,
+            target: assignmentNode.id,
+            label: 'Supports assignment',
+            strength: 4,
+          })
+        })
+
+        uniqueStrings(
+          termNode.linkedWritingProjectIds || [],
+        ).forEach((projectId) => {
+          const writingNode =
+            findGraphNodeForWritingProject(
+              nodes.value,
+              projectId,
+            )
+
+          if (!writingNode) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `term-writing:${termNode.entityId}:${writingNode.id}`,
+
+            source: termNode.id,
+            target: writingNode.id,
+            label: 'Used in writing',
+            strength: 4,
+          })
+        })
+      },
+    )
+
+    return relationships
+  })
+
   const links = computed(() => {
     const existingNodeIds = new Set(
       nodes.value.map((node) => {
@@ -3054,6 +4001,8 @@ export function useKnowledgeGraph() {
       ...liveArticleLinks.value,
       ...liveSourceLinks.value,
       ...liveResearchLinks.value,
+      ...liveConceptLinks.value,
+      ...liveTermLinks.value,
     ].filter((link) => {
       if (
         !existingNodeIds.has(link.source) ||

@@ -438,8 +438,8 @@
             </h2>
 
             <p>
-              Add a word, phrase, doctrine, technical term, or
-              original-language vocabulary item.
+              Add a word, phrase, technical term, concept, or
+              vocabulary item from any field.
             </p>
           </div>
 
@@ -481,7 +481,7 @@
             <textarea
               v-model="termForm.extendedDefinition"
               rows="6"
-              placeholder="Add historical, theological, academic, or contextual detail."
+              placeholder="Add historical, academic, professional, scientific, or contextual detail."
             ></textarea>
           </label>
 
@@ -489,15 +489,20 @@
             <label>
               Discipline
 
-              <select v-model="termForm.discipline">
+              <input
+                v-model.trim="termForm.discipline"
+                type="text"
+                list="term-discipline-options"
+                placeholder="Choose or enter any discipline"
+              />
+
+              <datalist id="term-discipline-options">
                 <option
-                  v-for="discipline in termDisciplines"
+                  v-for="discipline in disciplineSuggestions"
                   :key="discipline"
                   :value="discipline"
-                >
-                  {{ discipline }}
-                </option>
-              </select>
+                ></option>
+              </datalist>
             </label>
 
             <label>
@@ -598,7 +603,7 @@
               <input
                 v-model="termForm.tags"
                 type="text"
-                placeholder="theology, formation, doctrine"
+                placeholder="course topic, subject, specialty"
               />
             </label>
           </div>
@@ -704,21 +709,48 @@ import { useTerms } from '@/composables/useTerms'
 
 const router = useRouter()
 
-const termDisciplines = [
+const defaultTermDisciplines = [
   'General',
+  'Agriculture',
+  'Anthropology',
+  'Architecture',
+  'Arts & Humanities',
+  'Biology',
+  'Business',
+  'Chemistry',
+  'Communication',
+  'Computer Science',
+  'Criminal Justice',
+  'Economics',
+  'Education',
+  'Engineering',
+  'Environmental Science',
+  'Finance',
+  'Health Sciences',
+  'History',
+  'Law',
+  'Languages & Linguistics',
+  'Literature',
+  'Mathematics',
+  'Medicine',
+  'Music',
+  'Nursing',
+  'Philosophy',
+  'Physics',
+  'Political Science',
+  'Psychology',
+  'Public Health',
+  'Religious Studies',
+  'Research Methodology',
+  'Social Sciences',
+  'Sociology',
   'Theology',
   'Biblical Studies',
   'Spiritual Formation',
   'Church History',
   'Ministry',
-  'Leadership',
-  'Research Methodology',
-  'Writing',
-  'Education',
-  'Philosophy',
-  'Psychology',
-  'Sociology',
   'Original Languages',
+  'Writing',
   'Other',
 ]
 
@@ -840,11 +872,38 @@ const availableDisciplines = computed(() => {
   return [
     ...new Set(
       terms.value
-        .map((item) => item.discipline)
+        .map((item) =>
+          String(
+            item.discipline || '',
+          ).trim(),
+        )
         .filter(Boolean),
     ),
   ].sort((a, b) =>
-    a.localeCompare(b),
+    a.localeCompare(
+      b,
+      undefined,
+      {
+        sensitivity: 'base',
+      },
+    ),
+  )
+})
+
+const disciplineSuggestions = computed(() => {
+  return [
+    ...new Set([
+      ...defaultTermDisciplines,
+      ...availableDisciplines.value,
+    ]),
+  ].sort((a, b) =>
+    a.localeCompare(
+      b,
+      undefined,
+      {
+        sensitivity: 'base',
+      },
+    ),
   )
 })
 
@@ -1044,7 +1103,7 @@ const emptyStateMessage = computed(() => {
     return 'Pin important vocabulary to keep it easy to find.'
   }
 
-  return 'Build a searchable glossary of academic, theological, technical, and original-language terms.'
+  return 'Build a searchable glossary for any academic, professional, technical, or personal field.'
 })
 
 onBeforeUnmount(() => {
@@ -1159,7 +1218,8 @@ function saveTerm() {
       termForm.partOfSpeech || 'Other',
 
     discipline:
-      termForm.discipline || 'General',
+      termForm.discipline.trim() ||
+      'General',
 
     status:
       termForm.status || 'developing',
