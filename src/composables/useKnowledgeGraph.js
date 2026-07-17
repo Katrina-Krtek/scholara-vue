@@ -19,10 +19,7 @@ import {
 
 import {
   graphNodeTypes as baseGraphNodeTypes,
-  mockGraphDiscoveryItems,
-  mockKnowledgeGraphLinks,
-  mockKnowledgeGraphNodes,
-} from '@/data/mockKnowledgeGraph'
+} from '@/data/knowledgeGraphConfig'
 
 const SOURCE_GRAPH_TYPES = [
   'research-source',
@@ -3312,24 +3309,7 @@ export function useKnowledgeGraph() {
     })
   }
 
-  const baseNodes = ref(
-    mockKnowledgeGraphNodes.map((node) => ({
-      ...node,
-      tags: [...(node.tags || [])],
-    })),
-  )
-
-  const baseLinks = ref(
-    mockKnowledgeGraphLinks.map((link) => ({
-      ...link,
-    })),
-  )
-
-  const discoveryItems = ref(
-    mockGraphDiscoveryItems.map((item) => ({
-      ...item,
-    })),
-  )
+  const discoveryItems = ref([])
 
   const searchQuery = ref('')
   const selectedType = ref('all')
@@ -3545,78 +3525,7 @@ export function useKnowledgeGraph() {
   })
 
   const nodes = computed(() => {
-    const hasLiveSources =
-      liveBookNodes.value.length > 0 ||
-      liveJournalNodes.value.length > 0 ||
-      liveArticleNodes.value.length > 0 ||
-      liveSourceNodes.value.length > 0 ||
-      liveResearchItemNodes.value.some(
-        (node) => {
-          return SOURCE_GRAPH_TYPES.includes(
-            node.type,
-          )
-        },
-      )
-
-    const hasLiveConcepts =
-      liveConceptNodes.value.length > 0 ||
-      liveResearchItemNodes.value.some(
-        (node) => {
-          return node.type === 'concept'
-        },
-      )
-
-    const hasLiveTerms =
-      liveTermNodes.value.length > 0 ||
-      liveResearchItemNodes.value.some(
-        (node) => {
-          return node.type === 'term'
-        },
-      )
-
-    const hasLiveKnowledgeTags =
-      liveKnowledgeTagNodes.value.length > 0
-
-    const retainedBaseNodes =
-      baseNodes.value.filter((node) => {
-        if (
-          hasLiveSources &&
-          SOURCE_GRAPH_TYPES.includes(
-            node.type,
-          )
-        ) {
-          return false
-        }
-
-        if (
-          hasLiveConcepts &&
-          node.type === 'concept'
-        ) {
-          return false
-        }
-
-        if (
-          hasLiveTerms &&
-          node.type === 'term'
-        ) {
-          return false
-        }
-
-        if (
-          hasLiveKnowledgeTags &&
-          node.type ===
-            'knowledge-tag'
-        ) {
-          return false
-        }
-
-        return true
-      })
-
-    return [
-      ...retainedBaseNodes,
-      ...integratedLiveNodes.value.nodes,
-    ]
+    return integratedLiveNodes.value.nodes
   })
 
   const liveBookLinks = computed(() => {
@@ -4615,7 +4524,6 @@ export function useKnowledgeGraph() {
     const seenRelationships = new Set()
 
     return [
-      ...baseLinks.value,
       ...liveBookLinks.value,
       ...liveJournalLinks.value,
       ...liveArticleLinks.value,
@@ -5184,3 +5092,4 @@ function buildStats(
     countsByType,
   }
 }
+
