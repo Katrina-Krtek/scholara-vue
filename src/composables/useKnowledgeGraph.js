@@ -10,6 +10,7 @@ import { useJournals } from '@/composables/useJournals'
 import { useResearch } from '@/composables/useResearch'
 import { useConcepts } from '@/composables/useConcepts'
 import { useTerms } from '@/composables/useTerms'
+import { useKnowledgeTags } from '@/composables/useKnowledgeTags'
 
 import {
   graphNodeTypes as baseGraphNodeTypes,
@@ -45,6 +46,7 @@ const RESEARCH_ITEM_GRAPH_TYPES = [
   'note',
   'concept',
   'term',
+  'knowledge-tag',
   'person',
   'assignment',
   'quote',
@@ -2520,6 +2522,201 @@ function createTermGraphNode(termRecord) {
   }
 }
 
+function createKnowledgeTagGraphNode(
+  knowledgeTag,
+) {
+  const updatedAt = firstValue(
+    knowledgeTag.updatedAt,
+    knowledgeTag.createdAt,
+  )
+
+  const aliases = uniqueStrings(
+    knowledgeTag.aliases || [],
+  )
+
+  const supertags = uniqueStrings(
+    knowledgeTag.supertags || [],
+  )
+
+  return {
+    id:
+      `knowledge-tag:${knowledgeTag.id}`,
+
+    entityId:
+      String(knowledgeTag.id),
+
+    knowledgeTagId:
+      String(knowledgeTag.id),
+
+    title:
+      knowledgeTag.name ||
+      'Untitled Knowledge Tag',
+
+    name:
+      knowledgeTag.name ||
+      'Untitled Knowledge Tag',
+
+    slug:
+      knowledgeTag.slug ||
+      '',
+
+    type: 'knowledge-tag',
+    sourceType: 'Knowledge Tag',
+    recordType: 'Knowledge Tag',
+
+    description:
+      knowledgeTag.description ||
+      'Formal Knowledge Tag from Scholarory.',
+
+    tags: uniqueStrings([
+      knowledgeTag.name,
+      ...aliases,
+      ...supertags,
+      knowledgeTag.kind,
+    ]),
+
+    aliases,
+    supertags,
+
+    kind:
+      knowledgeTag.kind ||
+      'topic',
+
+    parentId:
+      knowledgeTag.parentId ||
+      null,
+
+    color:
+      knowledgeTag.color ||
+      '',
+
+    icon:
+      knowledgeTag.icon ||
+      '🏷️',
+
+    status: 'active',
+
+    updatedAt,
+
+    createdAt:
+      knowledgeTag.createdAt ||
+      '',
+
+    date: getDateKey(updatedAt),
+
+    route:
+      `/knowledge-tags/${encodeURIComponent(
+        knowledgeTag.id,
+      )}`,
+
+    metadata: {
+      name:
+        knowledgeTag.name ||
+        '',
+
+      slug:
+        knowledgeTag.slug ||
+        '',
+
+      kind:
+        knowledgeTag.kind ||
+        'topic',
+
+      parentId:
+        knowledgeTag.parentId ||
+        null,
+
+      description:
+        knowledgeTag.description ||
+        '',
+
+      aliases,
+      supertags,
+
+      color:
+        knowledgeTag.color ||
+        '',
+
+      icon:
+        knowledgeTag.icon ||
+        '',
+    },
+  }
+}
+
+function findKnowledgeTagNodeByName(
+  nodes,
+  value,
+) {
+  const normalizedValue =
+    normalizeSearchText(value)
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  return (
+    nodes.find((node) => {
+      if (
+        node.type !==
+        'knowledge-tag'
+      ) {
+        return false
+      }
+
+      const names = [
+        node.title,
+        node.name,
+        node.slug,
+        ...(node.aliases || []),
+      ]
+
+      return names.some((name) => {
+        return (
+          normalizeSearchText(name) ===
+          normalizedValue
+        )
+      })
+    }) ||
+    null
+  )
+}
+
+function nodeUsesKnowledgeTag(
+  node,
+  knowledgeTagNode,
+) {
+  if (
+    !node ||
+    !knowledgeTagNode ||
+    node.type === 'knowledge-tag'
+  ) {
+    return false
+  }
+
+  const tagTerms = new Set(
+    uniqueStrings([
+      knowledgeTagNode.title,
+      knowledgeTagNode.name,
+      ...(knowledgeTagNode.aliases || []),
+    ]).map((value) => {
+      return normalizeTag(value)
+    }),
+  )
+
+  if (!tagTerms.size) {
+    return false
+  }
+
+  return uniqueStrings(
+    node.tags || [],
+  ).some((tag) => {
+    return tagTerms.has(
+      normalizeTag(tag),
+    )
+  })
+}
+
 function findGraphNodeForSourceRecord(
   nodes,
   sourceId,
@@ -2897,6 +3094,12 @@ function nodeMatchesSearch(
     node.aliases,
     node.category,
     node.term,
+    node.name,
+    node.slug,
+    node.kind,
+    node.parentId,
+    node.color,
+    node.icon,
     node.extendedDefinition,
     node.pronunciation,
     node.originalLanguage,
@@ -2970,6 +3173,28 @@ export function useKnowledgeGraph() {
   const {
     activeTerms,
   } = useTerms()
+
+  const {
+    allKnowledgeTags,
+    allResearchItemTags,
+    isLoadingKnowledgeTags,
+    loadKnowledgeTagSystem,
+  } = useKnowledgeTags()
+
+  if (
+    !isLoadingKnowledgeTags.value &&
+    !allKnowledgeTags.value.length &&
+    !allResearchItemTags.value.length
+  ) {
+    Promise.resolve(
+      loadKnowledgeTagSystem(),
+    ).catch((error) => {
+      console.error(
+        'Could not load formal Knowledge Tags for the knowledge graph:',
+        error,
+      )
+    })
+  }
 
   if (!allResearchItems.value.length) {
     Promise.resolve(
@@ -3140,6 +3365,16 @@ export function useKnowledgeGraph() {
     })
   })
 
+  const liveKnowledgeTagNodes = computed(() => {
+    return allKnowledgeTags.value.map(
+      (knowledgeTag) => {
+        return createKnowledgeTagGraphNode(
+          knowledgeTag,
+        )
+      },
+    )
+  })
+
   const liveResearchItemNodes = computed(() => {
     return allResearchItems.value.map((item) => {
       return createResearchItemGraphNode(item)
@@ -3154,6 +3389,7 @@ export function useKnowledgeGraph() {
       ...liveSourceNodes.value,
       ...liveConceptNodes.value,
       ...liveTermNodes.value,
+      ...liveKnowledgeTagNodes.value,
     ].map((node) => ({
       ...node,
     }))
@@ -3233,6 +3469,9 @@ export function useKnowledgeGraph() {
         },
       )
 
+    const hasLiveKnowledgeTags =
+      liveKnowledgeTagNodes.value.length > 0
+
     const retainedBaseNodes =
       baseNodes.value.filter((node) => {
         if (
@@ -3254,6 +3493,14 @@ export function useKnowledgeGraph() {
         if (
           hasLiveTerms &&
           node.type === 'term'
+        ) {
+          return false
+        }
+
+        if (
+          hasLiveKnowledgeTags &&
+          node.type ===
+            'knowledge-tag'
         ) {
           return false
         }
@@ -3985,6 +4232,188 @@ export function useKnowledgeGraph() {
     return relationships
   })
 
+  const liveKnowledgeTagLinks =
+    computed(() => {
+      const relationships = []
+      const seenPairs = new Set()
+
+      function addRelationship(
+        relationship,
+      ) {
+        if (
+          !relationship?.source ||
+          !relationship?.target ||
+          relationship.source ===
+            relationship.target
+        ) {
+          return
+        }
+
+        const pairKey = [
+          relationship.source,
+          relationship.target,
+        ]
+          .sort()
+          .join('::')
+
+        const relationshipKey =
+          `${pairKey}::${relationship.label || 'related'}`
+
+        if (
+          seenPairs.has(
+            relationshipKey,
+          )
+        ) {
+          return
+        }
+
+        seenPairs.add(
+          relationshipKey,
+        )
+
+        relationships.push(
+          relationship,
+        )
+      }
+
+      liveKnowledgeTagNodes.value.forEach(
+        (tagNode) => {
+          if (tagNode.parentId) {
+            const parentNode =
+              findGraphNodeForEntity(
+                nodes.value,
+                'knowledge-tag',
+                tagNode.parentId,
+              )
+
+            if (parentNode) {
+              addRelationship({
+                id:
+                  `knowledge-tag-parent:${parentNode.entityId}:${tagNode.entityId}`,
+
+                source:
+                  parentNode.id,
+
+                target:
+                  tagNode.id,
+
+                label:
+                  'Contains tag',
+
+                strength: 5,
+              })
+            }
+          }
+
+          uniqueStrings(
+            tagNode.supertags || [],
+          ).forEach((supertagName) => {
+            const supertagNode =
+              findKnowledgeTagNodeByName(
+                nodes.value,
+                supertagName,
+              )
+
+            if (
+              !supertagNode ||
+              supertagNode.id ===
+                tagNode.id
+            ) {
+              return
+            }
+
+            addRelationship({
+              id:
+                `knowledge-supertag:${supertagNode.entityId}:${tagNode.entityId}`,
+
+              source:
+                supertagNode.id,
+
+              target:
+                tagNode.id,
+
+              label:
+                'Supertag',
+
+              strength: 4,
+            })
+          })
+
+          nodes.value.forEach((node) => {
+            if (
+              nodeUsesKnowledgeTag(
+                node,
+                tagNode,
+              )
+            ) {
+              addRelationship({
+                id:
+                  `knowledge-tag-inferred:${tagNode.entityId}:${node.id}`,
+
+                source:
+                  tagNode.id,
+
+                target:
+                  node.id,
+
+                label:
+                  'Tagged with',
+
+                strength: 3,
+              })
+            }
+          })
+        },
+      )
+
+      const researchNodeIdByItemId =
+        integratedLiveNodes.value
+          .researchNodeIdByItemId
+
+      allResearchItemTags.value.forEach(
+        (link) => {
+          const tagNode =
+            findGraphNodeForEntity(
+              nodes.value,
+              'knowledge-tag',
+              link.knowledgeTagId,
+            )
+
+          const researchNodeId =
+            researchNodeIdByItemId.get(
+              String(
+                link.researchItemId,
+              ),
+            )
+
+          if (
+            !tagNode ||
+            !researchNodeId
+          ) {
+            return
+          }
+
+          addRelationship({
+            id:
+              `knowledge-tag-formal:${tagNode.entityId}:${researchNodeId}`,
+
+            source:
+              tagNode.id,
+
+            target:
+              researchNodeId,
+
+            label:
+              'Formal tag',
+
+            strength: 5,
+          })
+        },
+      )
+
+      return relationships
+    })
+
   const links = computed(() => {
     const existingNodeIds = new Set(
       nodes.value.map((node) => {
@@ -4003,6 +4432,7 @@ export function useKnowledgeGraph() {
       ...liveResearchLinks.value,
       ...liveConceptLinks.value,
       ...liveTermLinks.value,
+      ...liveKnowledgeTagLinks.value,
     ].filter((link) => {
       if (
         !existingNodeIds.has(link.source) ||

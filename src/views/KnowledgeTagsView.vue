@@ -30,7 +30,8 @@
           <h2>Create Knowledge Tag</h2>
 
           <p>
-            Create topic pages, child topics, schema tags, and shortcut tags.
+            Create topic pages, child topics, schemas, subjects, people,
+            methods, projects, or any custom kind you need.
           </p>
         </div>
 
@@ -41,22 +42,27 @@
             <input
               v-model="newTag.name"
               type="text"
-              placeholder="Messiah, Paul, Book, Primary Source..."
+              placeholder="Photosynthesis, Case Law, Primary Source..."
             />
           </div>
 
           <div class="form-group">
             <label>Kind</label>
 
-            <select v-model="newTag.kind">
-              <option value="topic">Topic</option>
-              <option value="subtopic">Subtopic</option>
-              <option value="schema">Schema / Supertag</option>
-              <option value="shortcut">Shortcut</option>
-              <option value="doctrine">Doctrine</option>
-              <option value="person">Person</option>
-              <option value="passage">Bible Passage</option>
-            </select>
+            <input
+              v-model.trim="newTag.kind"
+              type="text"
+              list="knowledge-tag-kind-options"
+              placeholder="Choose or enter any kind"
+            />
+
+            <datalist id="knowledge-tag-kind-options">
+              <option
+                v-for="kind in kindSuggestions"
+                :key="kind"
+                :value="kind"
+              ></option>
+            </datalist>
           </div>
 
           <div class="form-group">
@@ -82,6 +88,16 @@
               v-model="newTag.icon"
               type="text"
               placeholder="🏷️"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Color</label>
+
+            <input
+              v-model="newTag.color"
+              type="color"
+              aria-label="Knowledge tag color"
             />
           </div>
 
@@ -131,6 +147,7 @@
           <button
             class="create-btn"
             type="button"
+            :disabled="!newTag.name.trim()"
             @click="handleCreateTag"
           >
             Create Tag
@@ -149,13 +166,14 @@
 
           <select v-model="kindFilter" class="sort-select">
             <option value="all">All kinds</option>
-            <option value="topic">Topics</option>
-            <option value="subtopic">Subtopics</option>
-            <option value="schema">Schemas / Supertags</option>
-            <option value="shortcut">Shortcuts</option>
-            <option value="doctrine">Doctrines</option>
-            <option value="person">People</option>
-            <option value="passage">Bible Passages</option>
+
+            <option
+              v-for="kind in availableKinds"
+              :key="kind"
+              :value="kind"
+            >
+              {{ getKindLabel(kind) }}
+            </option>
           </select>
         </div>
 
@@ -289,10 +307,30 @@ const {
   allKnowledgeTags,
   isLoadingKnowledgeTags,
   knowledgeTagsError,
-  loadKnowledgeTags,
+  loadKnowledgeTagSystem,
   createKnowledgeTag,
   getChildTags,
+  clearKnowledgeTagsError,
 } = useKnowledgeTags()
+
+const defaultKindSuggestions = [
+  'topic',
+  'subject',
+  'subtopic',
+  'schema',
+  'shortcut',
+  'person',
+  'place',
+  'organization',
+  'method',
+  'vocabulary',
+  'source-type',
+  'project',
+  'course',
+  'discipline',
+  'doctrine',
+  'passage',
+]
 
 const showCreateForm = ref(false)
 const searchQuery = ref('')
@@ -300,8 +338,39 @@ const kindFilter = ref('all')
 
 const newTag = ref(getEmptyTagForm())
 
-onMounted(() => {
-  loadKnowledgeTags()
+onMounted(async () => {
+  await loadKnowledgeTagSystem()
+})
+
+const availableKinds = computed(() => {
+  return [
+    ...new Set(
+      allKnowledgeTags.value
+        .map((tag) =>
+          String(tag.kind || 'topic')
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean),
+    ),
+  ].sort((a, b) =>
+    getKindLabel(a).localeCompare(
+      getKindLabel(b),
+    ),
+  )
+})
+
+const kindSuggestions = computed(() => {
+  return [
+    ...new Set([
+      ...defaultKindSuggestions,
+      ...availableKinds.value,
+    ]),
+  ].sort((a, b) =>
+    getKindLabel(a).localeCompare(
+      getKindLabel(b),
+    ),
+  )
 })
 
 const visibleTags = computed(() => {
@@ -346,6 +415,7 @@ function getEmptyTagForm() {
     supertagsInput: '',
     aliasesInput: '',
     icon: '',
+    color: '#cca44b',
   }
 }
 
@@ -365,6 +435,7 @@ async function handleCreateTag() {
     supertags: parseCommaList(newTag.value.supertagsInput),
     aliases: parseCommaList(newTag.value.aliasesInput),
     icon: newTag.value.icon,
+    color: newTag.value.color,
   })
 
   if (created) {
@@ -373,6 +444,7 @@ async function handleCreateTag() {
 }
 
 function resetForm() {
+  clearKnowledgeTagsError()
   newTag.value = getEmptyTagForm()
   showCreateForm.value = false
 }
@@ -441,25 +513,51 @@ function slugifyTag(text) {
 function getKindLabel(kind) {
   const labels = {
     topic: 'Topic',
+    subject: 'Subject',
     subtopic: 'Subtopic',
     schema: 'Schema / Supertag',
     shortcut: 'Shortcut',
-    doctrine: 'Doctrine',
     person: 'Person',
+    place: 'Place',
+    organization: 'Organization',
+    method: 'Method',
+    vocabulary: 'Vocabulary',
+    'source-type': 'Source Type',
+    project: 'Project',
+    course: 'Course',
+    discipline: 'Discipline',
+    doctrine: 'Doctrine',
     passage: 'Bible Passage',
   }
 
-  return labels[kind] || 'Tag'
+  if (labels[kind]) {
+    return labels[kind]
+  }
+
+  return String(kind || 'Tag')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\w/g, (letter) =>
+      letter.toUpperCase(),
+    )
 }
 
 function getKindIcon(kind) {
   const icons = {
     topic: '🌐',
+    subject: '📘',
     subtopic: '↳',
     schema: '▣',
     shortcut: '⚡',
-    doctrine: '📖',
     person: '👤',
+    place: '📍',
+    organization: '🏢',
+    method: '🧭',
+    vocabulary: '🔤',
+    'source-type': '📚',
+    project: '📁',
+    course: '🎓',
+    discipline: '🧠',
+    doctrine: '📖',
     passage: '🔖',
   }
 
@@ -518,6 +616,11 @@ function getKindIcon(kind) {
   border: none;
   background: var(--accent);
   color: white;
+}
+
+.create-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .secondary-btn {

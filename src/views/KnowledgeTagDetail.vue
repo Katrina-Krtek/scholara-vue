@@ -47,6 +47,35 @@
               </span>
             </div>
           </div>
+
+          <div class="tag-header-actions">
+            <button
+              v-if="formalTag"
+              class="secondary-action"
+              type="button"
+              @click="openEditModal"
+            >
+              Edit Tag
+            </button>
+
+            <button
+              v-if="formalTag"
+              class="danger-action"
+              type="button"
+              @click="handleDeleteTag"
+            >
+              Delete
+            </button>
+
+            <button
+              v-else
+              class="primary-action"
+              type="button"
+              @click="promoteLibraryTag"
+            >
+              Create Knowledge Tag
+            </button>
+          </div>
         </section>
 
         <section class="stats-grid">
@@ -136,6 +165,115 @@
               </strong>
             </div>
           </div>
+        </section>
+
+        <section
+          v-if="formalTag"
+          class="content-panel"
+        >
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Formal Links</p>
+              <h2>Attached research items</h2>
+
+              <p class="panel-description">
+                These links are stored in Supabase rather than inferred from
+                matching text tags.
+              </p>
+            </div>
+
+            <span class="section-count">
+              {{ linkedResearchItems.length }}
+            </span>
+          </div>
+
+          <form
+            v-if="availableResearchItems.length"
+            class="link-record-form"
+            @submit.prevent="handleLinkResearchItem"
+          >
+            <label>
+              Link a research item
+
+              <select
+                v-model="selectedResearchItemId"
+                required
+              >
+                <option
+                  disabled
+                  value=""
+                >
+                  Choose a research item
+                </option>
+
+                <option
+                  v-for="item in availableResearchItems"
+                  :key="item.id"
+                  :value="item.id"
+                >
+                  {{ item.title || 'Untitled Research Item' }}
+                  ·
+                  {{ getResearchTypeLabel(item) }}
+                </option>
+              </select>
+            </label>
+
+            <button
+              class="primary-action"
+              type="submit"
+            >
+              Link Item
+            </button>
+          </form>
+
+          <p
+            v-if="!linkedResearchItems.length"
+            class="muted-text"
+          >
+            No formal research-item links have been added yet.
+          </p>
+
+          <div
+            v-else
+            class="linked-record-list"
+          >
+            <article
+              v-for="item in linkedResearchItems"
+              :key="item.id"
+              class="linked-record-row"
+            >
+              <RouterLink
+                :to="`/research/items/${item.id}`"
+              >
+                <span>{{ getItemIcon(item) }}</span>
+
+                <div>
+                  <strong>
+                    {{ item.title || 'Untitled Research Item' }}
+                  </strong>
+
+                  <small>
+                    {{ getResearchTypeLabel(item) }}
+                  </small>
+                </div>
+              </RouterLink>
+
+              <button
+                class="unlink-action"
+                type="button"
+                @click="handleUnlinkResearchItem(item)"
+              >
+                Unlink
+              </button>
+            </article>
+          </div>
+
+          <p
+            v-if="knowledgeTagsError"
+            class="inline-error"
+          >
+            {{ knowledgeTagsError }}
+          </p>
         </section>
 
         <section v-else class="library-tag-notice">
@@ -475,6 +613,153 @@
         </section>
       </template>
     </main>
+
+    <div
+      v-if="editModalOpen"
+      class="modal-backdrop"
+      @click.self="closeEditModal"
+    >
+      <form
+        class="tag-edit-modal"
+        @submit.prevent="saveTagChanges"
+      >
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Edit Knowledge Tag</p>
+            <h2>Update tag details</h2>
+          </div>
+
+          <button
+            class="modal-close"
+            type="button"
+            aria-label="Close tag editor"
+            @click="closeEditModal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="modal-form-grid">
+          <label class="wide-field">
+            Name
+
+            <input
+              v-model.trim="editForm.name"
+              type="text"
+              required
+            />
+          </label>
+
+          <label>
+            Kind
+
+            <input
+              v-model.trim="editForm.kind"
+              type="text"
+              list="tag-detail-kind-options"
+              placeholder="Choose or enter any kind"
+            />
+
+            <datalist id="tag-detail-kind-options">
+              <option
+                v-for="kind in kindSuggestions"
+                :key="kind"
+                :value="kind"
+              ></option>
+            </datalist>
+          </label>
+
+          <label>
+            Parent Tag
+
+            <select v-model="editForm.parentId">
+              <option :value="null">No parent</option>
+
+              <option
+                v-for="tag in availableParentTags"
+                :key="tag.id"
+                :value="tag.id"
+              >
+                {{ tag.icon || getKindIcon(tag.kind) }}
+                {{ tag.name }}
+              </option>
+            </select>
+          </label>
+
+          <label>
+            Icon
+
+            <input
+              v-model="editForm.icon"
+              type="text"
+              placeholder="🏷️"
+            />
+          </label>
+
+          <label>
+            Color
+
+            <input
+              v-model="editForm.color"
+              type="color"
+            />
+          </label>
+
+          <label class="wide-field">
+            Description
+
+            <textarea
+              v-model="editForm.description"
+              rows="4"
+            ></textarea>
+          </label>
+
+          <label>
+            Supertags
+
+            <input
+              v-model="editForm.supertagsInput"
+              type="text"
+              placeholder="topic, method, schema"
+            />
+          </label>
+
+          <label>
+            Aliases
+
+            <input
+              v-model="editForm.aliasesInput"
+              type="text"
+              placeholder="Alternate names"
+            />
+          </label>
+        </div>
+
+        <p
+          v-if="formError || knowledgeTagsError"
+          class="inline-error"
+        >
+          {{ formError || knowledgeTagsError }}
+        </p>
+
+        <div class="modal-actions">
+          <button
+            class="secondary-action"
+            type="button"
+            @click="closeEditModal"
+          >
+            Cancel
+          </button>
+
+          <button
+            class="primary-action"
+            type="submit"
+          >
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
   </AppLayout>
 </template>
 
@@ -482,11 +767,13 @@
 import {
   computed,
   onMounted,
+  reactive,
   ref,
 } from 'vue'
 import {
   RouterLink,
   useRoute,
+  useRouter,
 } from 'vue-router'
 
 import AppLayout from '@/components/AppLayout.vue'
@@ -498,14 +785,55 @@ import { useSources } from '@/composables/useSources'
 import { getResearchTypeById } from '@/data/researchTypes'
 
 const route = useRoute()
+const router = useRouter()
+
 const hasLoaded = ref(false)
+const editModalOpen = ref(false)
+const selectedResearchItemId = ref('')
+const formError = ref('')
+
+const defaultKindSuggestions = [
+  'topic',
+  'subject',
+  'subtopic',
+  'schema',
+  'shortcut',
+  'person',
+  'place',
+  'organization',
+  'method',
+  'vocabulary',
+  'source-type',
+  'project',
+  'course',
+  'discipline',
+  'doctrine',
+  'passage',
+]
+
+const editForm = reactive({
+  name: '',
+  kind: 'topic',
+  parentId: null,
+  description: '',
+  supertagsInput: '',
+  aliasesInput: '',
+  color: '#cca44b',
+  icon: '',
+})
 
 const {
   allKnowledgeTags,
   allResearchItemTags,
-  loadKnowledgeTags,
-  loadResearchItemTags,
+  knowledgeTagsError,
+  loadKnowledgeTagSystem,
+  createKnowledgeTag,
+  updateKnowledgeTag,
+  deleteKnowledgeTag,
+  linkTagToResearchItem,
+  unlinkTagFromResearchItem,
   getChildTags,
+  clearKnowledgeTagsError,
 } = useKnowledgeTags()
 
 const {
@@ -618,6 +946,86 @@ const childTags = computed(() => {
   return getChildTags(formalTag.value.id)
 })
 
+const kindSuggestions = computed(() => {
+  const usedKinds =
+    allKnowledgeTags.value
+      .map((tag) =>
+        String(tag.kind || 'topic')
+          .trim()
+          .toLowerCase(),
+      )
+      .filter(Boolean)
+
+  return [
+    ...new Set([
+      ...defaultKindSuggestions,
+      ...usedKinds,
+    ]),
+  ].sort((a, b) =>
+    getKindLabel(a).localeCompare(
+      getKindLabel(b),
+    ),
+  )
+})
+
+const unavailableParentIds = computed(() => {
+  if (!formalTag.value) {
+    return new Set()
+  }
+
+  const unavailable =
+    new Set([
+      String(formalTag.value.id),
+    ])
+
+  let changed = true
+
+  while (changed) {
+    changed = false
+
+    allKnowledgeTags.value.forEach(
+      (tag) => {
+        if (
+          tag.parentId &&
+          unavailable.has(
+            String(tag.parentId),
+          ) &&
+          !unavailable.has(
+            String(tag.id),
+          )
+        ) {
+          unavailable.add(
+            String(tag.id),
+          )
+
+          changed = true
+        }
+      },
+    )
+  }
+
+  return unavailable
+})
+
+const availableParentTags = computed(() => {
+  return allKnowledgeTags.value
+    .filter((tag) => {
+      return !unavailableParentIds.value.has(
+        String(tag.id),
+      )
+    })
+    .slice()
+    .sort((a, b) =>
+      a.name.localeCompare(
+        b.name,
+        undefined,
+        {
+          sensitivity: 'base',
+        },
+      ),
+    )
+})
+
 const formalLinkedResearchIds = computed(() => {
   if (!formalTag.value) {
     return new Set()
@@ -656,6 +1064,44 @@ const articleMatches = computed(() => {
   return allArticles.value.filter((article) => {
     return recordMatchesTag(article)
   })
+})
+
+const linkedResearchItems = computed(() => {
+  return allResearchItems.value
+    .filter((item) => {
+      return formalLinkedResearchIds.value.has(
+        String(item.id),
+      )
+    })
+    .slice()
+    .sort((a, b) =>
+      String(a.title || '').localeCompare(
+        String(b.title || ''),
+        undefined,
+        {
+          sensitivity: 'base',
+        },
+      ),
+    )
+})
+
+const availableResearchItems = computed(() => {
+  return allResearchItems.value
+    .filter((item) => {
+      return !formalLinkedResearchIds.value.has(
+        String(item.id),
+      )
+    })
+    .slice()
+    .sort((a, b) =>
+      String(a.title || '').localeCompare(
+        String(b.title || ''),
+        undefined,
+        {
+          sensitivity: 'base',
+        },
+      ),
+    )
 })
 
 const researchItemMatches = computed(() => {
@@ -730,14 +1176,215 @@ const relatedTags = computed(() => {
 onMounted(async () => {
   try {
     await Promise.all([
-      loadKnowledgeTags(),
-      loadResearchItemTags(),
+      loadKnowledgeTagSystem(),
       loadResearchItems(),
     ])
   } finally {
     hasLoaded.value = true
   }
 })
+
+function parseCommaList(value) {
+  return [
+    ...new Set(
+      String(value || '')
+        .split(/[,\n]/)
+        .map((item) =>
+          item
+            .replace(/^#/, '')
+            .trim(),
+        )
+        .filter(Boolean),
+    ),
+  ]
+}
+
+function openEditModal() {
+  if (!formalTag.value) {
+    return
+  }
+
+  clearKnowledgeTagsError()
+  formError.value = ''
+
+  Object.assign(editForm, {
+    name: formalTag.value.name,
+    kind:
+      formalTag.value.kind ||
+      'topic',
+    parentId:
+      formalTag.value.parentId ||
+      null,
+    description:
+      formalTag.value.description ||
+      '',
+    supertagsInput:
+      (formalTag.value.supertags || [])
+        .join(', '),
+    aliasesInput:
+      (formalTag.value.aliases || [])
+        .join(', '),
+    color:
+      formalTag.value.color ||
+      '#cca44b',
+    icon:
+      formalTag.value.icon ||
+      '',
+  })
+
+  editModalOpen.value = true
+}
+
+function closeEditModal() {
+  editModalOpen.value = false
+  formError.value = ''
+  clearKnowledgeTagsError()
+}
+
+async function saveTagChanges() {
+  if (!formalTag.value) {
+    return
+  }
+
+  const name =
+    editForm.name.trim()
+
+  if (!name) {
+    formError.value =
+      'Please enter a tag name.'
+
+    return
+  }
+
+  const updated =
+    await updateKnowledgeTag(
+      formalTag.value.id,
+      {
+        name,
+        kind:
+          editForm.kind ||
+          'topic',
+        parentId:
+          editForm.parentId ||
+          null,
+        description:
+          editForm.description,
+        supertags:
+          parseCommaList(
+            editForm.supertagsInput,
+          ),
+        aliases:
+          parseCommaList(
+            editForm.aliasesInput,
+          ),
+        color:
+          editForm.color,
+        icon:
+          editForm.icon,
+      },
+    )
+
+  if (updated) {
+    closeEditModal()
+
+    router.replace(
+      `/knowledge-tags/${updated.id}`,
+    )
+  }
+}
+
+async function handleDeleteTag() {
+  if (!formalTag.value) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Delete "${formalTag.value.name}"? Child tags will move to this tag's parent, and formal research-item links will be removed.`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  const deleted =
+    await deleteKnowledgeTag(
+      formalTag.value.id,
+    )
+
+  if (deleted) {
+    router.push('/knowledge-tags')
+  }
+}
+
+async function promoteLibraryTag() {
+  clearKnowledgeTagsError()
+
+  const created =
+    await createKnowledgeTag({
+      name: resolvedTag.value.name,
+      kind:
+        resolvedTag.value.kind ||
+        'topic',
+      description:
+        resolvedTag.value.description ||
+        '',
+      aliases:
+        resolvedTag.value.aliases ||
+        [],
+      color:
+        resolvedTag.value.color ||
+        '#cca44b',
+      icon:
+        resolvedTag.value.icon ||
+        '🏷️',
+    })
+
+  if (created) {
+    router.replace(
+      `/knowledge-tags/${created.id}`,
+    )
+  }
+}
+
+async function handleLinkResearchItem() {
+  if (
+    !formalTag.value ||
+    !selectedResearchItemId.value
+  ) {
+    return
+  }
+
+  const linked =
+    await linkTagToResearchItem(
+      selectedResearchItemId.value,
+      formalTag.value.id,
+    )
+
+  if (linked) {
+    selectedResearchItemId.value = ''
+  }
+}
+
+async function handleUnlinkResearchItem(
+  item,
+) {
+  if (!formalTag.value) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Unlink "${item.title || 'this research item'}" from "${formalTag.value.name}"?`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  await unlinkTagFromResearchItem(
+    item.id,
+    formalTag.value.id,
+  )
+}
 
 function getRecordTags(record) {
   return [
@@ -843,25 +1490,51 @@ function getResearchTypeLabel(researchItem) {
 function getKindLabel(kind) {
   const labels = {
     topic: 'Topic',
+    subject: 'Subject',
     subtopic: 'Subtopic',
     schema: 'Schema / Supertag',
     shortcut: 'Shortcut',
-    doctrine: 'Doctrine',
     person: 'Person',
+    place: 'Place',
+    organization: 'Organization',
+    method: 'Method',
+    vocabulary: 'Vocabulary',
+    'source-type': 'Source Type',
+    project: 'Project',
+    course: 'Course',
+    discipline: 'Discipline',
+    doctrine: 'Doctrine',
     passage: 'Bible Passage',
   }
 
-  return labels[kind] || 'Tag'
+  if (labels[kind]) {
+    return labels[kind]
+  }
+
+  return String(kind || 'Tag')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\w/g, (letter) =>
+      letter.toUpperCase(),
+    )
 }
 
 function getKindIcon(kind) {
   const icons = {
     topic: '🌐',
+    subject: '📘',
     subtopic: '↳',
     schema: '▣',
     shortcut: '⚡',
-    doctrine: '📖',
     person: '👤',
+    place: '📍',
+    organization: '🏢',
+    method: '🧭',
+    vocabulary: '🔤',
+    'source-type': '📚',
+    project: '📁',
+    course: '🎓',
+    discipline: '🧠',
+    doctrine: '📖',
     passage: '🔖',
   }
 
@@ -939,6 +1612,15 @@ function getKindIcon(kind) {
 
 .tag-heading {
   min-width: 0;
+  flex: 1;
+}
+
+.tag-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-left: auto;
 }
 
 .breadcrumb {
@@ -1238,6 +1920,203 @@ function getKindIcon(kind) {
   line-clamp: 3;
 }
 
+.primary-action,
+.secondary-action,
+.danger-action,
+.unlink-action,
+.modal-close {
+  border-radius: 9px;
+  padding: 0.62rem 0.82rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.primary-action {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+}
+
+.secondary-action {
+  border: 1px solid var(--border-color);
+  background: var(--btn-bg);
+  color: var(--text-primary);
+}
+
+.danger-action,
+.unlink-action {
+  border: 1px solid #c9453f;
+  background: transparent;
+  color: #b4443e;
+}
+
+.panel-description {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.link-record-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.7rem;
+  padding: 1.25rem;
+}
+
+.link-record-form label,
+.modal-form-grid label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.link-record-form select,
+.modal-form-grid input,
+.modal-form-grid select,
+.modal-form-grid textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  padding: 0.68rem;
+  font: inherit;
+}
+
+.linked-record-list {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0 1.25rem 1.25rem;
+}
+
+.linked-record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--btn-bg);
+  padding: 0.75rem;
+}
+
+.linked-record-row a {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.linked-record-row a > span {
+  font-size: 1.1rem;
+}
+
+.linked-record-row a div {
+  display: grid;
+  min-width: 0;
+}
+
+.linked-record-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.linked-record-row small {
+  color: var(--text-muted);
+}
+
+.inline-error {
+  margin: 0 1.25rem 1.25rem;
+  border: 1px solid #efc2bf;
+  border-radius: 9px;
+  background: #fff1f0;
+  color: #aa3e38;
+  padding: 0.75rem;
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.68);
+}
+
+.tag-edit-modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  background: var(--bg-card);
+  padding: 1.15rem;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+}
+
+.modal-heading,
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modal-heading {
+  align-items: flex-start;
+}
+
+.modal-heading h2 {
+  margin: 0;
+}
+
+.modal-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  font-size: 1.15rem;
+}
+
+.modal-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.wide-field {
+  grid-column: 1 / -1;
+}
+
+.modal-form-grid textarea {
+  resize: vertical;
+}
+
+.modal-actions {
+  justify-content: flex-end;
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+}
+
 .primary-link {
   display: inline-flex;
   align-items: center;
@@ -1259,10 +2138,25 @@ function getKindIcon(kind) {
 @media (max-width: 760px) {
   .tag-header {
     align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .tag-header-actions {
+    width: 100%;
+    margin-left: 0;
   }
 
   .record-grid {
     grid-template-columns: 1fr;
+  }
+
+  .link-record-form,
+  .modal-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wide-field {
+    grid-column: auto;
   }
 
   .property-row {
