@@ -328,6 +328,7 @@ const routes = [
   },
   {
     path: '/research/audit',
+    alias: '/research-audit',
     name: 'ResearchAuditHub',
     component: ResearchAuditHub,
     meta: {

@@ -2,54 +2,6 @@
 @import './theme.css';
 
 #app {
-  width: 100vw;
+  width: 100%;
   min-height: 100vh;
-  margin: 0;
-  padding: 0;
-}
-
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
-
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
-
-@media (min-width: 1024px) {
-  body { margin: 0; }
-
-  #app { width: 100%; padding: 0; }
-}
-
-/* Full-width toggle styling for layout */
-.layout-content {
-  max-width: 100%;
-  margin: 0;
-  transition: max-width 0.2s ease, padding 0.2s ease;
-}
-.layout-content.full-width {
-  max-width: 100% !important;
-  padding-left: 2.5rem;
-  padding-right: 2.5rem;
-}
-
-.fw-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.85rem;
-  color: #aaa;
-  padding: 6px 8px;
-  border-radius: 6px;
-}
-.fw-btn:hover {
-  background: rgba(0,0,0,0.06);
-  color: #555;
 }

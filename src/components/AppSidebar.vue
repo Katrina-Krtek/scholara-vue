@@ -280,13 +280,20 @@
       >
         🏷️ Knowledge Tags
       </RouterLink>
-
+      <RouterLink
+        to="/canvas"
+        class="nav-item hub-item"
+      >
+        🧩 Canvas
+      </RouterLink>
+      
       <RouterLink
         to="/knowledge-graph"
         class="nav-item child-item"
       >
         🕸️ Knowledge Graph
       </RouterLink>
+      
     </nav>
 
     <div class="sidebar-bottom">
