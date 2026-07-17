@@ -1,4 +1,4 @@
-<template>
+<<template>
   <AppLayout
     title="Source Relationships"
     subtitle="Connect sources, journals, articles, books, and research themes."
@@ -70,7 +70,7 @@
               Relationship
               <select v-model="form.relationshipType">
                 <option
-                  v-for="relationshipType in RELATIONSHIP_TYPES"
+                  v-for="relationshipType in relationshipTypes"
                   :key="relationshipType.value"
                   :value="relationshipType.value"
                 >
@@ -142,7 +142,7 @@
             </button>
 
             <button
-              v-for="relationshipType in RELATIONSHIP_TYPES"
+              v-for="relationshipType in relationshipTypes"
               :key="relationshipType.value"
               class="type-card"
               :class="{ active: activeTypeFilter === relationshipType.value }"
@@ -150,7 +150,116 @@
             >
               <strong>{{ relationshipType.label }}</strong>
               <span>{{ relationshipType.description }}</span>
+
+              <small
+                v-if="!isDefaultRelationshipType(relationshipType.value)"
+              >
+                Custom type
+              </small>
             </button>
+          </div>
+
+          <div class="custom-type-manager">
+            <div>
+              <h3>Create a relationship type</h3>
+
+              <p>
+                Add any relationship your research needs. Starter types remain
+                available, but they do not limit the database.
+              </p>
+            </div>
+
+            <div class="custom-type-form">
+              <label>
+                Forward label
+
+                <input
+                  v-model.trim="customTypeForm.label"
+                  type="text"
+                  placeholder="Example: expands on"
+                />
+              </label>
+
+              <label>
+                Reverse label
+
+                <input
+                  v-model.trim="customTypeForm.reverseLabel"
+                  type="text"
+                  placeholder="Example: is expanded by"
+                />
+              </label>
+
+              <label class="full">
+                Description
+
+                <textarea
+                  v-model="customTypeForm.description"
+                  rows="3"
+                  placeholder="Explain when this relationship should be used."
+                ></textarea>
+              </label>
+
+              <label class="symmetric-toggle full">
+                <input
+                  v-model="customTypeForm.symmetric"
+                  type="checkbox"
+                />
+
+                <span>
+                  This relationship reads the same in either direction
+                </span>
+              </label>
+
+              <div class="custom-type-actions full">
+                <button
+                  type="button"
+                  @click="handleCreateRelationshipType"
+                >
+                  Add Type
+                </button>
+              </div>
+            </div>
+
+            <p
+              v-if="customTypeError"
+              class="message error"
+            >
+              {{ customTypeError }}
+            </p>
+
+            <p
+              v-if="customTypeSuccess"
+              class="message success"
+            >
+              {{ customTypeSuccess }}
+            </p>
+
+            <div
+              v-if="customRelationshipTypes.length"
+              class="custom-type-list"
+            >
+              <article
+                v-for="type in customRelationshipTypes"
+                :key="type.value"
+              >
+                <div>
+                  <strong>{{ type.label }}</strong>
+
+                  <span>
+                    Reverse: {{ type.reverseLabel }}
+                  </span>
+                </div>
+
+                <button
+                  class="danger-button"
+                  type="button"
+                  @click="handleDeleteRelationshipType(type)"
+                >
+                  Delete
+                </button>
+              </article>
+            </div>
           </div>
         </article>
       </section>
@@ -268,17 +377,31 @@ import { computed, onMounted, ref } from 'vue'
 import AppLayout from '@/components/AppLayout.vue'
 
 import {
-  RELATIONSHIP_TYPES,
   buildSourceRelationshipSuggestions,
+  createRelationshipType,
   createSourceRelationship,
+  deleteRelationshipType,
   deleteSourceRelationship,
   getAllSources,
+  isDefaultRelationshipType,
+  readRelationshipTypes,
   readSourceRelationships,
   relationshipTypeLabel,
 } from '../../lib/sourceRelationshipsStore'
 
 const sources = ref([])
 const relationships = ref([])
+const relationshipTypes = ref([])
+
+const customTypeError = ref('')
+const customTypeSuccess = ref('')
+
+const customTypeForm = ref({
+  label: '',
+  reverseLabel: '',
+  description: '',
+  symmetric: false,
+})
 
 const search = ref('')
 const activeTypeFilter = ref('all')
@@ -316,6 +439,16 @@ const sourceTypes = computed(() => {
   return [...new Set(sources.value.map((source) => source.sourceType))]
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b))
+})
+
+const customRelationshipTypes = computed(() => {
+  return relationshipTypes.value.filter(
+    (type) => {
+      return !isDefaultRelationshipType(
+        type.value,
+      )
+    },
+  )
 })
 
 const suggestions = computed(() => {
@@ -364,20 +497,30 @@ onMounted(() => {
 
 function loadData() {
   sources.value = getAllSources()
-  relationships.value = readSourceRelationships()
+  relationships.value =
+    readSourceRelationships()
+  relationshipTypes.value =
+    readRelationshipTypes()
 }
 
-function resetForm() {
+function resetForm({
+  clearMessages = true,
+} = {}) {
   form.value = {
     fromUid: '',
-    relationshipType: 'published_in',
+    relationshipType:
+      relationshipTypes.value[0]
+        ?.value ||
+      'published_in',
     toUid: '',
     note: '',
     tags: '',
   }
 
-  errorMessage.value = ''
-  successMessage.value = ''
+  if (clearMessages) {
+    errorMessage.value = ''
+    successMessage.value = ''
+  }
 }
 
 function handleCreateRelationship() {
@@ -392,8 +535,10 @@ function handleCreateRelationship() {
   }
 
   relationships.value = result.relationships
+  resetForm({
+    clearMessages: false,
+  })
   successMessage.value = 'Relationship added.'
-  resetForm()
 }
 
 function acceptSuggestion(suggestion) {
@@ -421,7 +566,112 @@ function acceptSuggestion(suggestion) {
 }
 
 function handleDeleteRelationship(relationshipId) {
-  relationships.value = deleteSourceRelationship(relationshipId, relationships.value)
+  const confirmed = window.confirm(
+    'Delete this source relationship?',
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  relationships.value =
+    deleteSourceRelationship(
+      relationshipId,
+      relationships.value,
+    )
+
+  successMessage.value =
+    'Relationship deleted.'
+}
+
+function resetCustomTypeForm() {
+  customTypeForm.value = {
+    label: '',
+    reverseLabel: '',
+    description: '',
+    symmetric: false,
+  }
+}
+
+function handleCreateRelationshipType() {
+  customTypeError.value = ''
+  customTypeSuccess.value = ''
+
+  const result =
+    createRelationshipType({
+      label:
+        customTypeForm.value.label,
+      reverseLabel:
+        customTypeForm.value
+          .reverseLabel ||
+        customTypeForm.value.label,
+      description:
+        customTypeForm.value
+          .description,
+      symmetric:
+        customTypeForm.value
+          .symmetric,
+    })
+
+  if (result.error) {
+    customTypeError.value =
+      result.error
+    return
+  }
+
+  relationshipTypes.value =
+    result.relationshipTypes
+
+  form.value.relationshipType =
+    result.relationshipType.value
+
+  resetCustomTypeForm()
+
+  customTypeSuccess.value =
+    'Relationship type added.'
+}
+
+function handleDeleteRelationshipType(
+  relationshipType,
+) {
+  const confirmed = window.confirm(
+    `Delete the relationship type "${relationshipType.label}"?`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  customTypeError.value = ''
+  customTypeSuccess.value = ''
+
+  const result =
+    deleteRelationshipType(
+      relationshipType.value,
+      relationships.value,
+    )
+
+  if (result.error) {
+    customTypeError.value =
+      result.error
+    return
+  }
+
+  relationshipTypes.value =
+    result.relationshipTypes
+
+  if (
+    form.value.relationshipType ===
+    relationshipType.value
+  ) {
+    form.value.relationshipType =
+      relationshipTypes.value[0]
+        ?.value ||
+      'published_in'
+  }
+
+  customTypeSuccess.value =
+    'Relationship type deleted.'
 }
 
 function sourceTitle(uid) {
@@ -520,9 +770,25 @@ function formatDate(value) {
 }
 
 .relationship-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  display: flex;
+  align-items: flex-start;
   gap: 1.5rem;
+}
+
+.relationship-builder {
+  flex: 1.35 1 0;
+  align-self: flex-start !important;
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.relationship-types {
+  flex: 0.65 1 320px;
+  align-self: flex-start !important;
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
 }
 
 .panel {
@@ -554,12 +820,14 @@ function formatDate(value) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+  min-width: 0;
   padding: 1.25rem;
 }
 
 .relationship-form label {
   display: grid;
   gap: 0.45rem;
+  min-width: 0;
   color: #0a1f44;
   font-size: 0.85rem;
   font-weight: 800;
@@ -575,6 +843,9 @@ function formatDate(value) {
 .list-controls input,
 .list-controls select {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border: 1px solid rgba(10, 31, 68, 0.15);
   border-radius: 14px;
   background: #f8fafc;
@@ -672,6 +943,104 @@ button:hover {
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.4;
+}
+
+.custom-type-manager {
+  display: grid;
+  gap: 0.9rem;
+  margin: 0 1.25rem 1.25rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid rgba(10, 31, 68, 0.12);
+}
+
+.custom-type-manager h3 {
+  margin: 0;
+  color: #0a1f44;
+}
+
+.custom-type-manager > div > p {
+  margin: 0.35rem 0 0;
+  color: #667085;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.custom-type-form {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.custom-type-form label {
+  display: grid;
+  gap: 0.4rem;
+  color: #0a1f44;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.custom-type-form .full {
+  grid-column: 1 / -1;
+}
+
+.custom-type-form input,
+.custom-type-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(10, 31, 68, 0.15);
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #0a1f44;
+  padding: 0.7rem;
+  font: inherit;
+}
+
+.symmetric-toggle {
+  display: flex !important;
+  align-items: center;
+  grid-template-columns: auto 1fr;
+}
+
+.symmetric-toggle input {
+  width: 18px;
+  height: 18px;
+}
+
+.custom-type-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.custom-type-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.custom-type-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid rgba(10, 31, 68, 0.1);
+  border-radius: 13px;
+  background: #f8fafc;
+  padding: 0.7rem;
+}
+
+.custom-type-list article > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.custom-type-list span {
+  color: #667085;
+  font-size: 0.74rem;
+}
+
+.type-card small {
+  color: #8a6a18;
+  font-size: 0.68rem;
 }
 
 .suggestions-panel,
@@ -824,8 +1193,7 @@ button:hover {
 }
 
 @media (max-width: 1050px) {
-  .relationships-hero,
-  .relationship-grid {
+  .relationships-hero {
     grid-template-columns: 1fr;
   }
 
@@ -833,12 +1201,27 @@ button:hover {
     display: grid;
   }
 
+  .relationship-grid {
+    flex-direction: column;
+  }
+
+  .relationship-builder,
+  .relationship-types {
+    flex: none;
+    width: 100%;
+  }
+
   .hero-stats {
     min-width: 0;
   }
 
-  .relationship-form {
+  .relationship-form,
+  .custom-type-form {
     grid-template-columns: 1fr;
+  }
+
+  .custom-type-form .full {
+    grid-column: auto;
   }
 
   .relationship-main {
@@ -871,3 +1254,4 @@ button:hover {
   }
 }
 </style>
+

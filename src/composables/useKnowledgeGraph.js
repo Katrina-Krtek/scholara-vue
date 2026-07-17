@@ -11,6 +11,11 @@ import { useResearch } from '@/composables/useResearch'
 import { useConcepts } from '@/composables/useConcepts'
 import { useTerms } from '@/composables/useTerms'
 import { useKnowledgeTags } from '@/composables/useKnowledgeTags'
+import {
+  getAllSources as getRelationshipSources,
+  readSourceRelationships,
+  relationshipTypeLabel as getSourceRelationshipLabel,
+} from '@/lib/sourceRelationshipsStore'
 
 import {
   graphNodeTypes as baseGraphNodeTypes,
@@ -2753,6 +2758,106 @@ function findGraphNodeForSourceRecord(
   )
 }
 
+function findGraphNodeForRelationshipSource(
+  nodes,
+  relationshipSource,
+) {
+  if (!relationshipSource) {
+    return null
+  }
+
+  const sourceId = String(
+    relationshipSource.id || '',
+  ).trim()
+
+  const graphType =
+    normalizeSourceType(
+      relationshipSource.sourceType,
+    )
+
+  const directMatch =
+    nodes.find((node) => {
+      if (
+        !SOURCE_GRAPH_TYPES.includes(
+          node.type,
+        )
+      ) {
+        return false
+      }
+
+      if (
+        graphType &&
+        node.type !== graphType
+      ) {
+        return false
+      }
+
+      return [
+        node.entityId,
+        node.sourceRecordId,
+      ].some((value) => {
+        return (
+          sourceId &&
+          String(value || '').trim() ===
+            sourceId
+        )
+      })
+    })
+
+  if (directMatch) {
+    return directMatch
+  }
+
+  const title =
+    normalizeSearchText(
+      relationshipSource.title,
+    )
+
+  const author =
+    normalizeSearchText(
+      relationshipSource.author,
+    )
+
+  return (
+    nodes.find((node) => {
+      if (
+        !SOURCE_GRAPH_TYPES.includes(
+          node.type,
+        )
+      ) {
+        return false
+      }
+
+      if (
+        graphType &&
+        node.type !== graphType
+      ) {
+        return false
+      }
+
+      if (
+        normalizeSearchText(
+          node.title,
+        ) !== title
+      ) {
+        return false
+      }
+
+      const nodeAuthor =
+        normalizeSearchText(
+          node.author,
+        )
+
+      return (
+        !author ||
+        !nodeAuthor ||
+        author === nodeAuthor
+      )
+    }) ||
+    null
+  )
+}
+
 function findGraphNodeForWritingProject(
   nodes,
   projectId,
@@ -4414,6 +4519,92 @@ export function useKnowledgeGraph() {
       return relationships
     })
 
+  const liveSourceRelationshipLinks =
+    computed(() => {
+      const sourceRecords =
+        getRelationshipSources()
+
+      const sourceByUid =
+        new Map(
+          sourceRecords.map(
+            (sourceRecord) => [
+              sourceRecord.uid,
+              sourceRecord,
+            ],
+          ),
+        )
+
+      return readSourceRelationships()
+        .map((relationship) => {
+          const fromRecord =
+            sourceByUid.get(
+              relationship.fromUid,
+            )
+
+          const toRecord =
+            sourceByUid.get(
+              relationship.toUid,
+            )
+
+          const fromNode =
+            findGraphNodeForRelationshipSource(
+              nodes.value,
+              fromRecord,
+            )
+
+          const toNode =
+            findGraphNodeForRelationshipSource(
+              nodes.value,
+              toRecord,
+            )
+
+          if (
+            !fromNode ||
+            !toNode ||
+            fromNode.id === toNode.id
+          ) {
+            return null
+          }
+
+          return {
+            id:
+              `source-relationship:${relationship.id}`,
+
+            source:
+              fromNode.id,
+
+            target:
+              toNode.id,
+
+            label:
+              getSourceRelationshipLabel(
+                relationship.relationshipType,
+              ) ||
+              'Related source',
+
+            strength: 5,
+
+            relationshipType:
+              relationship.relationshipType,
+
+            note:
+              relationship.note ||
+              '',
+
+            tags:
+              String(
+                relationship.tags || '',
+              )
+                .split(',')
+                .map((tag) =>
+                  tag.trim(),
+                )
+                .filter(Boolean),
+          }
+        })
+        .filter(Boolean)
+    })
+
   const links = computed(() => {
     const existingNodeIds = new Set(
       nodes.value.map((node) => {
@@ -4433,6 +4624,7 @@ export function useKnowledgeGraph() {
       ...liveConceptLinks.value,
       ...liveTermLinks.value,
       ...liveKnowledgeTagLinks.value,
+      ...liveSourceRelationshipLinks.value,
     ].filter((link) => {
       if (
         !existingNodeIds.has(link.source) ||

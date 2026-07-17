@@ -1,10 +1,12 @@
 const RELATIONSHIP_STORAGE_KEY = 'scholarory_source_relationships'
 const SOURCE_REGISTRY_STORAGE_KEY = 'scholarory_source_registry'
+const RELATIONSHIP_TYPE_STORAGE_KEY = 'scholarory_source_relationship_types'
 
 const SOURCE_STORAGE_KEYS = [
   { key: 'scholarory_sources', type: 'Source' },
   { key: 'sources', type: 'Source' },
 
+  { key: 'scholarory-books', type: 'Book' },
   { key: 'scholarory_books', type: 'Book' },
   { key: 'books', type: 'Book' },
 
@@ -52,14 +54,16 @@ export const RELATIONSHIP_TYPES = [
   {
     value: 'disagrees_with',
     label: 'disagrees with',
-    reverseLabel: 'is challenged by',
+    reverseLabel: 'disagrees with',
     description: 'Use when two sources have a meaningful tension or disagreement.',
+    symmetric: true,
   },
   {
     value: 'same_theme',
     label: 'shares theme with',
     reverseLabel: 'shares theme with',
     description: 'Use when sources are connected by topic, theme, or concept.',
+    symmetric: true,
   },
   {
     value: 'methodology_from',
@@ -99,6 +103,342 @@ function writeJson(key, value) {
     console.warn(`Scholarory could not save ${key} to localStorage`, error)
   }
 }
+
+function normalizeRelationshipTypeValue(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
+function normalizeRelationshipTypeDefinition(input = {}) {
+  const label = String(
+    input.label || input.value || '',
+  ).trim()
+
+  const value =
+    normalizeRelationshipTypeValue(
+      input.value || label,
+    )
+
+  return {
+    value,
+    label: label || value,
+    reverseLabel:
+      String(
+        input.reverseLabel ||
+          label ||
+          value,
+      ).trim(),
+    description:
+      String(
+        input.description || '',
+      ).trim(),
+    symmetric:
+      input.symmetric === true,
+    custom:
+      input.custom === true,
+    createdAt:
+      input.createdAt ||
+      new Date().toISOString(),
+    updatedAt:
+      input.updatedAt ||
+      new Date().toISOString(),
+  }
+}
+
+export function isDefaultRelationshipType(
+  typeValue,
+) {
+  return RELATIONSHIP_TYPES.some(
+    (type) => {
+      return (
+        type.value === typeValue
+      )
+    },
+  )
+}
+
+export function readCustomRelationshipTypes() {
+  const stored = readJson(
+    RELATIONSHIP_TYPE_STORAGE_KEY,
+    [],
+  )
+
+  if (!Array.isArray(stored)) {
+    return []
+  }
+
+  return stored
+    .map((type) => {
+      return normalizeRelationshipTypeDefinition({
+        ...type,
+        custom: true,
+      })
+    })
+    .filter((type) => {
+      return Boolean(
+        type.value &&
+          type.label,
+      )
+    })
+}
+
+export function saveCustomRelationshipTypes(
+  relationshipTypes,
+) {
+  const customTypes = (
+    Array.isArray(relationshipTypes)
+      ? relationshipTypes
+      : []
+  )
+    .map((type) => {
+      return normalizeRelationshipTypeDefinition({
+        ...type,
+        custom: true,
+      })
+    })
+    .filter((type) => {
+      return Boolean(
+        type.value &&
+          type.label &&
+          !isDefaultRelationshipType(
+            type.value,
+          )
+      )
+    })
+
+  writeJson(
+    RELATIONSHIP_TYPE_STORAGE_KEY,
+    customTypes,
+  )
+
+  return customTypes
+}
+
+export function readRelationshipTypes() {
+  const merged = [
+    ...RELATIONSHIP_TYPES.map(
+      (type) => ({
+        ...type,
+        custom: false,
+      }),
+    ),
+    ...readCustomRelationshipTypes(),
+  ]
+
+  const seen = new Set()
+
+  return merged.filter((type) => {
+    if (
+      !type.value ||
+      seen.has(type.value)
+    ) {
+      return false
+    }
+
+    seen.add(type.value)
+    return true
+  })
+}
+
+export function createRelationshipType(
+  input = {},
+) {
+  const relationshipType =
+    normalizeRelationshipTypeDefinition({
+      ...input,
+      custom: true,
+    })
+
+  if (
+    !relationshipType.label ||
+    !relationshipType.value
+  ) {
+    return {
+      error:
+        'Enter a relationship label.',
+      relationshipTypes:
+        readRelationshipTypes(),
+    }
+  }
+
+  const existing =
+    readRelationshipTypes().find(
+      (type) => {
+        return (
+          type.value ===
+            relationshipType.value ||
+          type.label
+            .trim()
+            .toLowerCase() ===
+            relationshipType.label
+              .trim()
+              .toLowerCase()
+        )
+      },
+    )
+
+  if (existing) {
+    return {
+      error:
+        'That relationship type already exists.',
+      relationshipType:
+        existing,
+      relationshipTypes:
+        readRelationshipTypes(),
+    }
+  }
+
+  const customTypes =
+    readCustomRelationshipTypes()
+
+  customTypes.push(
+    relationshipType,
+  )
+
+  saveCustomRelationshipTypes(
+    customTypes,
+  )
+
+  return {
+    relationshipType,
+    relationshipTypes:
+      readRelationshipTypes(),
+  }
+}
+
+export function updateRelationshipType(
+  typeValue,
+  updates = {},
+) {
+  if (
+    isDefaultRelationshipType(
+      typeValue,
+    )
+  ) {
+    return {
+      error:
+        'Starter relationship types cannot be edited.',
+      relationshipTypes:
+        readRelationshipTypes(),
+    }
+  }
+
+  const customTypes =
+    readCustomRelationshipTypes()
+
+  const index =
+    customTypes.findIndex(
+      (type) => {
+        return (
+          type.value === typeValue
+        )
+      },
+    )
+
+  if (index === -1) {
+    return {
+      error:
+        'Relationship type not found.',
+      relationshipTypes:
+        readRelationshipTypes(),
+    }
+  }
+
+  const nextType =
+    normalizeRelationshipTypeDefinition({
+      ...customTypes[index],
+      ...updates,
+      value: typeValue,
+      custom: true,
+      updatedAt:
+        new Date().toISOString(),
+    })
+
+  customTypes[index] = nextType
+
+  saveCustomRelationshipTypes(
+    customTypes,
+  )
+
+  return {
+    relationshipType: nextType,
+    relationshipTypes:
+      readRelationshipTypes(),
+  }
+}
+
+export function deleteRelationshipType(
+  typeValue,
+  relationships =
+    readSourceRelationships(),
+) {
+  if (
+    isDefaultRelationshipType(
+      typeValue,
+    )
+  ) {
+    return {
+      error:
+        'Starter relationship types cannot be deleted.',
+      relationshipTypes:
+        readRelationshipTypes(),
+    }
+  }
+
+  const inUse =
+    relationships.some(
+      (relationship) => {
+        return (
+          relationship.relationshipType ===
+          typeValue
+        )
+      },
+    )
+
+  if (inUse) {
+    return {
+      error:
+        'This relationship type is currently used by one or more source relationships.',
+      relationshipTypes:
+        readRelationshipTypes(),
+    }
+  }
+
+  const customTypes =
+    readCustomRelationshipTypes()
+      .filter((type) => {
+        return (
+          type.value !== typeValue
+        )
+      })
+
+  saveCustomRelationshipTypes(
+    customTypes,
+  )
+
+  return {
+    relationshipTypes:
+      readRelationshipTypes(),
+  }
+}
+
+function getRelationshipTypeDefinition(
+  typeValue,
+) {
+  return (
+    readRelationshipTypes().find(
+      (type) => {
+        return (
+          type.value === typeValue
+        )
+      },
+    ) || null
+  )
+}
+
 
 function firstValue(values, fallback = '') {
   const found = values.find((value) => {
@@ -471,25 +811,84 @@ export function readSourceRelationships() {
 }
 
 export function saveSourceRelationships(relationships) {
-  writeJson(RELATIONSHIP_STORAGE_KEY, relationships)
-}
+  writeJson(
+    RELATIONSHIP_STORAGE_KEY,
+    relationships,
+  )
 
-export function relationshipTypeLabel(typeValue, reverse = false) {
-  const relationshipType = RELATIONSHIP_TYPES.find((type) => type.value === typeValue)
-
-  if (!relationshipType) return typeValue
-
-  return reverse ? relationshipType.reverseLabel : relationshipType.label
-}
-
-export function relationshipExists(relationships, fromUid, relationshipType, toUid) {
-  return relationships.some((relationship) => {
-    return (
-      relationship.fromUid === fromUid &&
-      relationship.relationshipType === relationshipType &&
-      relationship.toUid === toUid
+  if (
+    typeof window !==
+    'undefined'
+  ) {
+    window.dispatchEvent(
+      new CustomEvent(
+        'scholarory-source-relationships-changed',
+      ),
     )
-  })
+  }
+}
+
+export function relationshipTypeLabel(
+  typeValue,
+  reverse = false,
+) {
+  const relationshipType =
+    getRelationshipTypeDefinition(
+      typeValue,
+    )
+
+  if (!relationshipType) {
+    return String(typeValue || '')
+      .replace(/[_-]+/g, ' ')
+  }
+
+  return reverse
+    ? relationshipType.reverseLabel
+    : relationshipType.label
+}
+
+export function relationshipExists(
+  relationships,
+  fromUid,
+  relationshipType,
+  toUid,
+) {
+  const definition =
+    getRelationshipTypeDefinition(
+      relationshipType,
+    )
+
+  return relationships.some(
+    (relationship) => {
+      const exactMatch =
+        relationship.fromUid ===
+          fromUid &&
+        relationship.relationshipType ===
+          relationshipType &&
+        relationship.toUid ===
+          toUid
+
+      if (exactMatch) {
+        return true
+      }
+
+      if (
+        definition?.symmetric !==
+        true
+      ) {
+        return false
+      }
+
+      return (
+        relationship.fromUid ===
+          toUid &&
+        relationship.relationshipType ===
+          relationshipType &&
+        relationship.toUid ===
+          fromUid
+      )
+    },
+  )
 }
 
 export function createSourceRelationship(input, currentRelationships = readSourceRelationships()) {
@@ -501,6 +900,19 @@ export function createSourceRelationship(input, currentRelationships = readSourc
     return {
       error: 'Choose two sources and a relationship type.',
       relationships: currentRelationships,
+    }
+  }
+
+  if (
+    !getRelationshipTypeDefinition(
+      relationshipType,
+    )
+  ) {
+    return {
+      error:
+        'That relationship type is not available. Create it first, then try again.',
+      relationships:
+        currentRelationships,
     }
   }
 
@@ -539,6 +951,117 @@ export function createSourceRelationship(input, currentRelationships = readSourc
     relationship,
     relationships: nextRelationships,
   }
+}
+
+export function updateSourceRelationship(
+  relationshipId,
+  updates = {},
+  currentRelationships =
+    readSourceRelationships(),
+) {
+  const existing =
+    currentRelationships.find(
+      (relationship) => {
+        return (
+          relationship.id ===
+          relationshipId
+        )
+      },
+    )
+
+  if (!existing) {
+    return {
+      error:
+        'Relationship not found.',
+      relationships:
+        currentRelationships,
+    }
+  }
+
+  const candidate = {
+    ...existing,
+    ...updates,
+    id: existing.id,
+    updatedAt:
+      new Date().toISOString(),
+  }
+
+  const withoutCurrent =
+    currentRelationships.filter(
+      (relationship) => {
+        return (
+          relationship.id !==
+          relationshipId
+        )
+      },
+    )
+
+  const validation =
+    createSourceRelationship(
+      candidate,
+      withoutCurrent,
+    )
+
+  if (validation.error) {
+    return {
+      error: validation.error,
+      relationships:
+        currentRelationships,
+    }
+  }
+
+  const nextRelationships = [
+    candidate,
+    ...withoutCurrent,
+  ]
+
+  saveSourceRelationships(
+    nextRelationships,
+  )
+
+  return {
+    relationship: candidate,
+    relationships:
+      nextRelationships,
+  }
+}
+
+export function removeOrphanedSourceRelationships(
+  relationships =
+    readSourceRelationships(),
+  sources = getAllSources(),
+) {
+  const validSourceUids =
+    new Set(
+      sources.map(
+        (source) => source.uid,
+      ),
+    )
+
+  const nextRelationships =
+    relationships.filter(
+      (relationship) => {
+        return (
+          validSourceUids.has(
+            relationship.fromUid,
+          ) &&
+          validSourceUids.has(
+            relationship.toUid,
+          )
+        )
+      },
+    )
+
+  if (
+    nextRelationships.length !==
+    relationships.length
+  ) {
+    saveSourceRelationships(
+      nextRelationships,
+    )
+  }
+
+  return nextRelationships
 }
 
 export function deleteSourceRelationship(relationshipId, currentRelationships = readSourceRelationships()) {
@@ -630,3 +1153,4 @@ export function buildSourceRelationshipSuggestions(sources, relationships) {
 
   return suggestions.slice(0, 12)
 } 
+
