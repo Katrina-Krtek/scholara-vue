@@ -14,7 +14,6 @@ import TasksHub from '../views/TasksHub.vue'
 import CoursesHub from '../views/courses/CoursesHub.vue'
 import CourseDetailView from '../views/courses/CourseDetailView.vue'
 
-import AssignmentDetail from '../views/AssignmentDetail.vue'
 import AssignmentDetailView from '../views/assignments/AssignmentDetailView.vue'
 import AssignmentsHub from '../views/AssignmentsHub.vue'
 
@@ -168,7 +167,7 @@ const routes = [
     component: AcademicHub,
   },
 
-  {
+    {
     path: '/courses',
     name: 'CoursesHub',
     component: CoursesHub,
@@ -187,8 +186,11 @@ const routes = [
   {
     path:
       '/courses/:courseId/assignments/:assignmentId',
-    name: 'AssignmentDetail',
-    component: AssignmentDetail,
+
+    redirect: (to) =>
+      `/assignments/${encodeURIComponent(
+        String(to.params.assignmentId),
+      )}`,
   },
   {
     path: '/assignments/:id',
