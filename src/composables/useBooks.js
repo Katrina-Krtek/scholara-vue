@@ -16,12 +16,269 @@ export function slugifyBookTitle(value = '') {
   )
 }
 
+export function createEmptyBookAuthor() {
+  return {
+    creatorType: 'person',
+    firstName: '',
+    middleName: '',
+    initial: '',
+    nameParticle: '',
+    lastName: '',
+    suffix: '',
+    literal: '',
+    personId: null,
+    organizationId: null,
+  }
+}
+
+function cleanText(value) {
+  return String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function looksLikeOrganization(value) {
+  const text =
+    cleanText(value).toLowerCase()
+
+  return [
+    'university',
+    'college',
+    'seminary',
+    'church',
+    'press',
+    'journal',
+    'association',
+    'society',
+    'committee',
+    'council',
+    'department',
+    'ministry',
+    'institute',
+    'center',
+    'centre',
+    'agency',
+    'office',
+    'organization',
+    'foundation',
+  ].some((word) =>
+    text.includes(word),
+  )
+}
+
+export function normalizeBookAuthor(
+  value,
+) {
+  if (!value) {
+    return createEmptyBookAuthor()
+  }
+
+  if (
+    typeof value === 'string'
+  ) {
+    const text = cleanText(value)
+
+    if (!text) {
+      return createEmptyBookAuthor()
+    }
+
+    if (
+      looksLikeOrganization(text)
+    ) {
+      return {
+        ...createEmptyBookAuthor(),
+        creatorType: 'literal',
+        literal: text,
+      }
+    }
+
+    if (text.includes(',')) {
+      const [
+        familyName,
+        ...givenParts
+      ] = text
+        .split(',')
+        .map((part) =>
+          cleanText(part),
+        )
+
+      const givenTokens =
+        cleanText(
+          givenParts.join(' '),
+        )
+          .split(' ')
+          .filter(Boolean)
+
+      return {
+        ...createEmptyBookAuthor(),
+        firstName:
+          givenTokens.shift() || '',
+        middleName:
+          givenTokens.join(' '),
+        lastName:
+          familyName || '',
+      }
+    }
+
+    const tokens =
+      text
+        .split(' ')
+        .filter(Boolean)
+
+    if (tokens.length === 1) {
+      return {
+        ...createEmptyBookAuthor(),
+        lastName: tokens[0],
+      }
+    }
+
+    return {
+      ...createEmptyBookAuthor(),
+      firstName:
+        tokens.shift() || '',
+      lastName:
+        tokens.pop() || '',
+      middleName:
+        tokens.join(' '),
+    }
+  }
+
+  const literal =
+    cleanText(
+      value.literal ||
+      value.raw,
+    )
+
+  const creatorType =
+    value.creatorType === 'literal' ||
+    literal
+      ? 'literal'
+      : 'person'
+
+  return {
+    ...createEmptyBookAuthor(),
+    creatorType,
+    firstName:
+      cleanText(
+        value.firstName ||
+        value.given,
+      ),
+    middleName:
+      cleanText(
+        value.middleName ||
+        value.middle,
+      ),
+    initial:
+      cleanText(value.initial),
+    nameParticle:
+      cleanText(
+        value.nameParticle ||
+        value.particle,
+      ),
+    lastName:
+      cleanText(
+        value.lastName ||
+        value.family,
+      ),
+    suffix:
+      cleanText(value.suffix),
+    literal,
+    personId:
+      value.personId || null,
+    organizationId:
+      value.organizationId || null,
+  }
+}
+
+export function cleanBookAuthors(
+  value = [],
+) {
+  const source =
+    Array.isArray(value)
+      ? value
+      : String(value || '')
+          .split(';')
+          .map((entry) =>
+            entry.trim(),
+          )
+          .filter(Boolean)
+
+  return source
+    .map((author) =>
+      normalizeBookAuthor(author),
+    )
+    .filter((author) => {
+      if (
+        author.creatorType ===
+        'literal'
+      ) {
+        return Boolean(
+          cleanText(author.literal),
+        )
+      }
+
+      return Boolean(
+        cleanText(
+          [
+            author.firstName,
+            author.middleName,
+            author.initial,
+            author.nameParticle,
+            author.lastName,
+            author.suffix,
+          ].join(' '),
+        ),
+      )
+    })
+}
+
+export function formatBookAuthor(
+  author,
+) {
+  const normalized =
+    normalizeBookAuthor(author)
+
+  if (
+    normalized.creatorType ===
+    'literal'
+  ) {
+    return cleanText(
+      normalized.literal,
+    )
+  }
+
+  return cleanText(
+    [
+      normalized.firstName,
+      normalized.middleName,
+      normalized.initial,
+      normalized.nameParticle,
+      normalized.lastName,
+      normalized.suffix,
+    ]
+      .filter(Boolean)
+      .join(' '),
+  )
+}
+
+export function formatBookAuthors(
+  authors = [],
+) {
+  return cleanBookAuthors(authors)
+    .map((author) =>
+      formatBookAuthor(author),
+    )
+    .filter(Boolean)
+    .join('; ')
+}
+
 const bookDefaults = {
   sourceId: null,
   title: 'Untitled Book',
   slug: '',
   subtitle: '',
   author: '',
+  authors: [],
   status: 'planned',
   rating: 0,
   coverUrl: '',
@@ -260,6 +517,40 @@ function normalizeBook(book = {}, options = {}) {
     ...book,
   }
 
+  const hasBookAuthors =
+    Object.prototype
+      .hasOwnProperty.call(
+        book,
+        'authors',
+      )
+
+  const hasStarterAuthors =
+    Boolean(
+      starterBook &&
+      Object.prototype
+        .hasOwnProperty.call(
+          starterBook,
+          'authors',
+        ),
+    )
+
+  const authorSource =
+    hasBookAuthors
+      ? book.authors
+      : hasStarterAuthors
+        ? starterBook.authors
+        : normalized.author
+
+  const normalizedAuthors =
+    cleanBookAuthors(
+      authorSource,
+    )
+
+  const authorDisplay =
+    formatBookAuthors(
+      normalizedAuthors,
+    )
+
   return {
     ...normalized,
 
@@ -287,7 +578,10 @@ function normalizeBook(book = {}, options = {}) {
       normalized.subtitle || '',
 
     author:
-      normalized.author || '',
+      authorDisplay,
+
+    authors:
+      normalizedAuthors,
 
     status:
       normalized.status || 'planned',
@@ -581,6 +875,19 @@ export function useBooks() {
 
         author:
           book.author || '',
+
+        authors:
+          Object.prototype
+            .hasOwnProperty.call(
+              book,
+              'authors',
+            )
+            ? cleanBookAuthors(
+                book.authors,
+              )
+            : cleanBookAuthors(
+                book.author,
+              ),
 
         status:
           book.status || 'planned',

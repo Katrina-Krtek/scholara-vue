@@ -1,7 +1,7 @@
 <template>
   <AppLayout
     :title="book?.title || 'Book Detail'"
-    :subtitle="book?.author || 'Book'"
+    :subtitle="bookAuthorDisplay || 'Book'"
     banner-key="book-detail"
     default-icon="📘"
   >
@@ -30,14 +30,158 @@
             />
           </label>
 
-          <label>
-            Author
-            <input
-              v-model="book.author"
-              placeholder="Use semicolons for multiple authors"
-              @blur="save"
-            />
-          </label>
+          <section class="authors-editor">
+            <div class="authors-header">
+              <div>
+                <strong>Authors</strong>
+
+                <p>
+                  Enter each author separately and in citation order.
+                </p>
+              </div>
+
+              <button
+                class="secondary-btn"
+                type="button"
+                @click="addAuthorDraft"
+              >
+                + Add Author
+              </button>
+            </div>
+
+            <div class="author-card-list">
+              <article
+                v-for="(author, index) in authorDrafts"
+                :key="`book-author-${index}`"
+                class="author-card"
+              >
+                <div class="author-card-header">
+                  <div>
+                    <strong>
+                      {{ getAuthorCardLabel(index) }}
+                    </strong>
+
+                    <span>
+                      Citation position {{ index + 1 }}
+                    </span>
+                  </div>
+
+                  <div class="author-card-actions">
+                    <select
+                      v-model="author.creatorType"
+                      class="author-type-select"
+                      @change="saveAuthors"
+                    >
+                      <option value="person">
+                        Person
+                      </option>
+
+                      <option value="literal">
+                        Organization / Group
+                      </option>
+                    </select>
+
+                    <button
+                      class="author-remove-btn"
+                      type="button"
+                      :aria-label="`Clear ${getAuthorCardLabel(index)}`"
+                      @click="removeAuthorDraft(index)"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+
+                <label
+                  v-if="author.creatorType === 'literal'"
+                >
+                  {{ getAuthorCardLabel(index) }} Organization or Group Name
+
+                  <input
+                    v-model="author.literal"
+                    :placeholder="`${getAuthorCardLabel(index)} organization or group name`"
+                    @blur="saveAuthors"
+                  />
+                </label>
+
+                <div
+                  v-else
+                  class="author-name-grid"
+                >
+                  <label>
+                    {{ getAuthorCardLabel(index) }} First Name
+
+                    <input
+                      v-model="author.firstName"
+                      :placeholder="`${getAuthorCardLabel(index)} first name`"
+                      @blur="saveAuthors"
+                    />
+                  </label>
+
+                  <label>
+                    {{ getAuthorCardLabel(index) }} Middle Name / Initial
+
+                    <input
+                      v-model="author.middleName"
+                      :placeholder="`${getAuthorCardLabel(index)} middle name or initial`"
+                      @blur="saveAuthors"
+                    />
+                  </label>
+
+                  <label>
+                    {{ getAuthorCardLabel(index) }} Last Name
+
+                    <input
+                      v-model="author.lastName"
+                      :placeholder="`${getAuthorCardLabel(index)} last name`"
+                      @blur="saveAuthors"
+                    />
+                  </label>
+
+                  <label>
+                    {{ getAuthorCardLabel(index) }} Suffix
+
+                    <input
+                      v-model="author.suffix"
+                      placeholder="Jr., Sr., III, etc."
+                      @blur="saveAuthors"
+                    />
+                  </label>
+                </div>
+
+                <details
+                  v-if="author.creatorType === 'person'"
+                  class="author-advanced"
+                >
+                  <summary>
+                    Additional name details
+                  </summary>
+
+                  <div class="author-advanced-grid">
+                    <label>
+                      Name Particle
+
+                      <input
+                        v-model="author.nameParticle"
+                        placeholder="de, van, von, etc."
+                        @blur="saveAuthors"
+                      />
+                    </label>
+
+                    <label>
+                      Separate Initial Field
+
+                      <input
+                        v-model="author.initial"
+                        placeholder="Optional legacy initial"
+                        @blur="saveAuthors"
+                      />
+                    </label>
+                  </div>
+                </details>
+              </article>
+            </div>
+          </section>
 
           <div class="two-column">
             <label>
@@ -84,7 +228,7 @@
       <SourceRelationshipPanel
         :source-id="book.id"
         :source-title="book.title"
-        :source-author="book.author"
+        :source-author="bookAuthorDisplay"
         source-type="Book"
         heading="Connected Sources"
       />
@@ -371,7 +515,13 @@ import {
 import AppLayout from '@/components/AppLayout.vue'
 import BookCoverUploader from '@/components/books/BookCoverUploader.vue'
 import SourceRelationshipPanel from '@/components/sources/SourceRelationshipPanel.vue'
-import { useBooks } from '@/composables/useBooks'
+import {
+  cleanBookAuthors,
+  createEmptyBookAuthor,
+  formatBookAuthors,
+  normalizeBookAuthor,
+  useBooks,
+} from '@/composables/useBooks'
 import {
   generateCitation,
   generateFullFootnote,
@@ -416,6 +566,9 @@ const selectedCitationStyle = ref(
 )
 
 const saveMessage = ref('')
+const authorDrafts = ref([])
+
+const MINIMUM_AUTHOR_SLOTS = 5
 
 const citationStyles = [
   {
@@ -452,6 +605,126 @@ const citationStyles = [
   },
 ]
 
+const bookAuthorDisplay =
+  computed(() => {
+    const draftDisplay =
+      formatBookAuthors(
+        cleanBookAuthors(
+          authorDrafts.value,
+        ),
+      )
+
+    return (
+      draftDisplay ||
+      book.value?.author ||
+      ''
+    )
+  })
+
+watch(
+  () => book.value?.id,
+
+  () => {
+    loadAuthorDrafts()
+  },
+
+  {
+    immediate: true,
+  },
+)
+
+function loadAuthorDrafts() {
+  const currentBook = book.value
+
+  if (!currentBook) {
+    authorDrafts.value = []
+    return
+  }
+
+  const storedAuthors =
+    Array.isArray(
+      currentBook.authors,
+    )
+      ? currentBook.authors
+      : []
+
+  const authorSource =
+    storedAuthors.length
+      ? storedAuthors
+      : currentBook.author
+
+  authorDrafts.value =
+    cleanBookAuthors(
+      authorSource,
+    ).map((author) => ({
+      ...normalizeBookAuthor(
+        author,
+      ),
+    }))
+
+  ensureMinimumAuthorSlots()
+}
+
+function ensureMinimumAuthorSlots() {
+  while (
+    authorDrafts.value.length <
+    MINIMUM_AUTHOR_SLOTS
+  ) {
+    authorDrafts.value.push(
+      createEmptyBookAuthor(),
+    )
+  }
+}
+
+function addAuthorDraft() {
+  authorDrafts.value.push(
+    createEmptyBookAuthor(),
+  )
+}
+
+function removeAuthorDraft(index) {
+  if (
+    authorDrafts.value.length >
+    MINIMUM_AUTHOR_SLOTS
+  ) {
+    authorDrafts.value.splice(
+      index,
+      1,
+    )
+  } else {
+    authorDrafts.value[index] =
+      createEmptyBookAuthor()
+  }
+
+  ensureMinimumAuthorSlots()
+  saveAuthors()
+}
+
+function getAuthorCardLabel(index) {
+  const ordinalLabels = [
+    'First',
+    'Second',
+    'Third',
+    'Fourth',
+    'Fifth',
+  ]
+
+  return index <
+    ordinalLabels.length
+    ? `${ordinalLabels[index]} Author`
+    : `Author ${index + 1}`
+}
+
+function saveAuthors() {
+  save()
+}
+
+function getCleanBookAuthors() {
+  return cleanBookAuthors(
+    authorDrafts.value,
+  )
+}
+
 const progress = computed(() => {
   if (!book.value) {
     return 0
@@ -467,18 +740,24 @@ const citationItem = computed(() => {
     return null
   }
 
+  const authors =
+    getCleanBookAuthors()
+
+  const authorDisplay =
+    formatBookAuthors(authors)
+
   return {
     id: book.value.id,
     type: 'book',
     title: book.value.title,
     subtitle:
       book.value.subtitle || '',
-    author: book.value.author,
-    authors: book.value.author,
+    author: authorDisplay,
+    authors,
 
     metadata: {
-      author: book.value.author,
-      authors: book.value.author,
+      author: authorDisplay,
+      authors,
 
       subtitle:
         book.value.subtitle || '',
@@ -643,10 +922,18 @@ function save() {
     return
   }
 
+  const authors =
+    getCleanBookAuthors()
+
   const updatedBook = updateBook(
     currentBook.id,
     {
       ...currentBook,
+      authors,
+      author:
+        formatBookAuthors(
+          authors,
+        ),
     },
   )
 
@@ -789,6 +1076,104 @@ label {
 .title-input {
   font-size: 1.55rem;
   font-weight: 800;
+}
+
+.authors-editor {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.authors-header,
+.author-card-header,
+.author-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.authors-header,
+.author-card-header {
+  justify-content: space-between;
+}
+
+.authors-header p {
+  margin: 0.2rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.author-card-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.author-card {
+  display: grid;
+  gap: 0.75rem;
+  border:
+    1px solid
+    var(--border-color);
+  border-radius: 14px;
+  background: var(--input-bg);
+  padding: 0.85rem;
+}
+
+.author-card-header > div:first-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.author-card-header span {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 500;
+}
+
+.author-type-select {
+  min-width: 170px;
+}
+
+.author-remove-btn {
+  width: 40px;
+  height: 40px;
+  border:
+    1px solid
+    var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.author-name-grid,
+.author-advanced-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 0.75rem;
+}
+
+.author-advanced {
+  border-top:
+    1px solid
+    var(--border-color);
+  padding-top: 0.65rem;
+}
+
+.author-advanced summary {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.author-advanced-grid {
+  margin-top: 0.65rem;
 }
 
 .two-column {
@@ -960,8 +1345,25 @@ textarea {
 @media (max-width: 900px) {
   .hero-card,
   .grid,
-  .two-column {
+  .two-column,
+  .author-name-grid,
+  .author-advanced-grid {
     grid-template-columns: 1fr;
+  }
+
+  .authors-header,
+  .author-card-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .author-card-actions {
+    width: 100%;
+  }
+
+  .author-type-select {
+    flex: 1;
+    min-width: 0;
   }
 
   .card-header {

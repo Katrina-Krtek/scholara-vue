@@ -168,69 +168,135 @@
             class="creator-card"
           >
             <div class="creator-toolbar">
-              <select
-                v-model="creator.creatorType"
-                class="creator-type-select"
-              >
-                <option value="person">
-                  Person
-                </option>
+              <div>
+                <p class="creator-order">
+                  {{ getCreatorCardLabel(role, index) }}
+                </p>
 
-                <option value="literal">
-                  Organization / Group
-                </option>
-              </select>
+                <span class="creator-help">
+                  Citation position {{ index + 1 }}
+                </span>
+              </div>
 
-              <button
-                type="button"
-                class="remove-btn"
-                @click="removeCreator(role.key, index)"
-              >
-                ×
-              </button>
+              <div class="creator-toolbar-actions">
+                <select
+                  v-model="creator.creatorType"
+                  class="creator-type-select"
+                >
+                  <option value="person">
+                    Person
+                  </option>
+
+                  <option value="literal">
+                    Organization / Group
+                  </option>
+                </select>
+
+                <button
+                  type="button"
+                  class="remove-btn"
+                  :aria-label="`Remove ${getCreatorCardLabel(role, index)}`"
+                  @click="removeCreator(role.key, index)"
+                >
+                  ×
+                </button>
+              </div>
             </div>
-
-            <input
-              v-if="creator.creatorType === 'literal'"
-              v-model="creator.literal"
-              type="text"
-              :placeholder="`${role.singularLabel} organization or group name`"
-            />
 
             <div
-              v-else
-              class="creator-name-grid"
+              v-if="creator.creatorType === 'literal'"
+              class="creator-field"
             >
-              <input
-                v-model="creator.firstName"
-                type="text"
-                placeholder="First name"
-              />
+              <label>
+                {{ getCreatorCardLabel(role, index) }} Organization or Group Name
+              </label>
 
               <input
-                v-model="creator.middleName"
+                v-model="creator.literal"
                 type="text"
-                placeholder="Middle name"
-              />
-
-              <input
-                v-model="creator.nameParticle"
-                type="text"
-                placeholder="Particle"
-              />
-
-              <input
-                v-model="creator.lastName"
-                type="text"
-                placeholder="Last name"
-              />
-
-              <input
-                v-model="creator.suffix"
-                type="text"
-                placeholder="Suffix"
+                :placeholder="`${role.singularLabel} organization or group name`"
               />
             </div>
+
+            <template v-else>
+              <div class="creator-name-grid">
+                <div class="creator-field">
+                  <label>
+                    {{ getCreatorCardLabel(role, index) }} First Name
+                  </label>
+
+                  <input
+                    v-model="creator.firstName"
+                    type="text"
+                    :placeholder="`${getCreatorCardLabel(role, index)} first name`"
+                  />
+                </div>
+
+                <div class="creator-field">
+                  <label>
+                    {{ getCreatorCardLabel(role, index) }} Middle Name / Initial
+                  </label>
+
+                  <input
+                    v-model="creator.middleName"
+                    type="text"
+                    :placeholder="`${getCreatorCardLabel(role, index)} middle name or initial`"
+                  />
+                </div>
+
+                <div class="creator-field">
+                  <label>
+                    {{ getCreatorCardLabel(role, index) }} Last Name
+                  </label>
+
+                  <input
+                    v-model="creator.lastName"
+                    type="text"
+                    :placeholder="`${getCreatorCardLabel(role, index)} last name`"
+                  />
+                </div>
+
+                <div class="creator-field">
+                  <label>
+                    {{ getCreatorCardLabel(role, index) }} Suffix
+                  </label>
+
+                  <input
+                    v-model="creator.suffix"
+                    type="text"
+                    placeholder="Jr., Sr., III, etc."
+                  />
+                </div>
+              </div>
+
+              <details class="creator-advanced">
+                <summary>
+                  Additional name details
+                </summary>
+
+                <div class="creator-advanced-grid">
+                  <div class="creator-field">
+                    <label>Name Particle</label>
+
+                    <input
+                      v-model="creator.nameParticle"
+                      type="text"
+                      placeholder="de, van, von, etc."
+                    />
+                  </div>
+
+                  <div class="creator-field">
+                    <label>Separate Initial Field</label>
+
+                    <input
+                      v-model="creator.initial"
+                      type="text"
+                      placeholder="Optional legacy initial"
+                    />
+                  </div>
+                </div>
+              </details>
+            </template>
           </div>
 
           <button
@@ -833,15 +899,9 @@ function initializeMetadataFields() {
         metadata.value[role.key] = []
       }
 
-      if (
-        role.key === 'authors' &&
-        metadata.value[role.key]
-          .length === 0
-      ) {
-        metadata.value[role.key] = [
-          createEmptyCreator(),
-        ]
-      }
+      ensureDefaultCreatorSlots(
+        role.key,
+      )
     },
   )
 }
@@ -875,13 +935,60 @@ function removeCreator(
   metadata.value[roleKey]
     .splice(index, 1)
 
-  if (
-    roleKey === 'authors' &&
-    metadata.value[roleKey]
-      .length === 0
-  ) {
-    addCreator(roleKey)
+  ensureDefaultCreatorSlots(
+    roleKey,
+  )
+}
+
+function ensureDefaultCreatorSlots(
+  roleKey,
+) {
+  if (roleKey !== 'authors') {
+    return
   }
+
+  if (
+    !Array.isArray(
+      metadata.value[roleKey],
+    )
+  ) {
+    metadata.value[roleKey] = []
+  }
+
+  while (
+    metadata.value[roleKey]
+      .length < 5
+  ) {
+    metadata.value[roleKey].push(
+      createEmptyCreator(),
+    )
+  }
+}
+
+function getCreatorCardLabel(
+  role,
+  index,
+) {
+  const position =
+    index + 1
+
+  const ordinalLabels = [
+    'First',
+    'Second',
+    'Third',
+    'Fourth',
+    'Fifth',
+  ]
+
+  const positionLabel =
+    ordinalLabels[index] ||
+    `${role.singularLabel} ${position}`
+
+  if (index < ordinalLabels.length) {
+    return `${positionLabel} ${role.singularLabel}`
+  }
+
+  return positionLabel
 }
 
 function getDetailRoute(
@@ -1474,22 +1581,70 @@ function flattenSearchValues(
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.75rem;
+}
+
+.creator-order {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.creator-help {
+  display: block;
+  margin-top: 0.12rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.creator-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .creator-type-select {
-  flex: 1;
+  min-width: 180px;
   background: var(--bg-card);
 }
 
-.creator-name-grid {
+.creator-name-grid,
+.creator-advanced-grid {
   display: grid;
   grid-template-columns:
     repeat(
       auto-fit,
-      minmax(130px, 1fr)
+      minmax(170px, 1fr)
     );
-  gap: 0.5rem;
+  gap: 0.65rem;
+}
+
+.creator-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.creator-field label {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.creator-advanced {
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.55rem;
+}
+
+.creator-advanced summary {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.creator-advanced-grid {
+  margin-top: 0.6rem;
 }
 
 .small-btn,
@@ -1759,11 +1914,19 @@ function flattenSearchValues(
     flex-wrap: wrap;
   }
 
-  .creator-toolbar {
+  .creator-toolbar,
+  .creator-toolbar-actions {
     align-items: stretch;
+    flex-direction: column;
   }
 
-  .creator-name-grid {
+  .creator-type-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .creator-name-grid,
+  .creator-advanced-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1780,3 +1943,4 @@ function flattenSearchValues(
   }
 }
 </style>
+
