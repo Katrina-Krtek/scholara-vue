@@ -15,12 +15,19 @@
         <div class="hero-info">
           <label>
             Title
-            <input v-model="book.title" class="title-input" @blur="save" />
+            <input
+              v-model="book.title"
+              class="title-input"
+              @blur="save"
+            />
           </label>
 
           <label>
             Subtitle
-            <input v-model="book.subtitle" @blur="save" />
+            <input
+              v-model="book.subtitle"
+              @blur="save"
+            />
           </label>
 
           <label>
@@ -35,7 +42,10 @@
           <div class="two-column">
             <label>
               Status
-              <select v-model="book.status" @change="save">
+              <select
+                v-model="book.status"
+                @change="save"
+              >
                 <option>planned</option>
                 <option>reading</option>
                 <option>completed</option>
@@ -45,7 +55,13 @@
 
             <label>
               Rating
-              <input type="number" min="0" max="5" v-model="book.rating" @blur="save" />
+              <input
+                v-model="book.rating"
+                type="number"
+                min="0"
+                max="5"
+                @blur="save"
+              />
             </label>
           </div>
 
@@ -56,7 +72,10 @@
             </div>
 
             <div class="progress-track">
-              <div class="progress-bar" :style="{ width: `${progress}%` }" />
+              <div
+                class="progress-bar"
+                :style="{ width: `${progress}%` }"
+              />
             </div>
           </div>
         </div>
@@ -66,7 +85,7 @@
         :source-id="book.id"
         :source-title="book.title"
         :source-author="book.author"
-        :source-type="'Book'"
+        source-type="Book"
         heading="Connected Sources"
       />
 
@@ -85,7 +104,10 @@
 
           <label>
             Publisher
-            <input v-model="book.publisher" @blur="save" />
+            <input
+              v-model="book.publisher"
+              @blur="save"
+            />
           </label>
 
           <label>
@@ -99,22 +121,34 @@
 
           <label>
             Publication Year
-            <input v-model="book.publicationYear" @blur="save" />
+            <input
+              v-model="book.publicationYear"
+              @blur="save"
+            />
           </label>
 
           <label>
             ISBN
-            <input v-model="book.isbn" @blur="save" />
+            <input
+              v-model="book.isbn"
+              @blur="save"
+            />
           </label>
 
           <label>
             Edition
-            <input v-model="book.edition" @blur="save" />
+            <input
+              v-model="book.edition"
+              @blur="save"
+            />
           </label>
 
           <label>
             Genre
-            <input v-model="book.genre" @blur="save" />
+            <input
+              v-model="book.genre"
+              @blur="save"
+            />
           </label>
         </article>
 
@@ -124,28 +158,48 @@
           <div class="two-column">
             <label>
               Current Page
-              <input type="number" v-model="book.currentPage" @blur="save" />
+              <input
+                v-model="book.currentPage"
+                type="number"
+                @blur="save"
+              />
             </label>
 
             <label>
               Total Pages
-              <input type="number" v-model="book.totalPages" @blur="save" />
+              <input
+                v-model="book.totalPages"
+                type="number"
+                @blur="save"
+              />
             </label>
           </div>
 
           <label>
             Start Date
-            <input type="date" v-model="book.startDate" @change="save" />
+            <input
+              v-model="book.startDate"
+              type="date"
+              @change="save"
+            />
           </label>
 
           <label>
             Finish Date
-            <input type="date" v-model="book.finishDate" @change="save" />
+            <input
+              v-model="book.finishDate"
+              type="date"
+              @change="save"
+            />
           </label>
 
           <label>
             Reading Goal
-            <input v-model="book.readingGoal" placeholder="Example: Finish by June 20" @blur="save" />
+            <input
+              v-model="book.readingGoal"
+              placeholder="Example: Finish by June 20"
+              @blur="save"
+            />
           </label>
         </article>
 
@@ -153,10 +207,17 @@
           <div class="card-header">
             <div>
               <h3>Citations</h3>
-              <p>Generated from the shared Scholarory citation engine.</p>
+              <p>
+                Generated from the shared Scholarory
+                citation engine.
+              </p>
             </div>
 
-            <button class="secondary-btn" type="button" @click="copyCitation">
+            <button
+              class="secondary-btn"
+              type="button"
+              @click="copyCitation"
+            >
               Copy Citation
             </button>
           </div>
@@ -166,8 +227,15 @@
               v-for="style in citationStyles"
               :key="style.value"
               type="button"
-              :class="{ active: selectedCitationStyle === style.value }"
-              @click="selectedCitationStyle = style.value"
+              :class="{
+                active:
+                  selectedCitationStyle ===
+                  style.value,
+              }"
+              @click="
+                selectedCitationStyle =
+                  style.value
+              "
             >
               {{ style.label }}
             </button>
@@ -180,53 +248,102 @@
 
         <article class="detail-card full-width">
           <h3>Summary</h3>
-          <textarea v-model="book.summary" rows="6" @blur="save" />
+
+          <textarea
+            v-model="book.summary"
+            rows="6"
+            @blur="save"
+          />
         </article>
 
         <article class="detail-card full-width">
           <div class="card-header">
             <h3>Chapter Notes</h3>
-            <button class="primary-btn" type="button" @click="createChapter">+ Chapter</button>
+
+            <button
+              class="primary-btn"
+              type="button"
+              @click="createChapter"
+            >
+              + Chapter
+            </button>
           </div>
 
-          <div v-for="chapter in book.chapters" :key="chapter.id" class="chapter-card">
+          <div
+            v-for="chapter in book.chapters"
+            :key="chapter.id"
+            class="chapter-card"
+          >
             <div class="card-header">
-              <input v-model="chapter.title" class="chapter-title" @blur="save" />
+              <input
+                v-model="chapter.title"
+                class="chapter-title"
+                @blur="save"
+              />
 
-              <button class="delete-btn" type="button" @click="removeChapter(chapter.id)">
+              <button
+                class="delete-btn"
+                type="button"
+                @click="
+                  removeChapter(chapter.id)
+                "
+              >
                 Delete
               </button>
             </div>
 
             <label>
               Summary
-              <textarea v-model="chapter.summary" rows="3" @blur="save" />
+              <textarea
+                v-model="chapter.summary"
+                rows="3"
+                @blur="save"
+              />
             </label>
 
             <label>
               Key Ideas
-              <textarea v-model="chapter.keyIdeas" rows="3" @blur="save" />
+              <textarea
+                v-model="chapter.keyIdeas"
+                rows="3"
+                @blur="save"
+              />
             </label>
 
             <label>
               Quotes
-              <textarea v-model="chapter.quotes" rows="3" @blur="save" />
+              <textarea
+                v-model="chapter.quotes"
+                rows="3"
+                @blur="save"
+              />
             </label>
 
             <label>
               Questions
-              <textarea v-model="chapter.questions" rows="3" @blur="save" />
+              <textarea
+                v-model="chapter.questions"
+                rows="3"
+                @blur="save"
+              />
             </label>
 
             <label>
               Application
-              <textarea v-model="chapter.application" rows="3" @blur="save" />
+              <textarea
+                v-model="chapter.application"
+                rows="3"
+                @blur="save"
+              />
             </label>
           </div>
         </article>
       </section>
 
-      <div v-if="saveMessage" class="save-toast">
+      <div
+        v-if="saveMessage"
+        class="save-toast"
+      >
         {{ saveMessage }}
       </div>
     </section>
@@ -238,111 +355,372 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import {
+  computed,
+  onBeforeUnmount,
+  ref,
+  watch,
+  watchEffect,
+} from 'vue'
+
+import {
+  useRoute,
+  useRouter,
+} from 'vue-router'
 
 import AppLayout from '@/components/AppLayout.vue'
 import BookCoverUploader from '@/components/books/BookCoverUploader.vue'
 import SourceRelationshipPanel from '@/components/sources/SourceRelationshipPanel.vue'
 import { useBooks } from '@/composables/useBooks'
-import { generateCitationSet } from '@/utils/citations'
+import {
+  generateCitation,
+  generateFullFootnote,
+  generateShortFootnote,
+} from '@/utils/citations'
 
 const route = useRoute()
+const router = useRouter()
 
 const {
-  getBookById,
+  getBookByRouteValue,
+  getBookPath,
   updateBook,
   addChapter,
   deleteChapter,
   getReadingProgress,
 } = useBooks()
 
-const book = computed(() => getBookById(route.params.id))
+const book = computed(() => {
+  return getBookByRouteValue(
+    route.params.id,
+  )
+})
 
-const selectedCitationStyle = ref('turabianBibliography')
+watchEffect(() => {
+  const currentBook = book.value
+
+  if (!currentBook) {
+    return
+  }
+
+  const canonicalPath =
+    getBookPath(currentBook)
+
+  if (route.path !== canonicalPath) {
+    router.replace(canonicalPath)
+  }
+})
+
+const selectedCitationStyle = ref(
+  'turabianBibliography',
+)
+
 const saveMessage = ref('')
 
 const citationStyles = [
-  { label: 'Turabian Bibliography', value: 'turabianBibliography' },
-  { label: 'Turabian Footnote', value: 'turabianFootnote' },
-  { label: 'Turabian Short Note', value: 'turabianShortNote' },
-  { label: 'APA', value: 'apa' },
-  { label: 'MLA', value: 'mla' },
-  { label: 'Chicago Bibliography', value: 'chicagoBibliography' },
-  { label: 'Chicago Footnote', value: 'chicagoFootnote' },
-  { label: 'Chicago Short Note', value: 'chicagoShortNote' },
+  {
+    label: 'Turabian Bibliography',
+    value: 'turabianBibliography',
+  },
+  {
+    label: 'Turabian Footnote',
+    value: 'turabianFootnote',
+  },
+  {
+    label: 'Turabian Short Note',
+    value: 'turabianShortNote',
+  },
+  {
+    label: 'APA',
+    value: 'apa',
+  },
+  {
+    label: 'MLA',
+    value: 'mla',
+  },
+  {
+    label: 'Chicago Bibliography',
+    value: 'chicagoBibliography',
+  },
+  {
+    label: 'Chicago Footnote',
+    value: 'chicagoFootnote',
+  },
+  {
+    label: 'Chicago Short Note',
+    value: 'chicagoShortNote',
+  },
 ]
 
 const progress = computed(() => {
-  if (!book.value) return 0
-  return getReadingProgress(book.value)
+  if (!book.value) {
+    return 0
+  }
+
+  return getReadingProgress(
+    book.value,
+  )
 })
 
 const citationItem = computed(() => {
-  if (!book.value) return null
+  if (!book.value) {
+    return null
+  }
 
   return {
     id: book.value.id,
     type: 'book',
     title: book.value.title,
+    subtitle:
+      book.value.subtitle || '',
     author: book.value.author,
     authors: book.value.author,
+
     metadata: {
       author: book.value.author,
       authors: book.value.author,
-      shortTitle: book.value.shortTitle || book.value.title,
-      publisher: book.value.publisher,
-      placeOfPublication: book.value.placeOfPublication,
-      year: book.value.publicationYear,
-      isbn: book.value.isbn,
-      edition: book.value.edition,
-      genre: book.value.genre,
+
+      subtitle:
+        book.value.subtitle || '',
+
+      shortTitle:
+        book.value.shortTitle ||
+        book.value.title,
+
+      publisher:
+        book.value.publisher,
+
+      placeOfPublication:
+        book.value.placeOfPublication,
+
+      year:
+        book.value.publicationYear,
+
+      isbn:
+        book.value.isbn,
+
+      edition:
+        book.value.edition,
+
+      genre:
+        book.value.genre,
     },
   }
 })
 
-const citationSet = computed(() => {
-  if (!citationItem.value) return {}
+const activeCitation = ref('')
+const isCitationUpdating = ref(false)
 
-  return generateCitationSet(citationItem.value)
-})
+let citationRenderTimer = null
 
-const activeCitation = computed(() => {
-  return citationSet.value[selectedCitationStyle.value] || ''
+function renderSelectedCitation() {
+  const item = citationItem.value
+
+  if (!item) {
+    activeCitation.value = ''
+    isCitationUpdating.value = false
+    return
+  }
+
+  const style =
+    selectedCitationStyle.value
+
+  switch (style) {
+    case 'turabianFootnote':
+      activeCitation.value =
+        generateFullFootnote(
+          item,
+          'turabian-footnote',
+        )
+      break
+
+    case 'turabianShortNote':
+      activeCitation.value =
+        generateShortFootnote(
+          item,
+          'turabian-short-note',
+        )
+      break
+
+    case 'chicagoBibliography':
+      activeCitation.value =
+        generateCitation(
+          item,
+          'chicago-bibliography',
+        )
+      break
+
+    case 'chicagoFootnote':
+      activeCitation.value =
+        generateFullFootnote(
+          item,
+          'chicago-footnote',
+        )
+      break
+
+    case 'chicagoShortNote':
+      activeCitation.value =
+        generateShortFootnote(
+          item,
+          'chicago-short-note',
+        )
+      break
+
+    case 'apa':
+      activeCitation.value =
+        generateCitation(
+          item,
+          'apa',
+        )
+      break
+
+    case 'mla':
+      activeCitation.value =
+        generateCitation(
+          item,
+          'mla',
+        )
+      break
+
+    case 'turabianBibliography':
+    default:
+      activeCitation.value =
+        generateCitation(
+          item,
+          'turabian-bibliography',
+        )
+      break
+  }
+
+  isCitationUpdating.value = false
+}
+
+function scheduleCitationRender() {
+  if (citationRenderTimer) {
+    clearTimeout(
+      citationRenderTimer,
+    )
+  }
+
+  isCitationUpdating.value = true
+
+  citationRenderTimer =
+    setTimeout(() => {
+      renderSelectedCitation()
+      citationRenderTimer = null
+    }, 500)
+}
+
+watch(
+  [
+    () =>
+      JSON.stringify(
+        citationItem.value,
+      ),
+
+    selectedCitationStyle,
+  ],
+
+  scheduleCitationRender,
+
+  {
+    immediate: true,
+  },
+)
+
+onBeforeUnmount(() => {
+  if (citationRenderTimer) {
+    clearTimeout(
+      citationRenderTimer,
+    )
+  }
 })
 
 function save() {
-  if (!book.value) return
-  updateBook(book.value.id, { ...book.value })
+  const currentBook = book.value
+
+  if (!currentBook) {
+    return
+  }
+
+  const updatedBook = updateBook(
+    currentBook.id,
+    {
+      ...currentBook,
+    },
+  )
+
+  if (!updatedBook) {
+    return
+  }
+
+  const canonicalPath =
+    getBookPath(updatedBook)
+
+  if (route.path !== canonicalPath) {
+    router.replace(canonicalPath)
+  }
 }
 
 function handleCoverUpdate(url) {
-  if (!book.value) return
+  if (!book.value) {
+    return
+  }
 
   book.value.coverUrl = url
   save()
 }
 
 function createChapter() {
-  if (!book.value) return
+  if (!book.value) {
+    return
+  }
+
   addChapter(book.value.id)
   save()
 }
 
 function removeChapter(chapterId) {
-  if (!book.value) return
-  deleteChapter(book.value.id, chapterId)
+  if (!book.value) {
+    return
+  }
+
+  deleteChapter(
+    book.value.id,
+    chapterId,
+  )
+
   save()
 }
 
 async function copyCitation() {
-  const plainCitation = activeCitation.value.replace(/<[^>]+>/g, '')
+  if (citationRenderTimer) {
+    clearTimeout(
+      citationRenderTimer,
+    )
+
+    citationRenderTimer = null
+    renderSelectedCitation()
+  }
+
+  const plainCitation =
+    activeCitation.value.replace(
+      /<[^>]+>/g,
+      '',
+    )
 
   try {
-    await navigator.clipboard.writeText(plainCitation)
-    showMessage('Citation copied.')
+    await navigator.clipboard.writeText(
+      plainCitation,
+    )
+
+    showMessage(
+      'Citation copied.',
+    )
   } catch {
-    showMessage('Could not copy citation.')
+    showMessage(
+      'Could not copy citation.',
+    )
   }
 }
 
@@ -398,7 +776,7 @@ function showMessage(message) {
 .detail-card,
 .chapter-card {
   display: grid;
-  gap: .85rem;
+  gap: 0.85rem;
   min-width: 0;
 }
 
@@ -415,13 +793,15 @@ label {
 
 .two-column {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
@@ -434,7 +814,9 @@ textarea,
 select {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid var(--border-color);
+  border:
+    1px solid
+    var(--border-color);
   background: var(--input-bg);
   color: var(--text-primary);
   border-radius: 10px;
@@ -499,7 +881,9 @@ textarea {
 .secondary-btn {
   background: var(--input-bg);
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border:
+    1px solid
+    var(--border-color);
 }
 
 .delete-btn {
@@ -508,7 +892,9 @@ textarea {
 }
 
 .chapter-card {
-  border: 1px solid var(--border-color);
+  border:
+    1px solid
+    var(--border-color);
   border-radius: 14px;
   padding: 1rem;
 }
@@ -524,7 +910,9 @@ textarea {
 }
 
 .citation-tabs button {
-  border: 1px solid var(--border-color);
+  border:
+    1px solid
+    var(--border-color);
   border-radius: 999px;
   padding: 0.55rem 0.85rem;
   background: var(--input-bg);
@@ -543,7 +931,9 @@ textarea {
   padding: 1rem;
   border-radius: 18px;
   background: var(--input-bg);
-  border: 1px solid var(--border-color);
+  border:
+    1px solid
+    var(--border-color);
   color: var(--text-primary);
   line-height: 1.65;
 }
@@ -562,7 +952,9 @@ textarea {
   background: #0f172a;
   color: white;
   font-weight: 850;
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.28);
+  box-shadow:
+    0 18px 34px
+    rgba(15, 23, 42, 0.28);
 }
 
 @media (max-width: 900px) {

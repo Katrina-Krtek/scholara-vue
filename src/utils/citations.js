@@ -1,3 +1,12 @@
+import CSL from 'citeproc'
+import cslStyles from '@citation-js/plugin-csl/lib-mjs/styles.json'
+import cslLocales from '@citation-js/plugin-csl/lib-mjs/locales.json'
+
+import {
+  getCitationTypeForResearchType,
+  normalizeResearchMetadata,
+} from '../data/researchMetadataSchema'
+
 function clean(value) {
   return String(value ?? '').replace(/\s+/g, ' ').trim()
 }
@@ -760,17 +769,17 @@ function normalizeStyle(style = 'turabian') {
   return aliases[value] || value || 'turabian-bibliography'
 }
 
-export function generateCitation(item, style = 'turabian') {
+function generateManualCitation(item, style = 'turabian') {
   if (!item) return ''
 
   const normalizedStyle = normalizeStyle(style)
 
   if (normalizedStyle.includes('footnote') && !normalizedStyle.includes('short')) {
-    return generateFullFootnote(item, normalizedStyle)
+    return generateManualFullFootnote(item, normalizedStyle)
   }
 
   if (normalizedStyle.includes('short')) {
-    return generateShortFootnote(item, normalizedStyle)
+    return generateManualShortFootnote(item, normalizedStyle)
   }
 
   const sourceType = getSourceType(item)
@@ -796,7 +805,7 @@ export function generateCitation(item, style = 'turabian') {
   return generateGenericBibliography(item)
 }
 
-export function generateFullFootnote(item, style = 'turabian') {
+function generateManualFullFootnote(item, style = 'turabian') {
   if (!item) return ''
 
   const sourceType = getSourceType(item)
@@ -808,7 +817,7 @@ export function generateFullFootnote(item, style = 'turabian') {
   return generateGenericFullFootnote(item)
 }
 
-export function generateShortFootnote(item, style = 'turabian') {
+function generateManualShortFootnote(item, style = 'turabian') {
   if (!item) return ''
 
   const sourceType = getSourceType(item)
@@ -820,15 +829,819 @@ export function generateShortFootnote(item, style = 'turabian') {
   return generateGenericShortFootnote(item)
 }
 
-export function generateCitationSet(item) {
+function generateManualCitationSet(item) {
   return {
-    turabianBibliography: generateCitation(item, 'turabian-bibliography'),
-    turabianFootnote: generateFullFootnote(item, 'turabian-footnote'),
-    turabianShortNote: generateShortFootnote(item, 'turabian-short-note'),
-    chicagoBibliography: generateCitation(item, 'chicago-bibliography'),
-    chicagoFootnote: generateFullFootnote(item, 'chicago-footnote'),
-    chicagoShortNote: generateShortFootnote(item, 'chicago-short-note'),
-    apa: generateCitation(item, 'apa'),
-    mla: generateCitation(item, 'mla'),
+    turabianBibliography: generateManualCitation(item, 'turabian-bibliography'),
+    turabianFootnote: generateManualFullFootnote(item, 'turabian-footnote'),
+    turabianShortNote: generateManualShortFootnote(item, 'turabian-short-note'),
+    chicagoBibliography: generateManualCitation(item, 'chicago-bibliography'),
+    chicagoFootnote: generateManualFullFootnote(item, 'chicago-footnote'),
+    chicagoShortNote: generateManualShortFootnote(item, 'chicago-short-note'),
+    apa: generateManualCitation(item, 'apa'),
+    mla: generateManualCitation(item, 'mla'),
   }
 }
+
+const CITATION_STYLE_DEFINITIONS = {
+  turabian: {
+    id: 'turabian',
+    template: 'turabian-fullnote-bibliography',
+    mode: 'note',
+  },
+  'turabian-bibliography': {
+    id: 'turabian',
+    template: 'turabian-fullnote-bibliography',
+    mode: 'note',
+  },
+  'turabian-footnote': {
+    id: 'turabian',
+    template: 'turabian-fullnote-bibliography',
+    mode: 'note',
+  },
+  'turabian-short-note': {
+    id: 'turabian',
+    template: 'turabian-fullnote-bibliography',
+    mode: 'note',
+  },
+  chicago: {
+    id: 'chicago',
+    template: 'chicago-fullnote-bibliography',
+    mode: 'note',
+  },
+  'chicago-bibliography': {
+    id: 'chicago',
+    template: 'chicago-fullnote-bibliography',
+    mode: 'note',
+  },
+  'chicago-footnote': {
+    id: 'chicago',
+    template: 'chicago-fullnote-bibliography',
+    mode: 'note',
+  },
+  'chicago-short-note': {
+    id: 'chicago',
+    template: 'chicago-fullnote-bibliography',
+    mode: 'note',
+  },
+  apa: {
+    id: 'apa',
+    template: 'apa',
+    mode: 'author-date',
+  },
+  mla: {
+    id: 'mla',
+    template: 'modern-language-association',
+    mode: 'author-page',
+  },
+  harvard: {
+    id: 'harvard',
+    template: 'harvard1',
+    mode: 'author-date',
+  },
+  harvard1: {
+    id: 'harvard',
+    template: 'harvard1',
+    mode: 'author-date',
+  },
+  vancouver: {
+    id: 'vancouver',
+    template: 'vancouver',
+    mode: 'numeric',
+  },
+}
+
+const CSL_NAME_ROLE_MAP = {
+  authors: 'author',
+  editors: 'editor',
+  translators: 'translator',
+  directors: 'director',
+  producers: 'producer',
+  interviewers: 'interviewer',
+  recipients: 'recipient',
+}
+
+function getCitationStyleDefinition(style = 'turabian') {
+  const normalized = clean(style).toLowerCase()
+
+  return (
+    CITATION_STYLE_DEFINITIONS[normalized] ||
+    CITATION_STYLE_DEFINITIONS.turabian
+  )
+}
+
+export function getCitationStyleMode(style = 'turabian') {
+  return getCitationStyleDefinition(style).mode
+}
+
+const customCslStyles = new Map()
+const customCslLocales = new Map()
+
+export function registerCslStyle(styleId, cslXml) {
+  const cleanStyleId = clean(styleId)
+  const xml = String(cslXml || '').trim()
+
+  if (!cleanStyleId || !xml) {
+    throw new Error('A CSL style ID and CSL XML are required.')
+  }
+
+  customCslStyles.set(cleanStyleId, xml)
+  return cleanStyleId
+}
+
+export function registerCslLocale(localeId, localeXml) {
+  const cleanLocaleId = clean(localeId)
+  const xml = String(localeXml || '').trim()
+
+  if (!cleanLocaleId || !xml) {
+    throw new Error('A CSL locale ID and CSL XML are required.')
+  }
+
+  customCslLocales.set(cleanLocaleId, xml)
+  return cleanLocaleId
+}
+
+function buildCslDate(value) {
+  const text = clean(value)
+  if (!text) return undefined
+
+  const match = text.match(/^(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?$/)
+
+  if (!match) {
+    return { literal: text }
+  }
+
+  const dateParts = [Number(match[1])]
+
+  if (match[2]) dateParts.push(Number(match[2]))
+  if (match[3]) dateParts.push(Number(match[3]))
+
+  return {
+    'date-parts': [dateParts],
+  }
+}
+
+function creatorToCslName(creator) {
+  if (!creator) return null
+
+  if (typeof creator === 'string') {
+    const literal = clean(creator)
+    return literal ? { literal } : null
+  }
+
+  const literal = clean(
+    creator.literal ||
+      creator.raw ||
+      (
+        creator.creatorType === 'literal'
+          ? creator.name
+          : ''
+      ),
+  )
+
+  if (literal) {
+    return { literal }
+  }
+
+  const given = [
+    creator.firstName || creator.given,
+    creator.middleName || creator.middle,
+    creator.initial,
+  ]
+    .map(clean)
+    .filter(Boolean)
+    .join(' ')
+
+  const family = clean(
+    creator.lastName ||
+      creator.family,
+  )
+
+  const name = {
+    given,
+    family,
+    suffix: clean(creator.suffix),
+    'non-dropping-particle': clean(
+      creator.nameParticle ||
+        creator.particle ||
+        creator['non-dropping-particle'],
+    ),
+  }
+
+  Object.keys(name).forEach((key) => {
+    if (!name[key]) delete name[key]
+  })
+
+  return Object.keys(name).length
+    ? name
+    : null
+}
+
+function creatorListToCslNames(value) {
+  if (!value) return []
+
+  const list = Array.isArray(value)
+    ? value
+    : [value]
+
+  return list
+    .map(creatorToCslName)
+    .filter(Boolean)
+}
+
+function addNameRole(cslItem, role, creators) {
+  const names = creatorListToCslNames(creators)
+  if (names.length) cslItem[role] = names
+}
+
+function getPrimaryAuthors(metadata = {}) {
+  const candidates = [
+    metadata.authors,
+    metadata.presenters,
+    metadata.interviewees,
+    metadata.senders,
+    metadata.directors,
+    metadata.contributors,
+    metadata.author,
+    metadata.creator,
+    metadata.sender,
+  ]
+
+  for (const value of candidates) {
+    const names = creatorListToCslNames(value)
+    if (names.length) return names
+  }
+
+  return []
+}
+
+function pruneCslValue(value) {
+  if (Array.isArray(value)) {
+    const entries = value
+      .map(pruneCslValue)
+      .filter((entry) => entry !== undefined)
+
+    return entries.length
+      ? entries
+      : undefined
+  }
+
+  if (
+    value &&
+    typeof value === 'object'
+  ) {
+    const entries = Object.entries(value)
+      .map(([key, entry]) => [
+        key,
+        pruneCslValue(entry),
+      ])
+      .filter(([, entry]) => entry !== undefined)
+
+    return entries.length
+      ? Object.fromEntries(entries)
+      : undefined
+  }
+
+  if (value === null || value === undefined) {
+    return undefined
+  }
+
+  if (typeof value === 'string') {
+    const text = clean(value)
+    return text || undefined
+  }
+
+  return value
+}
+
+function buildCslNote(metadata = {}) {
+  return [
+    metadata.extra,
+    metadata.rights
+      ? `Rights: ${metadata.rights}`
+      : '',
+  ]
+    .map(clean)
+    .filter(Boolean)
+    .join('\n')
+}
+
+export function toCslJson(item = {}) {
+  const typeId = clean(
+    item.type ||
+      item.sourceType ||
+      item.metadata?.type,
+  )
+
+  const metadata = normalizeResearchMetadata(
+    typeId,
+    item.metadata || item,
+  )
+
+  const citationType =
+    metadata.citationType ||
+    getCitationTypeForResearchType(typeId) ||
+    getSourceType(item) ||
+    'document'
+
+  const id = clean(item.id) ||
+    `scholarory-${Math.random().toString(36).slice(2)}`
+
+  const cslItem = {
+    id,
+    type: citationType,
+    title: getTitle(item),
+    'title-short': metadata.shortTitle,
+    'container-title': metadata.publicationTitle,
+    publisher: metadata.publisher,
+    'publisher-place': metadata.placeOfPublication,
+    issued: buildCslDate(metadata.publicationDate),
+    accessed: buildCslDate(metadata.accessedDate),
+    'original-date': buildCslDate(metadata.originalPublicationDate),
+    edition: metadata.edition,
+    'collection-title': metadata.seriesTitle,
+    'collection-number': metadata.seriesNumber,
+    volume: metadata.volume,
+    'number-of-volumes': metadata.numberOfVolumes,
+    issue: metadata.issue,
+    page: metadata.pages,
+    'number-of-pages': metadata.pageCount,
+    ISBN: metadata.isbn,
+    ISSN: metadata.issn,
+    DOI: clean(metadata.doi)
+      .replace(/^https?:\/\/doi\.org\//i, '')
+      .replace(/^doi:\s*/i, ''),
+    URL: metadata.url,
+    abstract: metadata.abstract,
+    language: metadata.language,
+    archive: metadata.archive,
+    'archive-place': metadata.archiveLocation,
+    'call-number': metadata.callNumber,
+    source: metadata.libraryCatalog || metadata.database || metadata.repository,
+    number: metadata.publicationNumber || metadata.episodeNumber,
+    genre: metadata.degree || metadata.medium || metadata.format,
+    medium: metadata.medium,
+    dimensions: metadata.runningTime,
+    note: buildCslNote(metadata),
+  }
+
+  const primaryAuthors = getPrimaryAuthors(metadata)
+  if (primaryAuthors.length) cslItem.author = primaryAuthors
+
+  Object.entries(CSL_NAME_ROLE_MAP).forEach(
+    ([metadataKey, cslRole]) => {
+      addNameRole(
+        cslItem,
+        cslRole,
+        metadata[metadataKey],
+      )
+    },
+  )
+
+  if (!cslItem.author?.length && cslItem.editor?.length) {
+    delete cslItem.author
+  }
+
+  return pruneCslValue(cslItem) || {
+    id,
+    type: 'document',
+    title: getTitle(item),
+  }
+}
+
+function buildCitationEntry(cslItem, options = {}) {
+  const entry = {
+    id: cslItem.id,
+  }
+
+  const locator = clean(
+    options.locator ||
+      options.page ||
+      options.pages,
+  )
+
+  if (locator) {
+    entry.locator = locator
+    entry.label = clean(options.label) || 'page'
+  }
+
+  if (options.prefix) entry.prefix = clean(options.prefix)
+  if (options.suffix) entry.suffix = clean(options.suffix)
+  if (options.suppressAuthor) entry['suppress-author'] = true
+  if (options.authorOnly) entry['author-only'] = true
+
+  return entry
+}
+
+function unwrapSingleBibliography(html) {
+  const value = String(html || '').trim()
+  if (!value) return ''
+
+  if (
+    typeof document !== 'undefined' &&
+    typeof DOMParser !== 'undefined'
+  ) {
+    const parsed = new DOMParser().parseFromString(
+      value,
+      'text/html',
+    )
+
+    const entry = parsed.querySelector('.csl-entry')
+    if (entry) return entry.innerHTML.trim()
+  }
+
+  const match = value.match(
+    /<div[^>]*class=["'][^"']*csl-entry[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*$/i,
+  )
+
+  return match
+    ? match[1].trim()
+    : value
+}
+
+function getCslStyleXml(templateId) {
+  return (
+    customCslStyles.get(templateId) ||
+    cslStyles[templateId] ||
+    ''
+  )
+}
+
+function getCslLocaleXml(localeId = 'en-US') {
+  return (
+    customCslLocales.get(localeId) ||
+    cslLocales[localeId] ||
+    cslLocales['en-US'] ||
+    ''
+  )
+}
+
+function createCslEngine(cslItems, templateId, localeId = 'en-US') {
+  const styleXml = getCslStyleXml(templateId)
+
+  if (!styleXml) {
+    throw new Error(`CSL style "${templateId}" is not registered.`)
+  }
+
+  const itemMap = new Map(
+    cslItems.map((entry) => [String(entry.id), entry]),
+  )
+
+  const sys = {
+    retrieveLocale(requestedLocale) {
+      return getCslLocaleXml(requestedLocale || localeId)
+    },
+
+    retrieveItem(id) {
+      return itemMap.get(String(id)) || null
+    },
+  }
+
+  const engine = new CSL.Engine(
+    sys,
+    styleXml,
+    localeId,
+    true,
+  )
+
+  engine.setOutputFormat('html')
+  return engine
+}
+
+function makeCitationCluster(engine, entry, noteIndex) {
+  return {
+    citationID: `scholarory-citation-${noteIndex}`,
+    citationItems: [entry],
+    properties: {
+      noteIndex,
+    },
+  }
+}
+
+function renderCitationCluster(engine, entry, noteIndex, priorCitations = []) {
+  const cluster = makeCitationCluster(
+    engine,
+    entry,
+    noteIndex,
+  )
+
+  const result = engine.processCitationCluster(
+    cluster,
+    priorCitations,
+    [],
+  )
+
+  return result?.[1]?.[0]?.[1] || ''
+}
+
+function formatWithCiteproc(
+  item,
+  style,
+  outputType,
+  options = {},
+) {
+  const definition = getCitationStyleDefinition(style)
+  const cslItem = toCslJson(item)
+  const locale = options.locale || 'en-US'
+  const engine = createCslEngine(
+    [cslItem],
+    definition.template,
+    locale,
+  )
+
+  engine.updateItems([String(cslItem.id)])
+
+  if (outputType === 'bibliography') {
+    const bibliography = engine.makeBibliography()
+    const entries = bibliography?.[1] || []
+    return unwrapSingleBibliography(entries[0] || '')
+  }
+
+  const entry = buildCitationEntry(
+    cslItem,
+    options,
+  )
+
+  if (outputType === 'short-note') {
+    const firstCluster = makeCitationCluster(
+      engine,
+      { id: cslItem.id },
+      1,
+    )
+
+    engine.processCitationCluster(
+      firstCluster,
+      [],
+      [],
+    )
+
+    return renderCitationCluster(
+      engine,
+      entry,
+      2,
+      [[firstCluster.citationID, 1]],
+    )
+  }
+
+  return renderCitationCluster(
+    engine,
+    entry,
+    1,
+  )
+}
+
+function tryCitationJs(
+  item,
+  style,
+  outputType,
+  options = {},
+) {
+  try {
+    return formatWithCiteproc(
+      item,
+      style,
+      outputType,
+      options,
+    )
+  } catch (error) {
+    if (import.meta.env?.DEV) {
+      console.warn(
+        `CSL could not format ${style} (${outputType}); using Scholarory's compatibility formatter.`,
+        error,
+      )
+    }
+
+    return ''
+  }
+}
+
+export function generateCitation(
+  item,
+  style = 'turabian',
+  options = {},
+) {
+  if (!item) return ''
+
+  const citationJsOutput = tryCitationJs(
+    item,
+    style,
+    'bibliography',
+    options,
+  )
+
+  return (
+    citationJsOutput ||
+    generateManualCitation(
+      item,
+      style,
+    )
+  )
+}
+
+export function generateInTextCitation(
+  item,
+  style = 'apa',
+  options = {},
+) {
+  if (!item) return ''
+
+  const citationJsOutput = tryCitationJs(
+    item,
+    style,
+    'citation',
+    options,
+  )
+
+  if (citationJsOutput) {
+    return citationJsOutput
+  }
+
+  const author = formatShortFootnoteAuthor(
+    getAuthors(item),
+  )
+  const year = clean(
+    getField(item, [
+      'publicationDate',
+      'year',
+      'date',
+    ]),
+  )
+  const locator = clean(
+    options.locator ||
+      options.page ||
+      options.pages,
+  )
+
+  return `(${[
+    author,
+    year,
+    locator,
+  ].filter(Boolean).join(', ')})`
+}
+
+export function generateFullFootnote(
+  item,
+  style = 'turabian',
+  options = {},
+) {
+  if (!item) return ''
+
+  const definition = getCitationStyleDefinition(style)
+
+  if (definition.mode !== 'note') {
+    return generateInTextCitation(
+      item,
+      style,
+      options,
+    )
+  }
+
+  const citationJsOutput = tryCitationJs(
+    item,
+    style,
+    'citation',
+    options,
+  )
+
+  return (
+    citationJsOutput ||
+    generateManualFullFootnote({
+      ...item,
+      locator:
+        options.locator ||
+        options.page ||
+        options.pages ||
+        item.locator,
+    }, style)
+  )
+}
+
+export function generateShortFootnote(
+  item,
+  style = 'turabian',
+  options = {},
+) {
+  if (!item) return ''
+
+  const definition = getCitationStyleDefinition(style)
+
+  if (definition.mode !== 'note') {
+    return generateInTextCitation(
+      item,
+      style,
+      options,
+    )
+  }
+
+  const citationJsOutput = tryCitationJs(
+    item,
+    style,
+    'short-note',
+    options,
+  )
+
+  return (
+    citationJsOutput ||
+    generateManualShortFootnote({
+      ...item,
+      locator:
+        options.locator ||
+        options.page ||
+        options.pages ||
+        item.locator,
+    }, style)
+  )
+}
+
+export function generateCitationSet(
+  item,
+  options = {},
+) {
+  return {
+    turabianBibliography:
+      generateCitation(
+        item,
+        'turabian',
+        options,
+      ),
+    turabianFootnote:
+      generateFullFootnote(
+        item,
+        'turabian',
+        options,
+      ),
+    turabianShortNote:
+      generateShortFootnote(
+        item,
+        'turabian',
+        options,
+      ),
+    chicagoBibliography:
+      generateCitation(
+        item,
+        'chicago',
+        options,
+      ),
+    chicagoFootnote:
+      generateFullFootnote(
+        item,
+        'chicago',
+        options,
+      ),
+    chicagoShortNote:
+      generateShortFootnote(
+        item,
+        'chicago',
+        options,
+      ),
+    apa:
+      generateCitation(
+        item,
+        'apa',
+        options,
+      ),
+    apaInText:
+      generateInTextCitation(
+        item,
+        'apa',
+        options,
+      ),
+    mla:
+      generateCitation(
+        item,
+        'mla',
+        options,
+      ),
+    mlaInText:
+      generateInTextCitation(
+        item,
+        'mla',
+        options,
+      ),
+    harvard:
+      generateCitation(
+        item,
+        'harvard',
+        options,
+      ),
+    harvardInText:
+      generateInTextCitation(
+        item,
+        'harvard',
+        options,
+      ),
+    vancouver:
+      generateCitation(
+        item,
+        'vancouver',
+        options,
+      ),
+    vancouverInText:
+      generateInTextCitation(
+        item,
+        'vancouver',
+        options,
+      ),
+  }
+}
+
+export { generateManualCitationSet }

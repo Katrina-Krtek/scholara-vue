@@ -281,103 +281,112 @@
               </h3>
             </div>
 
-            <span class="metadata-field-count">
-              {{ activeFieldDefinitions.length }}
-              field{{ activeFieldDefinitions.length === 1 ? '' : 's' }}
-            </span>
+            <div class="metadata-header-actions">
+              <span class="metadata-field-count">
+                {{ metadataFieldCount }}
+                field{{ metadataFieldCount === 1 ? '' : 's' }}
+              </span>
+
+              <button
+                v-if="hasAdvancedFields"
+                class="small-btn"
+                type="button"
+                @click="showAdvancedFields = !showAdvancedFields"
+              >
+                {{
+                  showAdvancedFields
+                    ? 'Hide Advanced Fields'
+                    : 'Show Advanced Fields'
+                }}
+              </button>
+            </div>
           </div>
 
           <div
-            v-if="usesAuthors"
+            v-for="role in creatorRoleDefinitions"
+            :key="role.key"
             class="people-section"
           >
-            <label>Authors</label>
+            <label>{{ role.label }}</label>
 
             <div
-              v-for="(author, index) in editForm.metadata.authors"
-              :key="`author-${index}`"
-              class="person-row"
+              v-for="(creator, index) in editForm.metadata[role.key]"
+              :key="`${role.key}-${index}`"
+              class="creator-card"
             >
-              <input
-                v-model="author.firstName"
-                placeholder="First name"
-              />
+              <div class="creator-toolbar">
+                <select
+                  v-model="creator.creatorType"
+                  class="creator-type-select"
+                >
+                  <option value="person">
+                    Person
+                  </option>
+
+                  <option value="literal">
+                    Organization / Group
+                  </option>
+                </select>
+
+                <button
+                  class="remove-btn"
+                  type="button"
+                  @click="removeEditCreator(role.key, index)"
+                >
+                  ×
+                </button>
+              </div>
 
               <input
-                v-model="author.initial"
-                placeholder="Initial"
+                v-if="creator.creatorType === 'literal'"
+                v-model="creator.literal"
+                type="text"
+                :placeholder="`${role.singularLabel} organization or group name`"
               />
 
-              <input
-                v-model="author.lastName"
-                placeholder="Last name"
-              />
-
-              <button
-                class="remove-btn"
-                type="button"
-                @click="removeEditAuthor(index)"
+              <div
+                v-else
+                class="creator-name-grid"
               >
-                ×
-              </button>
+                <input
+                  v-model="creator.firstName"
+                  placeholder="First name"
+                />
+
+                <input
+                  v-model="creator.middleName"
+                  placeholder="Middle name"
+                />
+
+                <input
+                  v-model="creator.nameParticle"
+                  placeholder="Particle"
+                />
+
+                <input
+                  v-model="creator.lastName"
+                  placeholder="Last name"
+                />
+
+                <input
+                  v-model="creator.suffix"
+                  placeholder="Suffix"
+                />
+              </div>
             </div>
 
             <button
               class="small-btn"
               type="button"
-              @click="addEditAuthor"
+              @click="addEditCreator(role.key)"
             >
-              + Add Author
-            </button>
-          </div>
-
-          <div
-            v-if="usesEditors"
-            class="people-section"
-          >
-            <label>Editors</label>
-
-            <div
-              v-for="(editor, index) in editForm.metadata.editors"
-              :key="`editor-${index}`"
-              class="person-row"
-            >
-              <input
-                v-model="editor.firstName"
-                placeholder="First name"
-              />
-
-              <input
-                v-model="editor.initial"
-                placeholder="Initial"
-              />
-
-              <input
-                v-model="editor.lastName"
-                placeholder="Last name"
-              />
-
-              <button
-                class="remove-btn"
-                type="button"
-                @click="removeEditEditor(index)"
-              >
-                ×
-              </button>
-            </div>
-
-            <button
-              class="small-btn"
-              type="button"
-              @click="addEditEditor"
-            >
-              + Add Editor
+              + Add {{ role.singularLabel }}
             </button>
           </div>
 
           <div class="form-grid">
             <div
-              v-for="field in editableFieldDefinitions"
+              v-for="field in activeFieldDefinitions"
               :key="field.key"
               class="form-group"
               :class="{ wide: field.wide }"
@@ -446,6 +455,18 @@
         </div>
 
         <div
+          v-for="role in displayCreatorRoleDefinitions"
+          :key="`display-${role.key}`"
+          class="property-row"
+        >
+          <span>👤 {{ role.label }}</span>
+
+          <div class="property-value">
+            {{ formatCreatorList(normalizedItemMetadata?.[role.key]) || '—' }}
+          </div>
+        </div>
+
+        <div
           v-for="field in displayFieldDefinitions"
           :key="field.key"
           class="property-row"
@@ -485,7 +506,10 @@
         :backlinks="backlinks"
       />
 
-      <section class="citation-section">
+      <section
+        v-if="isCitableItem"
+        class="citation-section"
+      >
         <h2>Bibliography Citation</h2>
 
         <blockquote
@@ -809,6 +833,16 @@ import {
 } from '../data/researchStatuses'
 
 import {
+  cleanCreatorList,
+  createEmptyCreator,
+  createMetadataForType,
+  getCreatorRoleDefinitionsForType,
+  getFieldDefinitionsForType,
+  getResearchMetadataConfig,
+  isCitableResearchType,
+} from '../data/researchMetadataSchema'
+
+import {
   generateCitation,
   generateFullFootnote,
   generateShortFootnote,
@@ -861,6 +895,7 @@ const editorBlocks = ref([])
 const hasLoadedBlocks = ref(false)
 const activeBlocksItemId = ref('')
 const isEditing = ref(false)
+const showAdvancedFields = ref(false)
 const copiedCitationType = ref('')
 const isKnowledgeTagModalOpen = ref(false)
 
@@ -868,306 +903,26 @@ const editForm = ref(
   getEmptyEditForm(),
 )
 
-const FIELD_DEFINITIONS = {
-  author: {
-    key: 'author',
-    label: 'Author',
-    icon: '👤',
-    placeholder: 'Author name',
-  },
-  shortTitle: {
-    key: 'shortTitle',
-    label: 'Short Title',
-    icon: '⌁',
-    placeholder: 'Shortened title for notes',
-  },
-  publisher: {
-    key: 'publisher',
-    label: 'Publisher',
-    icon: '⌂',
-    placeholder: 'Publisher',
-  },
-  placeOfPublication: {
-    key: 'placeOfPublication',
-    label: 'Place of Publication',
-    icon: '⌖',
-    placeholder: 'City, State or Country',
-  },
-  year: {
-    key: 'year',
-    label: 'Publication Year',
-    icon: '◷',
-    placeholder: '2026',
-  },
-  edition: {
-    key: 'edition',
-    label: 'Edition',
-    icon: '▤',
-    placeholder: '2nd edition',
-  },
-  isbn: {
-    key: 'isbn',
-    label: 'ISBN',
-    icon: '#',
-    placeholder: 'ISBN',
-  },
-  pageRange: {
-    key: 'pageRange',
-    label: 'Page Range / Count',
-    icon: '☰',
-    placeholder: '1–250',
-  },
-  libraryLocation: {
-    key: 'libraryLocation',
-    label: 'Library Location',
-    icon: '⌂',
-    placeholder: 'Shelf, library, or collection',
-  },
-  journal: {
-    key: 'journal',
-    label: 'Journal',
-    icon: '📰',
-    placeholder: 'Journal title',
-  },
-  volume: {
-    key: 'volume',
-    label: 'Volume',
-    icon: 'V',
-    placeholder: 'Volume',
-  },
-  issue: {
-    key: 'issue',
-    label: 'Issue',
-    icon: '№',
-    placeholder: 'Issue',
-  },
-  pages: {
-    key: 'pages',
-    label: 'Pages',
-    icon: '☰',
-    placeholder: '45–68',
-  },
-  doi: {
-    key: 'doi',
-    label: 'DOI',
-    icon: '🔗',
-    placeholder: '10.xxxx/xxxxx',
-  },
-  url: {
-    key: 'url',
-    label: 'URL',
-    icon: '🌐',
-    control: 'url',
-    placeholder: 'https://...',
-  },
-  abstract: {
-    key: 'abstract',
-    label: 'Abstract',
-    icon: '¶',
-    control: 'textarea',
-    rows: 7,
-    wide: true,
-    placeholder: 'Paste or summarize the abstract.',
-  },
-  language: {
-    key: 'language',
-    label: 'Language',
-    icon: '🗣️',
-    placeholder: 'English',
-  },
-  institution: {
-    key: 'institution',
-    label: 'University / Institution',
-    icon: '🏛️',
-    placeholder: 'Liberty University',
-  },
-  degree: {
-    key: 'degree',
-    label: 'Degree',
-    icon: '🎓',
-    placeholder: 'Doctor of Ministry, PhD, ThM, MA, etc.',
-  },
-  department: {
-    key: 'department',
-    label: 'Department / Program',
-    icon: '🏫',
-    placeholder: 'School, department, or program',
-  },
-  advisor: {
-    key: 'advisor',
-    label: 'Advisor / Committee Chair',
-    icon: '👤',
-    placeholder: 'Advisor or committee chair',
-  },
-  database: {
-    key: 'database',
-    label: 'Database',
-    icon: '🗄️',
-    placeholder: 'ProQuest Dissertations & Theses Global',
-  },
-  repository: {
-    key: 'repository',
-    label: 'Repository',
-    icon: '🏦',
-    placeholder: 'Institutional repository or archive',
-  },
-  publicationNumber: {
-    key: 'publicationNumber',
-    label: 'Publication / Document Number',
-    icon: '#',
-    placeholder: 'Publication or document number',
-  },
-  siteName: {
-    key: 'siteName',
-    label: 'Website Name',
-    icon: '🌐',
-    placeholder: 'Website or organization',
-  },
-  publishedDate: {
-    key: 'publishedDate',
-    label: 'Published Date',
-    icon: '📅',
-    control: 'date',
-  },
-  accessedDate: {
-    key: 'accessedDate',
-    label: 'Accessed Date',
-    icon: '📅',
-    control: 'date',
-  },
-  blogName: {
-    key: 'blogName',
-    label: 'Blog Name',
-    icon: '✍️',
-    placeholder: 'Blog title',
-  },
-  creator: {
-    key: 'creator',
-    label: 'Creator',
-    icon: '👤',
-    placeholder: 'Creator, director, or presenter',
-  },
-  platform: {
-    key: 'platform',
-    label: 'Platform',
-    icon: '▶️',
-    placeholder: 'YouTube, Vimeo, podcast platform, etc.',
-  },
-  sender: {
-    key: 'sender',
-    label: 'Sender',
-    icon: '↗',
-    placeholder: 'Sender',
-  },
-  recipient: {
-    key: 'recipient',
-    label: 'Recipient',
-    icon: '↙',
-    placeholder: 'Recipient',
-  },
-  date: {
-    key: 'date',
-    label: 'Date',
-    icon: '📅',
-    control: 'date',
-  },
-  format: {
-    key: 'format',
-    label: 'Format',
-    icon: '▣',
-    placeholder: 'Email, letter, interview, etc.',
-  },
-  body: {
-    key: 'body',
-    label: 'Body',
-    icon: '¶',
-    control: 'textarea',
-    rows: 8,
-    wide: true,
-    placeholder: 'Write the note.',
-  },
-  definition: {
-    key: 'definition',
-    label: 'Definition',
-    icon: '💡',
-    control: 'textarea',
-    rows: 6,
-    wide: true,
-    placeholder: 'Define the concept.',
-  },
-  relatedIdeas: {
-    key: 'relatedIdeas',
-    label: 'Related Ideas',
-    icon: '🔗',
-    control: 'textarea',
-    rows: 5,
-    wide: true,
-    placeholder: 'List related ideas or concepts.',
-  },
-  role: {
-    key: 'role',
-    label: 'Role',
-    icon: '👤',
-    placeholder: 'Role or relationship',
-  },
-  notes: {
-    key: 'notes',
-    label: 'Notes',
-    icon: '📝',
-    control: 'textarea',
-    rows: 6,
-    wide: true,
-    placeholder: 'Add notes.',
-  },
-  course: {
-    key: 'course',
-    label: 'Course',
-    icon: '📘',
-    placeholder: 'Course',
-  },
-  dueDate: {
-    key: 'dueDate',
-    label: 'Due Date',
-    icon: '📅',
-    control: 'date',
-  },
-  requirements: {
-    key: 'requirements',
-    label: 'Requirements',
-    icon: '📋',
-    control: 'textarea',
-    rows: 6,
-    wide: true,
-    placeholder: 'Assignment requirements.',
-  },
-  quoteText: {
-    key: 'quoteText',
-    label: 'Quote',
-    icon: '❝',
-    control: 'textarea',
-    rows: 6,
-    wide: true,
-    placeholder: 'Quote text',
-  },
-  sourceId: {
-    key: 'sourceId',
-    label: 'Source ID',
-    icon: '🔗',
-    placeholder: 'Linked source ID',
-  },
-  pageNumber: {
-    key: 'pageNumber',
-    label: 'Page Number',
-    icon: '☰',
-    placeholder: 'Page number',
-  },
-}
-
 const item = computed(() => {
   return getResearchItemById(
     route.params.id,
   )
 })
+
+const normalizedItemMetadata =
+  computed(() => {
+    if (!item.value) {
+      return {}
+    }
+
+    return createMetadataForType(
+      item.value.type,
+      item.value.metadata || {},
+      {
+        includeAdvanced: true,
+      },
+    )
+  })
 
 const bannerStyle = computed(() => {
   if (
@@ -1232,38 +987,68 @@ const activeItemType = computed(() => {
 const activeFieldDefinitions =
   computed(() => {
     return getFieldDefinitionsForType(
-      activeEditType.value,
+      editForm.value.type,
+      {
+        includeAdvanced:
+          showAdvancedFields.value,
+      },
     )
   })
 
 const displayFieldDefinitions =
   computed(() => {
     return getFieldDefinitionsForType(
-      activeItemType.value,
+      item.value?.type,
+      {
+        includeAdvanced: true,
+      },
     )
   })
 
-const usesAuthors = computed(() => {
-  return activeEditType.value
-    ?.fields
-    ?.includes('authors')
-})
-
-const usesEditors = computed(() => {
-  return activeEditType.value
-    ?.fields
-    ?.includes('editors')
-})
-
-const editableFieldDefinitions =
+const creatorRoleDefinitions =
   computed(() => {
-    return activeFieldDefinitions.value.filter(
-      (field) => {
-        return (
-          field.key !== 'authors' &&
-          field.key !== 'editors'
-        )
-      },
+    return getCreatorRoleDefinitionsForType(
+      editForm.value.type,
+    )
+  })
+
+const displayCreatorRoleDefinitions =
+  computed(() => {
+    return getCreatorRoleDefinitionsForType(
+      item.value?.type,
+    )
+  })
+
+const activeMetadataConfig =
+  computed(() => {
+    return getResearchMetadataConfig(
+      editForm.value.type,
+    )
+  })
+
+const hasAdvancedFields =
+  computed(() => {
+    return (
+      activeMetadataConfig.value
+        .advancedFields
+        .length > 0
+    )
+  })
+
+const metadataFieldCount =
+  computed(() => {
+    return (
+      activeFieldDefinitions.value
+        .length +
+      creatorRoleDefinitions.value
+        .length
+    )
+  })
+
+const isCitableItem =
+  computed(() => {
+    return isCitableResearchType(
+      item.value?.type,
     )
   })
 
@@ -1431,6 +1216,7 @@ watch(
     selectedLinkId.value = ''
     selectedKnowledgeTagId.value = ''
     isEditing.value = false
+    showAdvancedFields.value = false
 
     await loadItemBlocks(nextId)
   },
@@ -1494,125 +1280,48 @@ function getEmptyEditForm() {
     coverImageUrl: '',
     bannerImageUrl: '',
     bannerObjectPositionY: 50,
-    metadata: {
-      authors: [
-        {
-          firstName: '',
-          initial: '',
-          lastName: '',
-        },
-      ],
-      editors: [],
-    },
+    metadata: {},
   }
-}
-
-function getFieldDefinitionsForType(
-  typeDefinition,
-) {
-  const fieldKeys =
-    typeDefinition?.fields ||
-    []
-
-  return fieldKeys.map((key) => {
-    return (
-      FIELD_DEFINITIONS[key] ||
-      {
-        key,
-        label:
-          formatFieldLabel(key),
-        icon:
-          '•',
-        placeholder:
-          '',
-      }
-    )
-  })
 }
 
 function ensureEditMetadataFields() {
-  if (
-    !editForm.value.metadata ||
-    typeof editForm.value.metadata !==
-      'object'
-  ) {
-    editForm.value.metadata = {}
-  }
-
-  const fieldDefinitions =
-    getFieldDefinitionsForType(
-      activeEditType.value,
+  editForm.value.metadata =
+    createMetadataForType(
+      editForm.value.type,
+      editForm.value.metadata,
+      {
+        includeAdvanced: true,
+      },
     )
 
-  fieldDefinitions.forEach((field) => {
-    if (
-      field.key === 'authors'
-    ) {
+  creatorRoleDefinitions.value.forEach(
+    (role) => {
       if (
         !Array.isArray(
-          editForm.value.metadata.authors,
-        ) ||
-        editForm.value.metadata.authors
-          .length === 0
-      ) {
-        editForm.value.metadata.authors = [
-          {
-            firstName: '',
-            initial: '',
-            lastName: '',
-          },
-        ]
-      }
-
-      return
-    }
-
-    if (
-      field.key === 'editors'
-    ) {
-      if (
-        !Array.isArray(
-          editForm.value.metadata.editors,
+          editForm.value.metadata[
+            role.key
+          ],
         )
       ) {
-        editForm.value.metadata.editors = []
+        editForm.value.metadata[
+          role.key
+        ] = []
       }
 
-      return
-    }
-
-    if (
-      editForm.value.metadata[
-        field.key
-      ] === undefined ||
-      editForm.value.metadata[
-        field.key
-      ] === null
-    ) {
-      editForm.value.metadata[
-        field.key
-      ] = ''
-    }
-  })
-
-  if (
-    activeEditType.value
-      ?.fields
-      ?.includes('author') &&
-    !editForm.value.metadata.author
-  ) {
-    const people =
-      editForm.value.metadata
-        .authors || []
-
-    const peopleText =
-      formatPeople(people)
-
-    if (peopleText !== '—') {
-      editForm.value.metadata.author =
-        peopleText
-    }
-  }
+      if (
+        role.key === 'authors' &&
+        editForm.value.metadata[
+          role.key
+        ].length === 0
+      ) {
+        editForm.value.metadata[
+          role.key
+        ] = [
+          createEmptyCreator(),
+        ]
+      }
+    },
+  )
 }
 
 function toggleEditMode() {
@@ -1629,9 +1338,33 @@ function populateEditForm() {
     return
   }
 
+  const normalizedMetadata =
+    createMetadataForType(
+      item.value.type,
+      item.value.metadata || {},
+      {
+        includeAdvanced: true,
+      },
+    )
+
   const metadata = {
-    ...(item.value.metadata || {}),
+    ...normalizedMetadata,
   }
+
+  getCreatorRoleDefinitionsForType(
+    item.value.type,
+  ).forEach((role) => {
+    metadata[role.key] =
+      cleanCreatorList(
+        normalizedMetadata[
+          role.key
+        ] || [],
+      ).map((creator) => {
+        return {
+          ...creator,
+        }
+      })
+  })
 
   editForm.value = {
     title:
@@ -1647,142 +1380,90 @@ function populateEditForm() {
       'book',
 
     status:
-      metadata.status ||
+      normalizedMetadata.status ||
       'inbox',
 
     coverImageUrl:
-      metadata.coverImageUrl ||
+      normalizedMetadata.coverImageUrl ||
       '',
 
     bannerImageUrl:
-      metadata.bannerImageUrl ||
+      normalizedMetadata.bannerImageUrl ||
       '',
 
     bannerObjectPositionY:
-      metadata.bannerObjectPositionY ??
+      normalizedMetadata.bannerObjectPositionY ??
       50,
 
-    metadata: {
-      ...metadata,
-
-      authors:
-        clonePeople(
-          metadata.authors,
-          true,
-        ),
-
-      editors:
-        clonePeople(
-          metadata.editors,
-          false,
-        ),
-    },
+    metadata,
   }
 
+  showAdvancedFields.value = false
   ensureEditMetadataFields()
 }
 
 function handleEditTypeChange() {
+  editForm.value.metadata =
+    createMetadataForType(
+      editForm.value.type,
+      editForm.value.metadata,
+      {
+        includeAdvanced: true,
+      },
+    )
+
+  showAdvancedFields.value = false
   ensureEditMetadataFields()
 }
 
-function clonePeople(
-  people = [],
-  ensureOne = false,
+function addEditCreator(
+  roleKey,
 ) {
-  const safePeople =
-    Array.isArray(people)
-      ? people
-      : []
-
-  const cleaned = safePeople.map(
-    (person) => {
-      if (
-        typeof person === 'string'
-      ) {
-        const parts =
-          person
-            .trim()
-            .split(/\s+/)
-
-        return {
-          firstName:
-            parts.slice(0, -1)
-              .join(' '),
-
-          initial:
-            '',
-
-          lastName:
-            parts.slice(-1)
-              .join(''),
-        }
-      }
-
-      return {
-        firstName:
-          person?.firstName ||
-          '',
-
-        initial:
-          person?.initial ||
-          '',
-
-        lastName:
-          person?.lastName ||
-          '',
-      }
-    },
-  )
-
   if (
-    ensureOne &&
-    cleaned.length === 0
+    !Array.isArray(
+      editForm.value.metadata[
+        roleKey
+      ],
+    )
   ) {
-    return [
-      {
-        firstName: '',
-        initial: '',
-        lastName: '',
-      },
-    ]
+    editForm.value.metadata[
+      roleKey
+    ] = []
   }
 
-  return cleaned
+  editForm.value.metadata[
+    roleKey
+  ].push(
+    createEmptyCreator(),
+  )
 }
 
-function cleanPeopleList(
-  people = [],
+function removeEditCreator(
+  roleKey,
+  index,
 ) {
-  return people
-    .map((person) => {
-      return {
-        firstName:
-          String(
-            person.firstName ||
-            '',
-          ).trim(),
+  if (
+    !Array.isArray(
+      editForm.value.metadata[
+        roleKey
+      ],
+    )
+  ) {
+    return
+  }
 
-        initial:
-          String(
-            person.initial ||
-            '',
-          ).trim(),
+  editForm.value.metadata[
+    roleKey
+  ].splice(index, 1)
 
-        lastName:
-          String(
-            person.lastName ||
-            '',
-          ).trim(),
-      }
-    })
-    .filter((person) => {
-      return (
-        person.firstName ||
-        person.initial ||
-        person.lastName
-      )
-    })
+  if (
+    roleKey === 'authors' &&
+    editForm.value.metadata[
+      roleKey
+    ].length === 0
+  ) {
+    addEditCreator(roleKey)
+  }
 }
 
 async function handleCoverUpload(
@@ -1851,45 +1532,6 @@ function removeBanner() {
     50
 }
 
-function addEditAuthor() {
-  editForm.value.metadata
-    .authors
-    .push({
-      firstName: '',
-      initial: '',
-      lastName: '',
-    })
-}
-
-function removeEditAuthor(index) {
-  editForm.value.metadata
-    .authors
-    .splice(index, 1)
-
-  if (
-    editForm.value.metadata
-      .authors.length === 0
-  ) {
-    addEditAuthor()
-  }
-}
-
-function addEditEditor() {
-  editForm.value.metadata
-    .editors
-    .push({
-      firstName: '',
-      initial: '',
-      lastName: '',
-    })
-}
-
-function removeEditEditor(index) {
-  editForm.value.metadata
-    .editors
-    .splice(index, 1)
-}
-
 function cancelEdit() {
   populateEditForm()
   isEditing.value = false
@@ -1900,57 +1542,43 @@ async function saveEdits() {
     return
   }
 
-  const metadata = {
-    ...(item.value.metadata || {}),
-    ...(editForm.value.metadata || {}),
+  const metadata =
+    createMetadataForType(
+      editForm.value.type,
+      {
+        ...(item.value.metadata || {}),
+        ...(editForm.value.metadata || {}),
+      },
+      {
+        includeAdvanced: true,
+      },
+    )
 
-    status:
-      editForm.value.status,
-
-    coverImageUrl:
-      editForm.value.coverImageUrl,
-
-    bannerImageUrl:
-      editForm.value.bannerImageUrl,
-
-    bannerObjectPositionY:
-      Number(
-        editForm.value
-          .bannerObjectPositionY,
-      ),
-
-    authors:
-      cleanPeopleList(
-        editForm.value.metadata
-          .authors || [],
-      ),
-
-    editors:
-      cleanPeopleList(
-        editForm.value.metadata
-          .editors || [],
-      ),
-  }
-
-  if (
-    activeEditType.value
-      ?.fields
-      ?.includes('author') &&
-    !String(
-      metadata.author ||
-      '',
-    ).trim()
-  ) {
-    const formattedAuthors =
-      formatPeople(
-        metadata.authors,
+  getCreatorRoleDefinitionsForType(
+    editForm.value.type,
+  ).forEach((role) => {
+    metadata[role.key] =
+      cleanCreatorList(
+        editForm.value.metadata[
+          role.key
+        ] || [],
       )
+  })
 
-    if (formattedAuthors !== '—') {
-      metadata.author =
-        formattedAuthors
-    }
-  }
+  metadata.status =
+    editForm.value.status
+
+  metadata.coverImageUrl =
+    editForm.value.coverImageUrl
+
+  metadata.bannerImageUrl =
+    editForm.value.bannerImageUrl
+
+  metadata.bannerObjectPositionY =
+    Number(
+      editForm.value
+        .bannerObjectPositionY,
+    )
 
   await updateResearchItem(
     item.value.id,
@@ -1968,20 +1596,26 @@ async function saveEdits() {
     },
   )
 
-  isEditing.value =
-    false
+  isEditing.value = false
+  showAdvancedFields.value = false
 }
 
 async function copyCitation(
   citation,
   type,
 ) {
-  const plainText =
+  const container =
+    document.createElement('div')
+
+  container.innerHTML =
     String(citation || '')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
+
+  const plainText =
+    (
+      container.textContent ||
+      container.innerText ||
+      ''
+    ).trim()
 
   await navigator.clipboard.writeText(
     plainText,
@@ -2150,16 +1784,9 @@ function getDisplayFieldValue(
   fieldKey,
 ) {
   const value =
-    item.value?.metadata?.[
+    normalizedItemMetadata.value?.[
       fieldKey
     ]
-
-  if (
-    fieldKey === 'authors' ||
-    fieldKey === 'editors'
-  ) {
-    return formatPeople(value)
-  }
 
   if (Array.isArray(value)) {
     return (
@@ -2174,6 +1801,7 @@ function getDisplayFieldValue(
           return (
             entry?.name ||
             entry?.title ||
+            entry?.literal ||
             JSON.stringify(entry)
           )
         })
@@ -2190,6 +1818,7 @@ function getDisplayFieldValue(
     return (
       value.name ||
       value.title ||
+      value.literal ||
       JSON.stringify(value)
     )
   }
@@ -2200,39 +1829,59 @@ function getDisplayFieldValue(
   )
 }
 
-function formatPeople(
-  people = [],
+function formatCreator(
+  creator,
 ) {
-  if (!Array.isArray(people)) {
+  if (!creator) {
+    return ''
+  }
+
+  if (
+    typeof creator === 'string'
+  ) {
+    return creator.trim()
+  }
+
+  if (
+    creator.literal ||
+    creator.raw
+  ) {
+    return String(
+      creator.literal ||
+      creator.raw,
+    ).trim()
+  }
+
+  return [
+    creator.firstName ||
+      creator.given,
+    creator.middleName ||
+      creator.middle,
+    creator.initial,
+    creator.nameParticle ||
+      creator.particle,
+    creator.lastName ||
+      creator.family,
+    creator.suffix,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+}
+
+function formatCreatorList(
+  creators,
+) {
+  if (!Array.isArray(creators)) {
     return (
-      String(people || '').trim() ||
-      '—'
+      String(creators || '').trim()
     )
   }
 
-  if (!people.length) {
-    return '—'
-  }
-
-  return people
-    .map((person) => {
-      if (
-        typeof person === 'string'
-      ) {
-        return person
-      }
-
-      return [
-        person.firstName,
-        person.initial,
-        person.lastName,
-      ]
-        .filter(Boolean)
-        .join(' ')
-    })
+  return creators
+    .map(formatCreator)
     .filter(Boolean)
-    .join(', ') ||
-    '—'
+    .join(', ')
 }
 
 function formatFieldLabel(value) {
@@ -2622,8 +2271,7 @@ function getTypeName(
 
 .form-group input,
 .form-group textarea,
-.form-group select,
-.person-row input {
+.form-group select {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-card);
@@ -2637,18 +2285,59 @@ function getTypeName(
   resize: vertical;
 }
 
-.person-row {
+.metadata-header-actions,
+.creator-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.creator-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  padding: 0.75rem;
+}
+
+.creator-toolbar {
+  justify-content: space-between;
+}
+
+.creator-type-select {
+  flex: 1;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+}
+
+.creator-name-grid {
   display: grid;
   grid-template-columns:
-    minmax(0, 1fr)
-    90px
-    minmax(0, 1fr)
-    36px;
-  align-items: center;
+    repeat(
+      auto-fit,
+      minmax(130px, 1fr)
+    );
   gap: 0.5rem;
 }
 
+.creator-card input {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 0.7rem;
+  font: inherit;
+}
+
 .remove-btn {
+  flex: 0 0 38px;
+  width: 38px;
   height: 38px;
   padding: 0;
 }
@@ -2899,7 +2588,8 @@ function getTypeName(
   }
 
   .action-row,
-  .edit-actions {
+  .edit-actions,
+  .metadata-header-actions {
     flex-wrap: wrap;
   }
 
@@ -2908,7 +2598,7 @@ function getTypeName(
     flex-direction: column;
   }
 
-  .person-row,
+  .creator-name-grid,
   .property-row,
   .connections-grid {
     grid-template-columns: 1fr;

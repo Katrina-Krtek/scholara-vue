@@ -8,6 +8,7 @@
     <section class="toolbar-card">
       <div>
         <h2>{{ pageIcon }} {{ pageTitle }}</h2>
+
         <p>
           {{ visibleItems.length }}
           item{{ visibleItems.length === 1 ? '' : 's' }}
@@ -111,10 +112,25 @@
             <h3>{{ pageTitle }} Details</h3>
           </div>
 
-          <span>
-            {{ activeFieldDefinitions.length }}
-            field{{ activeFieldDefinitions.length === 1 ? '' : 's' }}
-          </span>
+          <div class="metadata-header-actions">
+            <span class="field-count">
+              {{ metadataFieldCount }}
+              field{{ metadataFieldCount === 1 ? '' : 's' }}
+            </span>
+
+            <button
+              v-if="hasAdvancedFields"
+              class="small-btn"
+              type="button"
+              @click="toggleAdvancedFields"
+            >
+              {{
+                showAdvancedFields
+                  ? 'Hide Advanced Fields'
+                  : 'Show Advanced Fields'
+              }}
+            </button>
+          </div>
         </div>
 
         <div class="form-grid media-grid">
@@ -140,96 +156,95 @@
         </div>
 
         <div
-          v-if="usesAuthors"
+          v-for="role in creatorRoleDefinitions"
+          :key="role.key"
           class="people-section"
         >
-          <label>Authors</label>
+          <label>{{ role.label }}</label>
 
           <div
-            v-for="(author, index) in authors"
-            :key="`author-${index}`"
-            class="person-row"
+            v-for="(creator, index) in metadata[role.key]"
+            :key="`${role.key}-${index}`"
+            class="creator-card"
           >
-            <input
-              v-model="author.firstName"
-              placeholder="First name"
-            />
+            <div class="creator-toolbar">
+              <select
+                v-model="creator.creatorType"
+                class="creator-type-select"
+              >
+                <option value="person">
+                  Person
+                </option>
+
+                <option value="literal">
+                  Organization / Group
+                </option>
+              </select>
+
+              <button
+                type="button"
+                class="remove-btn"
+                @click="removeCreator(role.key, index)"
+              >
+                ×
+              </button>
+            </div>
 
             <input
-              v-model="author.initial"
-              placeholder="Initial"
+              v-if="creator.creatorType === 'literal'"
+              v-model="creator.literal"
+              type="text"
+              :placeholder="`${role.singularLabel} organization or group name`"
             />
 
-            <input
-              v-model="author.lastName"
-              placeholder="Last name"
-            />
-
-            <button
-              type="button"
-              class="remove-btn"
-              @click="removeAuthor(index)"
+            <div
+              v-else
+              class="creator-name-grid"
             >
-              ×
-            </button>
+              <input
+                v-model="creator.firstName"
+                type="text"
+                placeholder="First name"
+              />
+
+              <input
+                v-model="creator.middleName"
+                type="text"
+                placeholder="Middle name"
+              />
+
+              <input
+                v-model="creator.nameParticle"
+                type="text"
+                placeholder="Particle"
+              />
+
+              <input
+                v-model="creator.lastName"
+                type="text"
+                placeholder="Last name"
+              />
+
+              <input
+                v-model="creator.suffix"
+                type="text"
+                placeholder="Suffix"
+              />
+            </div>
           </div>
 
           <button
             type="button"
-            class="small-btn"
-            @click="addAuthor"
+            class="small-btn add-person-btn"
+            @click="addCreator(role.key)"
           >
-            + Add Author
-          </button>
-        </div>
-
-        <div
-          v-if="usesEditors"
-          class="people-section"
-        >
-          <label>Editors</label>
-
-          <div
-            v-for="(editor, index) in editors"
-            :key="`editor-${index}`"
-            class="person-row"
-          >
-            <input
-              v-model="editor.firstName"
-              placeholder="First name"
-            />
-
-            <input
-              v-model="editor.initial"
-              placeholder="Initial"
-            />
-
-            <input
-              v-model="editor.lastName"
-              placeholder="Last name"
-            />
-
-            <button
-              type="button"
-              class="remove-btn"
-              @click="removeEditor(index)"
-            >
-              ×
-            </button>
-          </div>
-
-          <button
-            type="button"
-            class="small-btn"
-            @click="addEditor"
-          >
-            + Add Editor
+            + Add {{ role.singularLabel }}
           </button>
         </div>
 
         <div class="form-grid">
           <div
-            v-for="field in editableFieldDefinitions"
+            v-for="field in activeFieldDefinitions"
             :key="field.key"
             class="form-group"
             :class="{ wide: field.wide }"
@@ -352,23 +367,23 @@
 
           <div class="board-cards">
             <RouterLink
-              v-for="item in getItemsByStatus(status.id)"
-              :key="item.id"
-              :to="getDetailRoute(item)"
+              v-for="researchItem in getItemsByStatus(status.id)"
+              :key="researchItem.id"
+              :to="getDetailRoute(researchItem)"
               class="board-card"
               draggable="true"
-              @dragstart="handleDragStart(item.id)"
+              @dragstart="handleDragStart(researchItem.id)"
               @dragend="handleDragEnd"
             >
               <div class="board-card-title">
-                {{ getItemIcon(item) }} {{ item.title }}
+                {{ getItemIcon(researchItem) }} {{ researchItem.title }}
               </div>
 
               <div class="board-card-meta">
-                {{ formatCreators(item) }}
+                {{ formatCreators(researchItem) }}
 
-                <span v-if="getItemYear(item)">
-                  · {{ getItemYear(item) }}
+                <span v-if="getItemYear(researchItem)">
+                  · {{ getItemYear(researchItem) }}
                 </span>
               </div>
             </RouterLink>
@@ -381,19 +396,19 @@
         class="gallery-grid"
       >
         <RouterLink
-          v-for="item in visibleItems"
-          :key="item.id"
-          :to="getDetailRoute(item)"
+          v-for="researchItem in visibleItems"
+          :key="researchItem.id"
+          :to="getDetailRoute(researchItem)"
           class="gallery-link"
         >
           <article class="gallery-card">
             <div
               class="gallery-banner"
-              :style="getGalleryBannerStyle(item)"
+              :style="getGalleryBannerStyle(researchItem)"
             >
               <img
-                v-if="item.metadata?.coverImageUrl"
-                :src="item.metadata.coverImageUrl"
+                v-if="researchItem.metadata?.coverImageUrl"
+                :src="researchItem.metadata.coverImageUrl"
                 alt=""
                 class="book-cover"
               />
@@ -402,33 +417,33 @@
                 v-else
                 class="gallery-icon"
               >
-                {{ getItemIcon(item) }}
+                {{ getItemIcon(researchItem) }}
               </span>
             </div>
 
             <div class="gallery-body">
               <div class="gallery-title">
-                {{ item.title }}
+                {{ researchItem.title }}
               </div>
 
               <div class="gallery-meta">
-                {{ formatCreators(item) }}
+                {{ formatCreators(researchItem) }}
 
-                <span v-if="getItemYear(item)">
-                  · {{ getItemYear(item) }}
+                <span v-if="getItemYear(researchItem)">
+                  · {{ getItemYear(researchItem) }}
                 </span>
               </div>
 
               <div class="gallery-summary">
-                {{ item.summary || 'No summary added.' }}
+                {{ researchItem.summary || 'No summary added.' }}
               </div>
 
               <div
-                v-if="item.topicTags?.length"
+                v-if="researchItem.topicTags?.length"
                 class="topic-row"
               >
                 <span
-                  v-for="tag in item.topicTags"
+                  v-for="tag in researchItem.topicTags"
                   :key="tag"
                   class="topic-tag"
                 >
@@ -445,17 +460,17 @@
         class="list-view"
       >
         <RouterLink
-          v-for="item in visibleItems"
-          :key="item.id"
-          :to="getDetailRoute(item)"
+          v-for="researchItem in visibleItems"
+          :key="researchItem.id"
+          :to="getDetailRoute(researchItem)"
           class="list-row"
         >
           <span>
-            {{ getItemIcon(item) }} {{ item.title }}
+            {{ getItemIcon(researchItem) }} {{ researchItem.title }}
           </span>
 
           <span class="list-summary">
-            {{ formatCreators(item) }}
+            {{ formatCreators(researchItem) }}
           </span>
         </RouterLink>
       </div>
@@ -477,29 +492,29 @@
 
           <tbody>
             <tr
-              v-for="item in visibleItems"
-              :key="item.id"
+              v-for="researchItem in visibleItems"
+              :key="researchItem.id"
             >
               <td>
-                <RouterLink :to="getDetailRoute(item)">
-                  {{ getItemIcon(item) }} {{ item.title }}
+                <RouterLink :to="getDetailRoute(researchItem)">
+                  {{ getItemIcon(researchItem) }} {{ researchItem.title }}
                 </RouterLink>
               </td>
 
               <td>
-                {{ formatCreators(item) }}
+                {{ formatCreators(researchItem) }}
               </td>
 
               <td>
-                {{ getStatusLabel(item.metadata?.status) }}
+                {{ getStatusLabel(researchItem.metadata?.status) }}
               </td>
 
               <td>
-                {{ getItemYear(item) || '—' }}
+                {{ getItemYear(researchItem) || '—' }}
               </td>
 
               <td>
-                {{ item.topicTags?.join(', ') || '—' }}
+                {{ researchItem.topicTags?.join(', ') || '—' }}
               </td>
             </tr>
           </tbody>
@@ -554,6 +569,15 @@ import {
   researchStatuses,
 } from '../data/researchStatuses'
 
+import {
+  cleanCreatorList,
+  createEmptyCreator,
+  createMetadataForType,
+  getCreatorRoleDefinitionsForType,
+  getFieldDefinitionsForType,
+  getResearchMetadataConfig,
+} from '../data/researchMetadataSchema'
+
 const route = useRoute()
 const router = useRouter()
 
@@ -589,6 +613,7 @@ const {
 )
 
 const showCreateForm = ref(false)
+const showAdvancedFields = ref(false)
 const searchQuery = ref('')
 const sortMode = ref('recent')
 const isCreating = ref(false)
@@ -598,6 +623,7 @@ const newTitle = ref('')
 const newSummary = ref('')
 const newStatus = ref('inbox')
 const topicTagsInput = ref('')
+
 const metadata = ref({})
 
 const mediaFields = ref({
@@ -605,268 +631,14 @@ const mediaFields = ref({
   bannerImageUrl: '',
 })
 
-const authors = ref([
-  {
-    firstName: '',
-    initial: '',
-    lastName: '',
-  },
-])
-
-const editors = ref([])
-
-const FIELD_DEFINITIONS = {
-  author: {
-    key: 'author',
-    label: 'Author',
-    placeholder: 'Author name',
-  },
-  shortTitle: {
-    key: 'shortTitle',
-    label: 'Short Title',
-    placeholder: 'Shortened title for notes',
-  },
-  publisher: {
-    key: 'publisher',
-    label: 'Publisher',
-    placeholder: 'Publisher',
-  },
-  placeOfPublication: {
-    key: 'placeOfPublication',
-    label: 'Place of Publication',
-    placeholder: 'City, State or Country',
-  },
-  year: {
-    key: 'year',
-    label: 'Publication Year',
-    placeholder: '2026',
-  },
-  edition: {
-    key: 'edition',
-    label: 'Edition',
-    placeholder: '2nd edition',
-  },
-  isbn: {
-    key: 'isbn',
-    label: 'ISBN',
-    placeholder: 'ISBN',
-  },
-  pageRange: {
-    key: 'pageRange',
-    label: 'Page Range / Count',
-    placeholder: '1–250',
-  },
-  libraryLocation: {
-    key: 'libraryLocation',
-    label: 'Library Location',
-    placeholder: 'Shelf, library, or collection',
-  },
-  journal: {
-    key: 'journal',
-    label: 'Journal',
-    placeholder: 'Journal title',
-  },
-  volume: {
-    key: 'volume',
-    label: 'Volume',
-    placeholder: 'Volume',
-  },
-  issue: {
-    key: 'issue',
-    label: 'Issue',
-    placeholder: 'Issue',
-  },
-  pages: {
-    key: 'pages',
-    label: 'Pages',
-    placeholder: '45–68',
-  },
-  doi: {
-    key: 'doi',
-    label: 'DOI',
-    placeholder: '10.xxxx/xxxxx',
-  },
-  url: {
-    key: 'url',
-    label: 'URL',
-    control: 'url',
-    placeholder: 'https://...',
-  },
-  abstract: {
-    key: 'abstract',
-    label: 'Abstract',
-    control: 'textarea',
-    rows: 7,
-    wide: true,
-    placeholder: 'Paste or summarize the abstract.',
-  },
-  language: {
-    key: 'language',
-    label: 'Language',
-    placeholder: 'English',
-  },
-  institution: {
-    key: 'institution',
-    label: 'University / Institution',
-    placeholder: 'Liberty University',
-  },
-  degree: {
-    key: 'degree',
-    label: 'Degree',
-    placeholder: 'Doctor of Ministry, PhD, ThM, MA, etc.',
-  },
-  department: {
-    key: 'department',
-    label: 'Department / Program',
-    placeholder: 'School, department, or program',
-  },
-  advisor: {
-    key: 'advisor',
-    label: 'Advisor / Committee Chair',
-    placeholder: 'Advisor or committee chair',
-  },
-  database: {
-    key: 'database',
-    label: 'Database',
-    placeholder: 'ProQuest Dissertations & Theses Global',
-  },
-  repository: {
-    key: 'repository',
-    label: 'Repository',
-    placeholder: 'Institutional repository or archive',
-  },
-  publicationNumber: {
-    key: 'publicationNumber',
-    label: 'Publication / Document Number',
-    placeholder: 'Publication or document number',
-  },
-  siteName: {
-    key: 'siteName',
-    label: 'Website Name',
-    placeholder: 'Website or organization',
-  },
-  publishedDate: {
-    key: 'publishedDate',
-    label: 'Published Date',
-    control: 'date',
-  },
-  accessedDate: {
-    key: 'accessedDate',
-    label: 'Accessed Date',
-    control: 'date',
-  },
-  blogName: {
-    key: 'blogName',
-    label: 'Blog Name',
-    placeholder: 'Blog title',
-  },
-  creator: {
-    key: 'creator',
-    label: 'Creator',
-    placeholder: 'Creator, director, or presenter',
-  },
-  platform: {
-    key: 'platform',
-    label: 'Platform',
-    placeholder: 'YouTube, Vimeo, podcast platform, etc.',
-  },
-  sender: {
-    key: 'sender',
-    label: 'Sender',
-    placeholder: 'Sender',
-  },
-  recipient: {
-    key: 'recipient',
-    label: 'Recipient',
-    placeholder: 'Recipient',
-  },
-  date: {
-    key: 'date',
-    label: 'Date',
-    control: 'date',
-  },
-  format: {
-    key: 'format',
-    label: 'Format',
-    placeholder: 'Email, letter, interview, etc.',
-  },
-  body: {
-    key: 'body',
-    label: 'Body',
-    control: 'textarea',
-    rows: 8,
-    wide: true,
-    placeholder: 'Write the note.',
-  },
-  definition: {
-    key: 'definition',
-    label: 'Definition',
-    control: 'textarea',
-    rows: 6,
-    wide: true,
-    placeholder: 'Define the concept.',
-  },
-  relatedIdeas: {
-    key: 'relatedIdeas',
-    label: 'Related Ideas',
-    control: 'textarea',
-    rows: 5,
-    wide: true,
-    placeholder: 'List related ideas or concepts.',
-  },
-  role: {
-    key: 'role',
-    label: 'Role',
-    placeholder: 'Role or relationship',
-  },
-  notes: {
-    key: 'notes',
-    label: 'Notes',
-    control: 'textarea',
-    rows: 6,
-    wide: true,
-    placeholder: 'Add notes.',
-  },
-  course: {
-    key: 'course',
-    label: 'Course',
-    placeholder: 'Course',
-  },
-  dueDate: {
-    key: 'dueDate',
-    label: 'Due Date',
-    control: 'date',
-  },
-  requirements: {
-    key: 'requirements',
-    label: 'Requirements',
-    control: 'textarea',
-    rows: 6,
-    wide: true,
-    placeholder: 'Assignment requirements.',
-  },
-  quoteText: {
-    key: 'quoteText',
-    label: 'Quote',
-    control: 'textarea',
-    rows: 6,
-    wide: true,
-    placeholder: 'Quote text',
-  },
-  sourceId: {
-    key: 'sourceId',
-    label: 'Source ID',
-    placeholder: 'Linked source ID',
-  },
-  pageNumber: {
-    key: 'pageNumber',
-    label: 'Page Number',
-    placeholder: 'Page number',
-  },
-}
-
 const researchType = computed(() => {
   return getResearchTypeById(
+    typeId.value,
+  )
+})
+
+const metadataConfig = computed(() => {
+  return getResearchMetadataConfig(
     typeId.value,
   )
 })
@@ -885,55 +657,48 @@ const pageIcon = computed(() => {
   )
 })
 
-const activeFieldDefinitions =
+const creatorRoleDefinitions =
   computed(() => {
-    const fieldKeys =
-      researchType.value?.fields ||
-      []
-
-    return fieldKeys.map((key) => {
-      return (
-        FIELD_DEFINITIONS[key] ||
-        {
-          key,
-          label:
-            formatFieldName(key),
-          placeholder:
-            '',
-        }
-      )
-    })
+    return getCreatorRoleDefinitionsForType(
+      typeId.value,
+    )
   })
 
-const usesAuthors = computed(() => {
-  return researchType.value
-    ?.fields
-    ?.includes('authors')
-})
-
-const usesEditors = computed(() => {
-  return researchType.value
-    ?.fields
-    ?.includes('editors')
-})
-
-const editableFieldDefinitions =
+const activeFieldDefinitions =
   computed(() => {
-    return activeFieldDefinitions.value.filter(
-      (field) => {
-        return (
-          field.key !== 'authors' &&
-          field.key !== 'editors'
-        )
+    return getFieldDefinitionsForType(
+      typeId.value,
+      {
+        includeAdvanced:
+          showAdvancedFields.value,
       },
+    )
+  })
+
+const hasAdvancedFields =
+  computed(() => {
+    return (
+      metadataConfig.value
+        .advancedFields
+        .length > 0
+    )
+  })
+
+const metadataFieldCount =
+  computed(() => {
+    return (
+      activeFieldDefinitions.value
+        .length +
+      creatorRoleDefinitions.value
+        .length
     )
   })
 
 const filteredItems = computed(() => {
   return allResearchItems.value.filter(
-    (item) => {
+    (researchItem) => {
       return (
-        item.type ===
+        researchItem.type ===
         typeId.value
       )
     },
@@ -948,13 +713,13 @@ const visibleItems = computed(() => {
 
   let items =
     filteredItems.value.filter(
-      (item) => {
+      (researchItem) => {
         if (!query) {
           return true
         }
 
         return buildItemSearchText(
-          item,
+          researchItem,
         ).includes(query)
       },
     )
@@ -1026,6 +791,13 @@ watch(
   },
 )
 
+watch(
+  showAdvancedFields,
+  () => {
+    initializeMetadataFields()
+  },
+)
+
 function toggleCreateForm() {
   showCreateForm.value =
     !showCreateForm.value
@@ -1035,37 +807,98 @@ function toggleCreateForm() {
   }
 }
 
-function initializeMetadataFields() {
-  const nextMetadata = {
-    ...metadata.value,
-  }
+function toggleAdvancedFields() {
+  showAdvancedFields.value =
+    !showAdvancedFields.value
+}
 
-  editableFieldDefinitions.value.forEach(
-    (field) => {
+function initializeMetadataFields() {
+  metadata.value =
+    createMetadataForType(
+      typeId.value,
+      metadata.value,
+      {
+        includeAdvanced:
+          showAdvancedFields.value,
+      },
+    )
+
+  creatorRoleDefinitions.value.forEach(
+    (role) => {
       if (
-        nextMetadata[field.key] ===
-          undefined ||
-        nextMetadata[field.key] ===
-          null
+        !Array.isArray(
+          metadata.value[role.key],
+        )
       ) {
-        nextMetadata[field.key] = ''
+        metadata.value[role.key] = []
+      }
+
+      if (
+        role.key === 'authors' &&
+        metadata.value[role.key]
+          .length === 0
+      ) {
+        metadata.value[role.key] = [
+          createEmptyCreator(),
+        ]
       }
     },
   )
-
-  metadata.value = nextMetadata
 }
 
-function getDetailRoute(item) {
-  return `/research/items/${item.id}`
+function addCreator(roleKey) {
+  if (
+    !Array.isArray(
+      metadata.value[roleKey],
+    )
+  ) {
+    metadata.value[roleKey] = []
+  }
+
+  metadata.value[roleKey].push(
+    createEmptyCreator(),
+  )
 }
 
-function getItemsByStatus(statusId) {
+function removeCreator(
+  roleKey,
+  index,
+) {
+  if (
+    !Array.isArray(
+      metadata.value[roleKey],
+    )
+  ) {
+    return
+  }
+
+  metadata.value[roleKey]
+    .splice(index, 1)
+
+  if (
+    roleKey === 'authors' &&
+    metadata.value[roleKey]
+      .length === 0
+  ) {
+    addCreator(roleKey)
+  }
+}
+
+function getDetailRoute(
+  researchItem,
+) {
+  return `/research/items/${researchItem.id}`
+}
+
+function getItemsByStatus(
+  statusId,
+) {
   return visibleItems.value.filter(
-    (item) => {
+    (researchItem) => {
       return (
         (
-          item.metadata?.status ||
+          researchItem.metadata
+            ?.status ||
           'inbox'
         ) === statusId
       )
@@ -1087,7 +920,9 @@ function getStatusLabel(
     : '📥 Inbox'
 }
 
-function parseTopicTags(text) {
+function parseTopicTags(
+  text,
+) {
   return String(text || '')
     .split(',')
     .map((tag) => {
@@ -1096,100 +931,40 @@ function parseTopicTags(text) {
     .filter(Boolean)
 }
 
-function addAuthor() {
-  authors.value.push({
-    firstName: '',
-    initial: '',
-    lastName: '',
-  })
-}
-
-function removeAuthor(index) {
-  authors.value.splice(index, 1)
-
-  if (
-    authors.value.length === 0
-  ) {
-    addAuthor()
-  }
-}
-
-function addEditor() {
-  editors.value.push({
-    firstName: '',
-    initial: '',
-    lastName: '',
-  })
-}
-
-function removeEditor(index) {
-  editors.value.splice(index, 1)
-}
-
-function cleanPeopleList(people) {
-  return people
-    .map((person) => {
-      return {
-        firstName:
-          String(
-            person.firstName ||
-            '',
-          ).trim(),
-
-        initial:
-          String(
-            person.initial ||
-            '',
-          ).trim(),
-
-        lastName:
-          String(
-            person.lastName ||
-            '',
-          ).trim(),
-      }
-    })
-    .filter((person) => {
-      return (
-        person.firstName ||
-        person.initial ||
-        person.lastName
-      )
-    })
-}
-
 function buildMetadata() {
-  const finalMetadata = {
-    ...metadata.value,
+  const finalMetadata =
+    createMetadataForType(
+      typeId.value,
+      metadata.value,
+      {
+        includeAdvanced: true,
+      },
+    )
 
-    status:
-      newStatus.value,
+  creatorRoleDefinitions.value.forEach(
+    (role) => {
+      finalMetadata[role.key] =
+        cleanCreatorList(
+          metadata.value[
+            role.key
+          ] || [],
+        )
+    },
+  )
 
-    coverImageUrl:
-      mediaFields.value
-        .coverImageUrl,
+  finalMetadata.status =
+    newStatus.value
 
-    bannerImageUrl:
-      mediaFields.value
-        .bannerImageUrl,
+  finalMetadata.coverImageUrl =
+    mediaFields.value
+      .coverImageUrl
 
-    bannerObjectPositionY:
-      50,
-  }
+  finalMetadata.bannerImageUrl =
+    mediaFields.value
+      .bannerImageUrl
 
-  if (usesAuthors.value) {
-    finalMetadata.authors =
-      cleanPeopleList(
-        authors.value,
-      )
-  }
-
-  if (usesEditors.value) {
-    finalMetadata.editors =
-      cleanPeopleList(
-        editors.value,
-      )
-  }
+  finalMetadata.bannerObjectPositionY =
+    50
 
   return finalMetadata
 }
@@ -1214,32 +989,32 @@ async function createItem() {
   isCreating.value = true
 
   try {
-    await addResearchItem({
-      title:
-        newTitle.value.trim(),
+    const createdItem =
+      await addResearchItem({
+        title:
+          newTitle.value.trim(),
 
-      summary:
-        newSummary.value.trim(),
+        summary:
+          newSummary.value.trim(),
 
-      type:
-        typeId.value,
+        type:
+          typeId.value,
 
-      supertags:
-        researchType.value
-          .defaultSupertags ||
-        ['source'],
+        supertags:
+          researchType.value
+            .defaultSupertags ||
+          ['source'],
 
-      topicTags:
-        parseTopicTags(
-          topicTagsInput.value,
-        ),
+        topicTags:
+          parseTopicTags(
+            topicTagsInput.value,
+          ),
 
-      links:
-        [],
+        links: [],
 
-      metadata:
-        buildMetadata(),
-    })
+        metadata:
+          buildMetadata(),
+      })
 
     if (researchError.value) {
       createError.value =
@@ -1247,9 +1022,6 @@ async function createItem() {
 
       return
     }
-
-    const createdItem =
-      allResearchItems.value[0]
 
     resetForm()
     showCreateForm.value = false
@@ -1290,6 +1062,7 @@ function resetForm() {
   newStatus.value = 'inbox'
   topicTagsInput.value = ''
   createError.value = ''
+  showAdvancedFields.value = false
 
   metadata.value = {}
 
@@ -1298,49 +1071,88 @@ function resetForm() {
     bannerImageUrl: '',
   }
 
-  authors.value = [
-    {
-      firstName: '',
-      initial: '',
-      lastName: '',
-    },
-  ]
-
-  editors.value = []
-
   initializeMetadataFields()
 }
 
-function formatCreators(item) {
-  const itemMetadata =
-    item.metadata || {}
-
-  const people =
-    itemMetadata.authors
+function formatCreator(
+  creator,
+) {
+  if (!creator) {
+    return ''
+  }
 
   if (
-    Array.isArray(people) &&
-    people.length
+    typeof creator === 'string'
+  ) {
+    return creator.trim()
+  }
+
+  if (
+    creator.literal ||
+    creator.raw
+  ) {
+    return String(
+      creator.literal ||
+      creator.raw,
+    ).trim()
+  }
+
+  return [
+    creator.firstName ||
+      creator.given,
+    creator.middleName ||
+      creator.middle,
+    creator.initial,
+    creator.nameParticle ||
+      creator.particle,
+    creator.lastName ||
+      creator.family,
+    creator.suffix,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+}
+
+function formatCreatorList(
+  creators,
+) {
+  if (!Array.isArray(creators)) {
+    return ''
+  }
+
+  return creators
+    .map(formatCreator)
+    .filter(Boolean)
+    .join(', ')
+}
+
+function formatCreators(
+  researchItem,
+) {
+  const itemMetadata =
+    researchItem.metadata ||
+    {}
+
+  const preferredRoleKeys = [
+    'authors',
+    'editors',
+    'translators',
+    'presenters',
+    'directors',
+    'senders',
+    'interviewees',
+    'contributors',
+  ]
+
+  for (
+    const roleKey
+    of preferredRoleKeys
   ) {
     const formatted =
-      people
-        .map((person) => {
-          if (
-            typeof person === 'string'
-          ) {
-            return person
-          }
-
-          return [
-            person.firstName,
-            person.initial,
-            person.lastName,
-          ]
-            .filter(Boolean)
-            .join(' ')
-        })
-        .filter(Boolean)
-        .join(', ')
+      formatCreatorList(
+        itemMetadata[roleKey],
+      )
 
     if (formatted) {
       return formatted
@@ -1351,32 +1163,40 @@ function formatCreators(item) {
     itemMetadata.author ||
     itemMetadata.creator ||
     itemMetadata.sender ||
+    itemMetadata.editor ||
     'No author listed'
   )
 }
 
-function getItemYear(item) {
+function getItemYear(
+  researchItem,
+) {
   return (
-    item.metadata?.year ||
-    item.metadata?.publishedDate ||
-    item.metadata?.date ||
+    researchItem.metadata
+      ?.publicationDate ||
+    researchItem.metadata?.year ||
+    researchItem.metadata
+      ?.publishedDate ||
+    researchItem.metadata?.date ||
     ''
   )
 }
 
-function getGalleryBannerStyle(item) {
+function getGalleryBannerStyle(
+  researchItem,
+) {
   if (
-    item.metadata
+    researchItem.metadata
       ?.bannerImageUrl
   ) {
     const positionY =
-      item.metadata
+      researchItem.metadata
         ?.bannerObjectPositionY ??
       50
 
     return {
       backgroundImage:
-        `url(${item.metadata.bannerImageUrl})`,
+        `url(${researchItem.metadata.bannerImageUrl})`,
 
       backgroundSize:
         'cover',
@@ -1389,24 +1209,28 @@ function getGalleryBannerStyle(item) {
   return {}
 }
 
-function getItemIcon(item) {
+function getItemIcon(
+  researchItem,
+) {
   const type =
     getResearchTypeById(
-      item.type,
+      researchItem.type,
     )
 
   return type?.icon ||
     '📄'
 }
 
-function buildItemSearchText(item) {
+function buildItemSearchText(
+  researchItem,
+) {
   const values = [
-    item.title,
-    item.summary,
-    item.type,
-    item.topicTags,
-    item.supertags,
-    item.metadata,
+    researchItem.title,
+    researchItem.summary,
+    researchItem.type,
+    researchItem.topicTags,
+    researchItem.supertags,
+    researchItem.metadata,
   ]
 
   return flattenSearchValues(
@@ -1416,7 +1240,9 @@ function buildItemSearchText(item) {
     .toLowerCase()
 }
 
-function flattenSearchValues(value) {
+function flattenSearchValues(
+  value,
+) {
   if (
     value === null ||
     value === undefined
@@ -1449,18 +1275,6 @@ function flattenSearchValues(value) {
   return [
     String(value),
   ]
-}
-
-function formatFieldName(field) {
-  return String(field || '')
-    .replace(
-      /([a-z])([A-Z])/g,
-      '$1 $2',
-    )
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (character) => {
-      return character.toUpperCase()
-    })
 }
 </script>
 
@@ -1498,7 +1312,8 @@ function formatFieldName(field) {
 
 .toolbar-actions,
 .browse-toolbar,
-.create-actions {
+.create-actions,
+.metadata-header-actions {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -1510,7 +1325,8 @@ function formatFieldName(field) {
 
 .search-input,
 .sort-select,
-.form-group select {
+.form-group select,
+.creator-type-select {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--btn-bg);
@@ -1588,7 +1404,7 @@ function formatFieldName(field) {
   gap: 1rem;
 }
 
-.section-heading > span {
+.field-count {
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent-text);
@@ -1623,14 +1439,14 @@ function formatFieldName(field) {
 }
 
 .form-group label,
-.people-section label {
+.people-section > label {
   color: var(--text-secondary);
   font-size: 0.82rem;
 }
 
 .form-group input,
 .form-group textarea,
-.person-row input {
+.creator-card input {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--bg-card);
@@ -1644,14 +1460,35 @@ function formatFieldName(field) {
   resize: vertical;
 }
 
-.person-row {
+.creator-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-card);
+  padding: 0.75rem;
+}
+
+.creator-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.creator-type-select {
+  flex: 1;
+  background: var(--bg-card);
+}
+
+.creator-name-grid {
   display: grid;
   grid-template-columns:
-    minmax(0, 1fr)
-    90px
-    minmax(0, 1fr)
-    36px;
-  align-items: center;
+    repeat(
+      auto-fit,
+      minmax(130px, 1fr)
+    );
   gap: 0.5rem;
 }
 
@@ -1665,11 +1502,16 @@ function formatFieldName(field) {
 }
 
 .small-btn {
-  align-self: flex-start;
   padding: 0.45rem 0.7rem;
 }
 
+.add-person-btn {
+  align-self: flex-start;
+}
+
 .remove-btn {
+  flex: 0 0 38px;
+  width: 38px;
   height: 38px;
 }
 
@@ -1912,11 +1754,16 @@ function formatFieldName(field) {
 
   .toolbar-actions,
   .browse-toolbar,
-  .create-actions {
+  .create-actions,
+  .metadata-header-actions {
     flex-wrap: wrap;
   }
 
-  .person-row {
+  .creator-toolbar {
+    align-items: stretch;
+  }
+
+  .creator-name-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1933,4 +1780,3 @@ function formatFieldName(field) {
   }
 }
 </style>
-
