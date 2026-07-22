@@ -1221,7 +1221,15 @@ function buildCitationEntry(cslItem, options = {}) {
 
   if (locator) {
     entry.locator = locator
-    entry.label = clean(options.label) || 'page'
+
+    const locatorLabel =
+      clean(options.label)
+
+    if (locatorLabel) {
+      entry.label = locatorLabel
+    } else if (!options.omitLabel) {
+      entry.label = 'page'
+    }
   }
 
   if (options.prefix) entry.prefix = clean(options.prefix)

@@ -347,48 +347,11 @@
           </label>
         </article>
 
-        <article class="detail-card full-width">
-          <div class="card-header">
-            <div>
-              <h3>Citations</h3>
-              <p>
-                Generated from the shared Scholarory
-                citation engine.
-              </p>
-            </div>
-
-            <button
-              class="secondary-btn"
-              type="button"
-              @click="copyCitation"
-            >
-              Copy Citation
-            </button>
-          </div>
-
-          <div class="citation-tabs">
-            <button
-              v-for="style in citationStyles"
-              :key="style.value"
-              type="button"
-              :class="{
-                active:
-                  selectedCitationStyle ===
-                  style.value,
-              }"
-              @click="
-                selectedCitationStyle =
-                  style.value
-              "
-            >
-              {{ style.label }}
-            </button>
-          </div>
-
-          <div class="citation-box">
-            <p v-html="activeCitation"></p>
-          </div>
-        </article>
+        <CitationPanel
+          v-if="citationItem"
+          class="full-width"
+          :item="citationItem"
+        />
 
         <article class="detail-card full-width">
           <h3>Summary</h3>
@@ -501,7 +464,6 @@
 <script setup>
 import {
   computed,
-  onBeforeUnmount,
   ref,
   watch,
   watchEffect,
@@ -515,6 +477,7 @@ import {
 import AppLayout from '@/components/AppLayout.vue'
 import BookCoverUploader from '@/components/books/BookCoverUploader.vue'
 import SourceRelationshipPanel from '@/components/sources/SourceRelationshipPanel.vue'
+import CitationPanel from '@/components/citations/CitationPanel.vue'
 import {
   cleanBookAuthors,
   createEmptyBookAuthor,
@@ -522,11 +485,6 @@ import {
   normalizeBookAuthor,
   useBooks,
 } from '@/composables/useBooks'
-import {
-  generateCitation,
-  generateFullFootnote,
-  generateShortFootnote,
-} from '@/utils/citations'
 
 const route = useRoute()
 const router = useRouter()
@@ -561,49 +519,10 @@ watchEffect(() => {
   }
 })
 
-const selectedCitationStyle = ref(
-  'turabianBibliography',
-)
-
 const saveMessage = ref('')
 const authorDrafts = ref([])
 
 const MINIMUM_AUTHOR_SLOTS = 5
-
-const citationStyles = [
-  {
-    label: 'Turabian Bibliography',
-    value: 'turabianBibliography',
-  },
-  {
-    label: 'Turabian Footnote',
-    value: 'turabianFootnote',
-  },
-  {
-    label: 'Turabian Short Note',
-    value: 'turabianShortNote',
-  },
-  {
-    label: 'APA',
-    value: 'apa',
-  },
-  {
-    label: 'MLA',
-    value: 'mla',
-  },
-  {
-    label: 'Chicago Bibliography',
-    value: 'chicagoBibliography',
-  },
-  {
-    label: 'Chicago Footnote',
-    value: 'chicagoFootnote',
-  },
-  {
-    label: 'Chicago Short Note',
-    value: 'chicagoShortNote',
-  },
-]
 
 const bookAuthorDisplay =
   computed(() => {
@@ -666,6 +585,10 @@ function loadAuthorDrafts() {
 }
 
 function ensureMinimumAuthorSlots() {
+  if (authorDrafts.value.length > 0) {
+    return
+  }
+
   while (
     authorDrafts.value.length <
     MINIMUM_AUTHOR_SLOTS
@@ -683,20 +606,19 @@ function addAuthorDraft() {
 }
 
 function removeAuthorDraft(index) {
+  authorDrafts.value.splice(
+    index,
+    1,
+  )
+
   if (
-    authorDrafts.value.length >
-    MINIMUM_AUTHOR_SLOTS
+    authorDrafts.value.length === 0
   ) {
-    authorDrafts.value.splice(
-      index,
-      1,
+    authorDrafts.value.push(
+      createEmptyBookAuthor(),
     )
-  } else {
-    authorDrafts.value[index] =
-      createEmptyBookAuthor()
   }
 
-  ensureMinimumAuthorSlots()
   saveAuthors()
 }
 
@@ -787,134 +709,6 @@ const citationItem = computed(() => {
   }
 })
 
-const activeCitation = ref('')
-const isCitationUpdating = ref(false)
-
-let citationRenderTimer = null
-
-function renderSelectedCitation() {
-  const item = citationItem.value
-
-  if (!item) {
-    activeCitation.value = ''
-    isCitationUpdating.value = false
-    return
-  }
-
-  const style =
-    selectedCitationStyle.value
-
-  switch (style) {
-    case 'turabianFootnote':
-      activeCitation.value =
-        generateFullFootnote(
-          item,
-          'turabian-footnote',
-        )
-      break
-
-    case 'turabianShortNote':
-      activeCitation.value =
-        generateShortFootnote(
-          item,
-          'turabian-short-note',
-        )
-      break
-
-    case 'chicagoBibliography':
-      activeCitation.value =
-        generateCitation(
-          item,
-          'chicago-bibliography',
-        )
-      break
-
-    case 'chicagoFootnote':
-      activeCitation.value =
-        generateFullFootnote(
-          item,
-          'chicago-footnote',
-        )
-      break
-
-    case 'chicagoShortNote':
-      activeCitation.value =
-        generateShortFootnote(
-          item,
-          'chicago-short-note',
-        )
-      break
-
-    case 'apa':
-      activeCitation.value =
-        generateCitation(
-          item,
-          'apa',
-        )
-      break
-
-    case 'mla':
-      activeCitation.value =
-        generateCitation(
-          item,
-          'mla',
-        )
-      break
-
-    case 'turabianBibliography':
-    default:
-      activeCitation.value =
-        generateCitation(
-          item,
-          'turabian-bibliography',
-        )
-      break
-  }
-
-  isCitationUpdating.value = false
-}
-
-function scheduleCitationRender() {
-  if (citationRenderTimer) {
-    clearTimeout(
-      citationRenderTimer,
-    )
-  }
-
-  isCitationUpdating.value = true
-
-  citationRenderTimer =
-    setTimeout(() => {
-      renderSelectedCitation()
-      citationRenderTimer = null
-    }, 500)
-}
-
-watch(
-  [
-    () =>
-      JSON.stringify(
-        citationItem.value,
-      ),
-
-    selectedCitationStyle,
-  ],
-
-  scheduleCitationRender,
-
-  {
-    immediate: true,
-  },
-)
-
-onBeforeUnmount(() => {
-  if (citationRenderTimer) {
-    clearTimeout(
-      citationRenderTimer,
-    )
-  }
-})
-
 function save() {
   const currentBook = book.value
 
@@ -978,37 +772,6 @@ function removeChapter(chapterId) {
   )
 
   save()
-}
-
-async function copyCitation() {
-  if (citationRenderTimer) {
-    clearTimeout(
-      citationRenderTimer,
-    )
-
-    citationRenderTimer = null
-    renderSelectedCitation()
-  }
-
-  const plainCitation =
-    activeCitation.value.replace(
-      /<[^>]+>/g,
-      '',
-    )
-
-  try {
-    await navigator.clipboard.writeText(
-      plainCitation,
-    )
-
-    showMessage(
-      'Citation copied.',
-    )
-  } catch {
-    showMessage(
-      'Could not copy citation.',
-    )
-  }
 }
 
 function showMessage(message) {

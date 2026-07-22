@@ -935,9 +935,15 @@ function removeCreator(
   metadata.value[roleKey]
     .splice(index, 1)
 
-  ensureDefaultCreatorSlots(
-    roleKey,
-  )
+  if (
+    roleKey === 'authors' &&
+    metadata.value[roleKey]
+      .length === 0
+  ) {
+    metadata.value[roleKey].push(
+      createEmptyCreator(),
+    )
+  }
 }
 
 function ensureDefaultCreatorSlots(
@@ -953,6 +959,13 @@ function ensureDefaultCreatorSlots(
     )
   ) {
     metadata.value[roleKey] = []
+  }
+
+  if (
+    metadata.value[roleKey]
+      .length > 0
+  ) {
+    return
   }
 
   while (
@@ -1943,4 +1956,3 @@ function flattenSearchValues(
   }
 }
 </style>
-

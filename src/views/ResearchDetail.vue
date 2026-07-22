@@ -571,67 +571,10 @@
         :backlinks="backlinks"
       />
 
-      <section
+      <CitationPanel
         v-if="isCitableItem"
-        class="citation-section"
-      >
-        <h2>Bibliography Citation</h2>
-
-        <blockquote
-          class="citation-block"
-          v-html="generatedCitation"
-        ></blockquote>
-
-        <button
-          class="copy-btn"
-          type="button"
-          @click="copyCitation(generatedCitation, 'bibliography')"
-        >
-          {{
-            copiedCitationType === 'bibliography'
-              ? 'Copied!'
-              : 'Copy Bibliography'
-          }}
-        </button>
-
-        <h2>Full Footnote Citation</h2>
-
-        <blockquote
-          class="citation-block"
-          v-html="generatedFullFootnote"
-        ></blockquote>
-
-        <button
-          class="copy-btn"
-          type="button"
-          @click="copyCitation(generatedFullFootnote, 'full')"
-        >
-          {{
-            copiedCitationType === 'full'
-              ? 'Copied!'
-              : 'Copy Full Footnote'
-          }}
-        </button>
-
-        <h2>Short Footnote Citation</h2>
-
-        <blockquote
-          class="citation-block"
-          v-html="generatedShortFootnote"
-        ></blockquote>
-
-        <button
-          class="copy-btn"
-          type="button"
-          @click="copyCitation(generatedShortFootnote, 'short')"
-        >
-          {{
-            copiedCitationType === 'short'
-              ? 'Copied!'
-              : 'Copy Short Footnote'
-          }}
-        </button>
-      </section>
+        :item="item"
+      />
 
       <hr class="page-divider" />
 
@@ -870,6 +813,7 @@ import AppLayout from '../components/AppLayout.vue'
 import ScholaroryEditor from '../components/ScholaroryEditor.vue'
 import KnowledgeTagModal from '../components/KnowledgeTagModal.vue'
 import KnowledgeNetworkCard from '../components/KnowledgeNetworkCard.vue'
+import CitationPanel from '../components/citations/CitationPanel.vue'
 
 import {
   useResearch,
@@ -906,16 +850,6 @@ import {
   getResearchMetadataConfig,
   isCitableResearchType,
 } from '../data/researchMetadataSchema'
-
-import {
-  generateCitation,
-  generateFullFootnote,
-  generateShortFootnote,
-} from '../utils/citations'
-
-import {
-  getCitationStyle,
-} from '../lib/userPreferences'
 
 const route = useRoute()
 const router = useRouter()
@@ -961,7 +895,6 @@ const hasLoadedBlocks = ref(false)
 const activeBlocksItemId = ref('')
 const isEditing = ref(false)
 const showAdvancedFields = ref(false)
-const copiedCitationType = ref('')
 const isKnowledgeTagModalOpen = ref(false)
 
 const editForm = ref(
@@ -1114,41 +1047,6 @@ const isCitableItem =
   computed(() => {
     return isCitableResearchType(
       item.value?.type,
-    )
-  })
-
-const generatedCitation = computed(() => {
-  if (!item.value) {
-    return ''
-  }
-
-  return generateCitation(
-    item.value,
-    getCitationStyle(),
-  )
-})
-
-const generatedFullFootnote =
-  computed(() => {
-    if (!item.value) {
-      return ''
-    }
-
-    return generateFullFootnote(
-      item.value,
-      getCitationStyle(),
-    )
-  })
-
-const generatedShortFootnote =
-  computed(() => {
-    if (!item.value) {
-      return ''
-    }
-
-    return generateShortFootnote(
-      item.value,
-      getCitationStyle(),
     )
   })
 
@@ -1512,9 +1410,18 @@ function removeEditCreator(
     roleKey
   ].splice(index, 1)
 
-  ensureDefaultEditCreatorSlots(
-    roleKey,
-  )
+  if (
+    roleKey === 'authors' &&
+    editForm.value.metadata[
+      roleKey
+    ].length === 0
+  ) {
+    editForm.value.metadata[
+      roleKey
+    ].push(
+      createEmptyCreator(),
+    )
+  }
 }
 
 function ensureDefaultEditCreatorSlots(
@@ -1534,6 +1441,14 @@ function ensureDefaultEditCreatorSlots(
     editForm.value.metadata[
       roleKey
     ] = []
+  }
+
+  if (
+    editForm.value.metadata[
+      roleKey
+    ].length > 0
+  ) {
+    return
   }
 
   while (
@@ -1707,36 +1622,6 @@ async function saveEdits() {
 
   isEditing.value = false
   showAdvancedFields.value = false
-}
-
-async function copyCitation(
-  citation,
-  type,
-) {
-  const container =
-    document.createElement('div')
-
-  container.innerHTML =
-    String(citation || '')
-
-  const plainText =
-    (
-      container.textContent ||
-      container.innerText ||
-      ''
-    ).trim()
-
-  await navigator.clipboard.writeText(
-    plainText,
-  )
-
-  copiedCitationType.value =
-    type
-
-  setTimeout(() => {
-    copiedCitationType.value =
-      ''
-  }, 1600)
 }
 
 async function connectItem() {
@@ -2774,4 +2659,3 @@ function getTypeName(
   }
 }
 </style>
-
