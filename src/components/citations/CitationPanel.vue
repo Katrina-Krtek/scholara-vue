@@ -1,3 +1,8 @@
+Library
+/
+Scholarory App Build
+/CitationPanel-audit-repair.txt
+
 <template>
   <section class="citation-panel">
     <div class="citation-panel-header">
@@ -119,6 +124,22 @@
       {{ renderError }}
     </div>
 
+    <div
+      v-if="metadataWarnings.length"
+      class="citation-warning"
+    >
+      <strong>Citation information to review</strong>
+
+      <ul>
+        <li
+          v-for="warning in metadataWarnings"
+          :key="warning"
+        >
+          {{ warning }}
+        </li>
+      </ul>
+    </div>
+
     <div class="citation-output-grid">
       <article
         v-for="output in visibleOutputs"
@@ -176,6 +197,7 @@ import {
   generateFullFootnote,
   generateInTextCitation,
   generateShortFootnote,
+  getCitationMetadataWarnings,
   getCitationStyleMode,
 } from '@/utils/citations'
 
@@ -286,6 +308,12 @@ const renderedOutputs = ref({
 
 let renderTimer = null
 let copiedTimer = null
+
+const metadataWarnings = computed(() => {
+  return getCitationMetadataWarnings(
+    props.item || {},
+  )
+})
 
 const styleMode = computed(() => {
   return getCitationStyleMode(
@@ -768,6 +796,29 @@ onBeforeUnmount(() => {
   color: #ef4444;
   padding: 0.7rem;
   font-size: 0.82rem;
+}
+
+.citation-warning {
+  margin-top: 0.9rem;
+  border: 1px solid #d97706;
+  border-radius: 10px;
+  background: rgba(217, 119, 6, 0.08);
+  color: var(--text-primary);
+  padding: 0.75rem;
+  font-size: 0.82rem;
+}
+
+.citation-warning strong {
+  color: #b45309;
+}
+
+.citation-warning ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.citation-warning li + li {
+  margin-top: 0.25rem;
 }
 
 .citation-output-grid {

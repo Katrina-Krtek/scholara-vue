@@ -62,8 +62,85 @@ function getField(item = {}, keys = [], fallback = '') {
   return fallback
 }
 
+function hasMeaningfulValue(value) {
+  if (value === null || value === undefined) return false
+
+  if (Array.isArray(value)) {
+    return value.some(hasMeaningfulValue)
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value).some(hasMeaningfulValue)
+  }
+
+  return clean(value) !== ''
+}
+
+function mergeMetadata(rawMetadata = {}, normalizedMetadata = {}) {
+  const merged = {
+    ...(rawMetadata || {}),
+  }
+
+  Object.entries(normalizedMetadata || {}).forEach(
+    ([key, value]) => {
+      if (hasMeaningfulValue(value)) {
+        merged[key] = value
+      }
+    },
+  )
+
+  return merged
+}
+
+function getMetadataAlias(metadata = {}, keys = [], fallback = '') {
+  for (const key of keys) {
+    const value = metadata?.[key]
+
+    if (hasMeaningfulValue(value)) {
+      return value
+    }
+  }
+
+  return fallback
+}
+
+function joinTitleAndSubtitle(titleValue, subtitleValue) {
+  const title = clean(titleValue)
+  const subtitle = clean(subtitleValue)
+
+  if (!subtitle) {
+    return title.replace(/:\s*$/, '')
+  }
+
+  if (
+    title.toLowerCase().includes(
+      subtitle.toLowerCase(),
+    )
+  ) {
+    return title
+  }
+
+  const cleanTitle = title.replace(/[:;]\s*$/, '')
+  return `${cleanTitle}: ${subtitle}`
+}
+
 function getTitle(item = {}) {
-  return clean(getField(item, ['title', 'articleTitle', 'name'], 'Untitled'))
+  const title = getField(
+    item,
+    ['title', 'articleTitle', 'name'],
+    'Untitled',
+  )
+
+  const subtitle = getField(
+    item,
+    ['subtitle'],
+    '',
+  )
+
+  return joinTitleAndSubtitle(
+    title,
+    subtitle,
+  )
 }
 
 function getShortTitle(item = {}) {
@@ -116,26 +193,101 @@ function normalizePerson(person) {
     if (parts.length === 1) {
       return {
         firstName: '',
+        middleName: '',
         initial: '',
         lastName: parts[0],
+        suffix: '',
       }
     }
 
     return {
       firstName: parts.slice(0, -1).join(' '),
+      middleName: '',
       initial: '',
       lastName: parts[parts.length - 1],
+      suffix: '',
     }
   }
 
-  if (person.raw) {
-    return { raw: clean(person.raw) }
+  const literal = clean(
+    person.literal ||
+      person.raw ||
+      (
+        person.creatorType === 'literal'
+          ? person.name
+          : ''
+      ),
+  )
+
+  if (literal) {
+    return { raw: literal }
+  }
+
+  let firstName = clean(
+    person.firstName ||
+      person.given,
+  )
+
+  const middleName = clean(
+    person.middleName ||
+      person.middle,
+  )
+
+  const initial = clean(
+    person.initial,
+  )
+
+  let lastName = clean(
+    person.lastName ||
+      person.family,
+  )
+
+  const suffix = clean(
+    person.suffix,
+  )
+
+  const placeholderLastNames = new Set([
+    'unknown',
+    'n/a',
+    'na',
+    'none',
+  ])
+
+  if (
+    firstName &&
+    placeholderLastNames.has(
+      lastName.toLowerCase(),
+    )
+  ) {
+    lastName = firstName
+    firstName = ''
+  }
+
+  if (firstName && !lastName) {
+    lastName = firstName
+    firstName = ''
+  }
+
+  if (
+    !firstName &&
+    !middleName &&
+    !initial &&
+    !lastName
+  ) {
+    return null
   }
 
   return {
-    firstName: clean(person.firstName),
-    initial: clean(person.initial),
-    lastName: clean(person.lastName),
+    firstName,
+    middleName,
+    initial,
+    lastName,
+    suffix,
+    nameParticle: clean(
+      person.nameParticle ||
+        person.particle ||
+        person['non-dropping-particle'],
+    ),
   }
 }
 
@@ -170,8 +322,10 @@ function formatPersonFullName(person) {
 
   return [
     normalized.firstName,
+    normalized.middleName,
     normalized.initial,
     normalized.lastName,
+    normalized.suffix,
   ]
     .filter(Boolean)
     .join(' ')
@@ -188,6 +342,7 @@ function formatPersonLastFirst(person) {
 
   const firstParts = [
     normalized.firstName,
+    normalized.middleName,
     normalized.initial,
   ].filter(Boolean)
 
@@ -195,7 +350,11 @@ function formatPersonLastFirst(person) {
     return normalized.lastName
   }
 
-  return `${normalized.lastName}, ${firstParts.join(' ')}`
+  return `${normalized.lastName}, ${firstParts.join(' ')}${
+    normalized.suffix
+      ? `, ${normalized.suffix}`
+      : ''
+  }`
 }
 
 function formatBibliographyAuthors(authors = []) {
@@ -207,7 +366,7 @@ function formatBibliographyAuthors(authors = []) {
   }
 
   if (people.length === 2) {
-    return `${formatPersonLastFirst(people[0])} and ${formatPersonFullName(people[1])}`
+    return `${formatPersonLastFirst(people[0])}, and ${formatPersonFullName(people[1])}`
   }
 
   const firstAuthor = formatPersonLastFirst(people[0])
@@ -268,7 +427,7 @@ function formatMlaAuthors(authors = []) {
   }
 
   if (people.length === 2) {
-    return `${formatPersonLastFirst(people[0])} and ${formatPersonFullName(people[1])}`
+    return `${formatPersonLastFirst(people[0])}, and ${formatPersonFullName(people[1])}`
   }
 
   return `${formatPersonLastFirst(people[0])}, et al.`
@@ -296,6 +455,7 @@ function formatApaAuthor(person) {
 
   const initials = [
     formatApaInitials(normalized.firstName),
+    formatApaInitials(normalized.middleName),
     formatApaInitials(normalized.initial),
   ]
     .filter(Boolean)
@@ -345,14 +505,25 @@ function getEditors(item = {}) {
 
 function getSourceType(item = {}) {
   const metadata = getMetadata(item)
-  const type = clean(item.type || metadata.type || item.sourceType || metadata.sourceType).toLowerCase()
+  const type = clean(
+    item.type ||
+      metadata.type ||
+      item.sourceType ||
+      metadata.sourceType,
+  ).toLowerCase()
 
-  if (type.includes('book')) return 'book'
+  if (type.includes('dissertation')) return 'dissertation'
+  if (type.includes('thesis')) return 'thesis'
   if (type.includes('article')) return 'article'
+  if (type.includes('video')) return 'video'
+  if (type.includes('podcast')) return 'podcast'
+  if (type.includes('blog')) return 'blog'
   if (type.includes('website') || type.includes('web')) return 'website'
   if (type.includes('journal')) return 'journal'
+  if (type.includes('book')) return 'book'
 
   const journalTitle = getField(item, [
+    'publicationTitle',
     'journalTitle',
     'journalName',
     'journal',
@@ -360,6 +531,17 @@ function getSourceType(item = {}) {
   ])
 
   if (journalTitle) return 'article'
+
+  const institution = getField(item, [
+    'institution',
+    'university',
+  ])
+  const degree = getField(item, ['degree'])
+
+  if (institution || degree) return 'dissertation'
+
+  const platform = getField(item, ['platform'])
+  if (platform) return 'video'
 
   const publisher = getField(item, ['publisher'])
   const place = getField(item, ['placeOfPublication'])
@@ -380,11 +562,45 @@ function normalizeDoi(value) {
   return doi ? `https://doi.org/${doi}` : ''
 }
 
+function cleanUrl(value) {
+  const text = clean(value)
+  if (!text) return ''
+
+  try {
+    const url = new URL(text)
+    const removableParameters = [
+      'fbclid',
+      'gclid',
+      'mc_cid',
+      'mc_eid',
+      'ref',
+      'source',
+    ]
+
+    for (const key of [...url.searchParams.keys()]) {
+      if (
+        key.toLowerCase().startsWith('utm_') ||
+        removableParameters.includes(
+          key.toLowerCase(),
+        )
+      ) {
+        url.searchParams.delete(key)
+      }
+    }
+
+    return url.toString()
+  } catch {
+    return text
+  }
+}
+
 function getAccessText(item = {}) {
   const doi = getField(item, ['doi'])
   if (doi) return normalizeDoi(doi)
 
-  return clean(getField(item, ['url', 'website', 'link']))
+  return cleanUrl(
+    getField(item, ['url', 'website', 'link']),
+  )
 }
 
 function normalizePages(value) {
@@ -535,7 +751,7 @@ function getArticleJournalTitle(item = {}) {
       'publication',
       'periodical',
       'containerTitle',
-    ], 'Journal Title'),
+    ], ''),
   )
 }
 
@@ -647,12 +863,19 @@ function getWebsiteName(item = {}) {
       'containerTitle',
       'publication',
       'publisher',
-    ], 'Website'),
+    ], ''),
   )
 }
 
 function getWebsiteDate(item = {}) {
-  return clean(getField(item, ['date', 'publishedDate', 'accessDate', 'year']))
+  return clean(
+    getField(item, [
+      'publicationDate',
+      'publishedDate',
+      'date',
+      'year',
+    ]),
+  )
 }
 
 function generateWebsiteBibliography(item = {}) {
@@ -741,6 +964,1108 @@ function generateGenericShortFootnote(item = {}) {
   const title = getShortTitle(item)
 
   return `${authorText}, ${title}.`.trim()
+}
+
+
+function getCanonicalMetadata(item = {}) {
+  const typeId = clean(
+    item.type ||
+      item.sourceType ||
+      item.metadata?.type,
+  )
+
+  const rawMetadata =
+    item.metadata || item
+
+  return mergeMetadata(
+    rawMetadata,
+    normalizeResearchMetadata(
+      typeId,
+      rawMetadata,
+    ),
+  )
+}
+
+function getCanonicalField(
+  item = {},
+  keys = [],
+  fallback = '',
+) {
+  const metadata =
+    getCanonicalMetadata(item)
+
+  return getMetadataAlias(
+    metadata,
+    keys,
+    fallback,
+  )
+}
+
+function sentenceCaseTitle(value) {
+  const text = clean(value)
+  if (!text) return ''
+
+  const preservedWords = new Set([
+    'Arizona',
+    'Bible',
+    'Biblical',
+    'Christian',
+    'Christianity',
+    'Constitution',
+    'Christ',
+    'God',
+    'Jesus',
+    'Holy',
+    'House',
+    'Spirit',
+    'YouTube',
+    'ProQuest',
+    'WestBow',
+  ])
+
+  const words = text.split(/(\s+)/)
+  let capitalizeNext = true
+
+  return words
+    .map((word) => {
+      if (/^\s+$/.test(word)) {
+        return word
+      }
+
+      const coreMatch = word.match(
+        /^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/,
+      )
+
+      const prefix = coreMatch?.[1] || ''
+      const core = coreMatch?.[2] || word
+      const suffix = coreMatch?.[3] || ''
+
+      if (
+        preservedWords.has(core) ||
+        /^[A-Z0-9]{2,}$/.test(core) ||
+        /^(https?:|doi:)/i.test(core)
+      ) {
+        capitalizeNext = /[:?!]$/.test(word)
+        return word
+      }
+
+      const lower = core.toLowerCase()
+      const transformed =
+        capitalizeNext && lower
+          ? `${lower.charAt(0).toUpperCase()}${lower.slice(1)}`
+          : lower
+
+      capitalizeNext = /[:?!]$/.test(word)
+      return `${prefix}${transformed}${suffix}`
+    })
+    .join('')
+}
+
+function formatApaDate(value) {
+  const [year, month, day] =
+    getDateParts(value)
+
+  if (!year) return clean(value)
+  if (!month) return String(year)
+  if (!day) {
+    return `${year}, ${LONG_MONTH_NAMES[month]}`
+  }
+
+  return `${year}, ${LONG_MONTH_NAMES[month]} ${day}`
+}
+
+function formatApaAuthorsForEntry(authors) {
+  return stripFinalPeriod(
+    formatApaAuthors(authors),
+  )
+}
+
+function formatVancouverAuthors(authors = []) {
+  return normalizePeople(authors)
+    .map((person) => {
+      const normalized = normalizePerson(person)
+
+      if (!normalized) return ''
+      if (normalized.raw) return normalized.raw
+
+      const initials = formatApaInitials([
+        normalized.firstName,
+        normalized.middleName,
+        normalized.initial,
+      ].filter(Boolean).join(' '))
+        .replace(/\./g, '')
+        .replace(/\s+/g, '')
+
+      return `${normalized.lastName || ''}${
+        initials ? ` ${initials}` : ''
+      }`.trim()
+    })
+    .filter(Boolean)
+    .join(', ')
+}
+
+function titleWithSentencePunctuation(value) {
+  const text = escapeHtml(
+    sentenceCaseTitle(value),
+  )
+
+  return /[.!?]$/.test(text)
+    ? text
+    : `${text}.`
+}
+
+function quoteTitleForNote(value) {
+  const title = clean(value)
+  if (!title) return ''
+
+  if (/[!?]$/.test(title)) {
+    return `“${escapeHtml(title)}”`
+  }
+
+  return `“${escapeHtml(
+    title.replace(/\.$/, ''),
+  )},”`
+}
+
+function quoteTitleForCitation(
+  value,
+  terminal = '.',
+) {
+  const title = clean(value)
+  if (!title) return ''
+
+  const hasTerminal = /[.!?]$/.test(title)
+  const finalTitle = hasTerminal
+    ? title
+    : `${title}${terminal}`
+
+  return `“${escapeHtml(finalTitle)}”`
+}
+
+function getPublicationDateValue(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'publicationDate',
+      'publishedDate',
+      'date',
+    ]),
+  )
+}
+
+function getPublicationYearValue(item = {}) {
+  const explicitYear = clean(
+    getCanonicalField(item, [
+      'publicationYear',
+      'year',
+    ]),
+  )
+
+  if (explicitYear) {
+    return (
+      explicitYear.match(/\b\d{4}\b/)?.[0] ||
+      explicitYear
+    )
+  }
+
+  return getYearFromDate(
+    getPublicationDateValue(item),
+  )
+}
+
+function getPublicationSeasonValue(item = {}) {
+  const season = clean(
+    getCanonicalField(item, [
+      'publicationSeason',
+      'season',
+      'issueSeason',
+    ]),
+  )
+
+  if (!season) {
+    return ''
+  }
+
+  return (
+    season.charAt(0).toUpperCase() +
+    season.slice(1).toLowerCase()
+  )
+}
+
+function getPublicationPeriodValue(item = {}) {
+  const fullDate =
+    getPublicationDateValue(item)
+
+  if (fullDate) {
+    return fullDate
+  }
+
+  return [
+    getPublicationSeasonValue(item),
+    getPublicationYearValue(item),
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+function getAccessedDateValue(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'accessedDate',
+      'accessDate',
+      'dateAccessed',
+    ]),
+  )
+}
+
+function getDateParts(value) {
+  return parseDateParts(value) || []
+}
+
+const LONG_MONTH_NAMES = [
+  '',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+const SHORT_MONTH_NAMES = [
+  '',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
+
+const MLA_MONTH_NAMES = [
+  '',
+  'Jan.',
+  'Feb.',
+  'Mar.',
+  'Apr.',
+  'May',
+  'June',
+  'July',
+  'Aug.',
+  'Sept.',
+  'Oct.',
+  'Nov.',
+  'Dec.',
+]
+
+function formatLongDate(value) {
+  const [year, month, day] =
+    getDateParts(value)
+
+  if (!year) return clean(value)
+  if (!month) return String(year)
+  if (!day) {
+    return `${LONG_MONTH_NAMES[month]} ${year}`
+  }
+
+  return `${LONG_MONTH_NAMES[month]} ${day}, ${year}`
+}
+
+function formatMlaDate(value) {
+  const [year, month, day] =
+    getDateParts(value)
+
+  if (!year) return clean(value)
+  if (!month) return String(year)
+  if (!day) {
+    return `${MLA_MONTH_NAMES[month]} ${year}`
+  }
+
+  return `${day} ${MLA_MONTH_NAMES[month]} ${year}`
+}
+
+function formatHarvardAccessDate(value) {
+  const [year, month, day] =
+    getDateParts(value)
+
+  if (!year) return clean(value)
+  if (!month) return String(year)
+  if (!day) {
+    return `${LONG_MONTH_NAMES[month]} ${year}`
+  }
+
+  return `${day} ${LONG_MONTH_NAMES[month]} ${year}`
+}
+
+function formatVancouverDate(value) {
+  const [year, month, day] =
+    getDateParts(value)
+
+  if (!year) return clean(value)
+  if (!month) return String(year)
+  if (!day) {
+    return `${year} ${SHORT_MONTH_NAMES[month]}`
+  }
+
+  return `${year} ${SHORT_MONTH_NAMES[month]} ${day}`
+}
+
+function getYear(item = {}) {
+  return getPublicationYearValue(item)
+}
+
+function getJournalTitle(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'publicationTitle',
+      'journalTitle',
+      'journalName',
+      'journal',
+      'periodical',
+      'publication',
+      'containerTitle',
+    ]),
+  )
+}
+
+function getSiteName(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'siteName',
+      'websiteName',
+      'blogName',
+      'publicationTitle',
+      'containerTitle',
+      'publication',
+      'publisher',
+    ]),
+  )
+}
+
+function getVideoPlatform(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'platform',
+      'channelName',
+      'siteName',
+      'websiteName',
+      'publicationTitle',
+      'containerTitle',
+    ]),
+  )
+}
+
+function getInstitution(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'institution',
+      'university',
+      'school',
+      'publisher',
+    ]),
+  )
+}
+
+function getRepository(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'repository',
+      'database',
+      'libraryCatalog',
+      'archive',
+    ]),
+  )
+}
+
+function getPublicationNumber(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'publicationNumber',
+      'documentNumber',
+      'number',
+    ]),
+  )
+}
+
+function getDegreeValue(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'degree',
+      'genre',
+      'type',
+    ]),
+  )
+}
+
+function getDegreeLabels(item = {}) {
+  const value = getDegreeValue(item)
+    .toLowerCase()
+
+  if (
+    value.includes('master') ||
+    value.includes('m.a') ||
+    value.includes('m.s')
+  ) {
+    return {
+      turabian: "master's thesis",
+      apa: "Master's thesis",
+      mla: "master's thesis",
+      harvard: "Master's thesis",
+      vancouver: "master's thesis",
+    }
+  }
+
+  return {
+    turabian: 'PhD diss.',
+    apa: 'Doctoral dissertation',
+    mla: 'PhD dissertation',
+    harvard: 'PhD thesis',
+    vancouver: 'doctoral dissertation',
+  }
+}
+
+function getLocatorText(
+  item = {},
+  options = {},
+) {
+  return clean(
+    options.locator ||
+      options.page ||
+      options.pages ||
+      item.locator ||
+      getField(item, [
+        'citedPages',
+        'citationPage',
+      ]),
+  )
+}
+
+function formatDoiForVancouver(item = {}) {
+  return clean(
+    getCanonicalField(item, [
+      'doi',
+      'DOI',
+    ]),
+  )
+    .replace(/^https?:\/\/doi\.org\//i, '')
+    .replace(/^doi:\s*/i, '')
+}
+
+function generateAuditedBook(
+  item,
+  style,
+  outputType,
+  options = {},
+) {
+  const authors = getAuthors(item)
+  const title = getTitle(item)
+  const shortTitle = getShortTitle(item)
+  const place = clean(
+    getCanonicalField(item, [
+      'placeOfPublication',
+      'publicationPlace',
+      'place',
+    ]),
+  )
+  const publisher = clean(
+    getCanonicalField(item, ['publisher']),
+  )
+  const year = getYear(item)
+  const edition = clean(
+    getCanonicalField(item, ['edition']),
+  )
+  const locator = getLocatorText(
+    item,
+    options,
+  )
+
+  if (outputType === 'full-note') {
+    const publication = [
+      [place, publisher]
+        .filter(Boolean)
+        .join(': '),
+      year,
+    ]
+      .filter(Boolean)
+      .join(', ')
+
+    return `${formatFootnoteAuthors(authors)}, ${italic(title)}${
+      edition
+        ? `, ${escapeHtml(edition)}`
+        : ''
+    }${
+      publication
+        ? ` (${escapeHtml(publication)})`
+        : ''
+    }${locator ? `, ${escapeHtml(locator)}` : ''}.`
+  }
+
+  if (outputType === 'short-note') {
+    return `${formatShortFootnoteAuthor(authors)}, ${italic(shortTitle)}${
+      locator
+        ? `, ${escapeHtml(locator)}`
+        : ''
+    }.`
+  }
+
+  if (style === 'apa') {
+    return `${formatApaAuthorsForEntry(authors)}. (${year || 'n.d.'}). ${italic(
+      sentenceCaseTitle(title),
+    )}.${publisher ? ` ${escapeHtml(publisher)}.` : ''}`
+  }
+
+  if (style === 'mla') {
+    return [
+      `${ensurePeriod(formatMlaAuthors(authors))}`,
+      `${italic(title)}.`,
+      edition ? `${escapeHtml(edition)}.` : '',
+      [publisher, year]
+        .filter(Boolean)
+        .map(escapeHtml)
+        .join(', ') +
+        (publisher || year ? '.' : ''),
+    ]
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  if (style === 'harvard') {
+    const publication = [place, publisher]
+      .filter(Boolean)
+      .join(': ')
+
+    return `${formatApaAuthors(authors)
+      .replace(/, & /g, ' and ')
+      .replace(/ & /g, ' and ')} (${year || 'no date'}) ${italic(title)}.${
+      publication
+        ? ` ${escapeHtml(publication)}.`
+        : ''
+    }`
+  }
+
+  if (style === 'vancouver') {
+    const publication = [place, publisher]
+      .filter(Boolean)
+      .join(': ')
+
+    return `1. ${formatVancouverAuthors(authors)}. ${escapeHtml(title)}.${
+      publication
+        ? ` ${escapeHtml(publication)}`
+        : ''
+    }${year ? `; ${year}` : ''}.`
+  }
+
+  const publicationText = [
+    [place, publisher]
+      .filter(Boolean)
+      .join(': '),
+    year,
+  ]
+    .filter(Boolean)
+    .join(', ')
+
+  return `${ensurePeriod(formatBibliographyAuthors(authors))} ${italic(title)}.${
+    edition
+      ? ` ${ensurePeriod(escapeHtml(edition))}`
+      : ''
+  }${publicationText ? ` ${escapeHtml(publicationText)}.` : ''}`
+}
+
+function generateAuditedArticle(
+  item,
+  style,
+  outputType,
+  options = {},
+) {
+  const authors = getAuthors(item)
+  const title = getTitle(item)
+  const shortTitle = getShortTitle(item)
+  const journal = getJournalTitle(item)
+  const volume = clean(
+    getCanonicalField(item, ['volume']),
+  )
+  const issue = clean(
+    getCanonicalField(item, ['issue', 'number']),
+  )
+  const pages = normalizePages(
+    getCanonicalField(item, [
+      'pages',
+      'pageRange',
+    ]),
+  )
+  const year = getYear(item)
+  const publicationSeason =
+    getPublicationSeasonValue(item)
+  const publicationPeriod = [
+    publicationSeason,
+    year,
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const doiUrl = getAccessText(item)
+  const doi = formatDoiForVancouver(item)
+  const locator = getLocatorText(
+    item,
+    options,
+  )
+
+  const journalDetails = `${journal ? ` ${italic(journal)}` : ''}${
+    volume ? ` ${escapeHtml(volume)}` : ''
+  }${issue ? `, no. ${escapeHtml(issue)}` : ''}${
+    publicationPeriod
+      ? ` (${escapeHtml(publicationPeriod)})`
+      : ''
+  }${pages ? `: ${escapeHtml(pages)}` : ''}`
+
+  if (outputType === 'full-note') {
+    return `${formatFootnoteAuthors(authors)}, ${quoteTitleForNote(
+      title,
+    )}${journalDetails}${
+      locator
+        ? `, ${escapeHtml(locator)}`
+        : ''
+    }${doiUrl ? `, ${escapeHtml(doiUrl)}` : ''}.`
+  }
+
+  if (outputType === 'short-note') {
+    return `${formatShortFootnoteAuthor(authors)}, ${quoteTitleForCitation(
+      shortTitle,
+    )}${
+      locator
+        ? `, ${escapeHtml(locator)}`
+        : ''
+    }`
+  }
+
+  if (style === 'apa') {
+    const volumeIssue = volume
+      ? `${escapeHtml(volume)}${issue ? `(${escapeHtml(issue)})` : ''}`
+      : issue
+        ? `(${escapeHtml(issue)})`
+        : ''
+
+    return `${formatApaAuthorsForEntry(authors)}. (${year || 'n.d.'}). ${titleWithSentencePunctuation(
+      title,
+    )} ${journal ? `<em>${escapeHtml(journal)}${
+      volume ? `, ${escapeHtml(volume)}` : ''
+    }</em>` : ''}${issue ? `(${escapeHtml(issue)})` : ''}${
+      pages ? `, ${escapeHtml(pages)}` : ''
+    }.${doiUrl ? ` ${escapeHtml(doiUrl)}` : ''}`
+  }
+
+  if (style === 'mla') {
+    const details = [
+      journal ? italic(journal) : '',
+      volume ? `vol. ${escapeHtml(volume)}` : '',
+      issue ? `no. ${escapeHtml(issue)}` : '',
+      publicationPeriod || year,
+      pages ? formatMlaPages(pages) : '',
+    ].filter(Boolean)
+
+    return `${ensurePeriod(formatMlaAuthors(authors))} ${quoteTitleForCitation(title)} ${details.join(', ')}.${
+      doiUrl ? ` ${escapeHtml(doiUrl)}.` : ''
+    }`
+  }
+
+  if (style === 'harvard') {
+    return `${formatApaAuthors(authors)
+      .replace(/, & /g, ' and ')
+      .replace(/ & /g, ' and ')} (${year || 'no date'}) ‘${escapeHtml(
+      title,
+    )}’, ${journal ? `${italic(journal)}, ` : ''}${
+      volume ? escapeHtml(volume) : ''
+    }${issue ? `(${escapeHtml(issue)})` : ''}${
+      pages ? `, pp. ${escapeHtml(pages)}` : ''}.${
+      doiUrl ? ` Available at: ${escapeHtml(doiUrl)}.` : ''
+    }`
+  }
+
+  if (style === 'vancouver') {
+    const authorText =
+      formatVancouverAuthors(authors)
+
+    return `1. ${authorText}. ${titleWithSentencePunctuation(title)}${
+      journal ? ` ${escapeHtml(journal)}.` : ''
+    }${year ? ` ${year}` : ''}${volume ? `;${escapeHtml(volume)}` : ''}${
+      issue ? `(${escapeHtml(issue)})` : ''
+    }${pages ? `:${escapeHtml(pages).replace(/(\d+)–(\d+)/g, '$1–$2')}` : ''}.${
+      doi ? ` doi:${escapeHtml(doi)}.` : ''
+    }`
+  }
+
+  return `${ensurePeriod(formatBibliographyAuthors(authors))} ${quoteTitleForCitation(
+    title,
+  )}${journalDetails}${doiUrl ? `. ${escapeHtml(doiUrl)}` : ''}.`
+}
+
+function generateAuditedDissertation(
+  item,
+  style,
+  outputType,
+  options = {},
+) {
+  const authors = getAuthors(item)
+  const title = getTitle(item)
+  const shortTitle = getShortTitle(item)
+  const institution = getInstitution(item)
+  const repository = getRepository(item)
+  const publicationNumber =
+    getPublicationNumber(item)
+  const year = getYear(item)
+  const degree = getDegreeLabels(item)
+  const url = getAccessText(item)
+  const locator = getLocatorText(
+    item,
+    options,
+  )
+
+  if (outputType === 'full-note') {
+    return `${formatFootnoteAuthors(authors)}, ${quoteTitleForCitation(
+      title,
+      '',
+    )} (${degree.turabian}${
+      institution
+        ? `, ${escapeHtml(institution)}`
+        : ''
+    }${year ? `, ${year}` : ''})${
+      locator
+        ? `, ${escapeHtml(locator)}`
+        : ''
+    }.`
+  }
+
+  if (outputType === 'short-note') {
+    return `${formatShortFootnoteAuthor(authors)}, ${quoteTitleForCitation(
+      shortTitle,
+    )}${
+      locator
+        ? `, ${escapeHtml(locator)}`
+        : ''
+    }`
+  }
+
+  if (style === 'apa') {
+    return `${formatApaAuthorsForEntry(authors)}. (${year || 'n.d.'}). ${italic(
+      sentenceCaseTitle(title),
+    )}${publicationNumber ? ` (Publication No. ${escapeHtml(publicationNumber)})` : ''} [${degree.apa}${
+      institution
+        ? `, ${escapeHtml(institution)}`
+        : ''
+    }].${repository ? ` ${escapeHtml(repository)}.` : ''}${
+      url ? ` ${escapeHtml(url)}` : ''
+    }`
+  }
+
+  if (style === 'mla') {
+    return `${ensurePeriod(formatMlaAuthors(authors))} ${quoteTitleForCitation(title)} ${
+      year ? `${year}. ` : ''
+    }${institution ? `${escapeHtml(institution)}, ` : ''}${degree.mla}.${
+      repository ? ` ${italic(repository)}.` : ''
+    }${url ? ` ${escapeHtml(url)}.` : ''}`
+  }
+
+  if (style === 'harvard') {
+    return `${formatApaAuthors(authors)
+      .replace(/, & /g, ' and ')
+      .replace(/ & /g, ' and ')} (${year || 'no date'}) ${italic(title)}. ${degree.harvard}.${
+      institution ? ` ${escapeHtml(institution)}.` : ''
+    }${url ? ` Available at: ${escapeHtml(url)}.` : ''}`
+  }
+
+  if (style === 'vancouver') {
+    const authorText =
+      formatVancouverAuthors(authors)
+
+    return `1. ${authorText}. ${escapeHtml(title)} [${degree.vancouver}].${
+      institution ? ` ${escapeHtml(institution)}` : ''
+    }${year ? `; ${year}` : ''}.${
+      publicationNumber
+        ? ` Publication No.: ${escapeHtml(publicationNumber)}.`
+        : ''
+    }${repository ? ` Available from: ${escapeHtml(repository)}.` : ''}${
+      url ? ` ${escapeHtml(url)}.` : ''
+    }`
+  }
+
+  return `${ensurePeriod(formatBibliographyAuthors(authors))} ${quoteTitleForCitation(
+    title,
+  )} ${degree.turabian}${
+    institution
+      ? `, ${escapeHtml(institution)}`
+      : ''
+  }${year ? `, ${year}` : ''}.${
+    repository ? ` ${escapeHtml(repository)}.` : ''
+  }${url ? ` ${escapeHtml(url)}.` : ''}`
+}
+
+function generateAuditedWebsite(
+  item,
+  style,
+  outputType,
+  options = {},
+) {
+  const authors = getAuthors(item)
+  const title = getTitle(item)
+  const shortTitle = getShortTitle(item)
+  const siteName = getSiteName(item)
+  const publicationDate =
+    getPublicationDateValue(item)
+  const accessedDate =
+    getAccessedDateValue(item)
+  const year = getYear(item)
+  const url = getAccessText(item)
+  const locator = getLocatorText(
+    item,
+    options,
+  )
+
+  const noteDateText = publicationDate
+    ? formatLongDate(publicationDate)
+    : accessedDate
+      ? `accessed ${formatLongDate(accessedDate)}`
+      : ''
+
+  if (outputType === 'full-note') {
+    return `${formatFootnoteAuthors(authors)}, ${quoteTitleForNote(
+      title,
+    )}${siteName ? ` ${italic(siteName)}` : ''}${
+      noteDateText
+        ? `, ${escapeHtml(noteDateText)}`
+        : ''
+    }${locator ? `, ${escapeHtml(locator)}` : ''}${
+      url ? `, ${escapeHtml(url)}` : ''
+    }.`
+  }
+
+  if (outputType === 'short-note') {
+    return `${formatShortFootnoteAuthor(authors)}, ${quoteTitleForCitation(
+      shortTitle,
+    )}${
+      locator
+        ? `, ${escapeHtml(locator)}`
+        : ''
+    }`
+  }
+
+  if (style === 'apa') {
+    const apaDate = publicationDate
+      ? formatApaDate(publicationDate)
+      : 'n.d.'
+
+    return `${formatApaAuthorsForEntry(authors)}. (${apaDate}). ${titleWithSentencePunctuation(
+      title,
+    )} ${siteName ? `${italic(siteName)}. ` : ''}${escapeHtml(url)}`
+  }
+
+  if (style === 'mla') {
+    return `${ensurePeriod(formatMlaAuthors(authors))} ${quoteTitleForCitation(title)}${
+      siteName ? ` ${italic(siteName)},` : ''
+    }${publicationDate ? ` ${escapeHtml(formatMlaDate(publicationDate))},` : ''}${
+      url ? ` ${escapeHtml(url)}.` : ''
+    }${accessedDate ? ` Accessed ${escapeHtml(formatMlaDate(accessedDate))}.` : ''}`
+  }
+
+  if (style === 'harvard') {
+    return `${formatApaAuthors(authors)
+      .replace(/, & /g, ' and ')
+      .replace(/ & /g, ' and ')} (${year || 'no date'}) ${italic(title)}.${
+      siteName ? ` ${italic(siteName)}.` : ''
+    }${url ? ` Available at: ${escapeHtml(url)}` : ''}${
+      accessedDate
+        ? ` (Accessed: ${escapeHtml(formatHarvardAccessDate(accessedDate))}).`
+        : '.'
+    }`
+  }
+
+  if (style === 'vancouver') {
+    const authorText =
+      formatVancouverAuthors(authors)
+
+    return `1. ${authorText}. ${titleWithSentencePunctuation(title)}${
+      siteName ? ` ${escapeHtml(siteName)}` : ''
+    } [Internet].${publicationDate ? ` ${escapeHtml(formatVancouverDate(publicationDate))}` : ''}${
+      accessedDate
+        ? ` [cited ${escapeHtml(formatVancouverDate(accessedDate))}]`
+        : ''
+    }.${url ? ` Available from: ${escapeHtml(url)}.` : ''}`
+  }
+
+  return `${ensurePeriod(formatBibliographyAuthors(authors))} ${quoteTitleForCitation(
+    title,
+  )}${siteName ? ` ${italic(siteName)}` : ''}${
+    noteDateText
+      ? `, ${escapeHtml(noteDateText)}`
+      : ''
+  }.${url ? ` ${escapeHtml(url)}.` : ''}`
+}
+
+function generateAuditedVideo(
+  item,
+  style,
+  outputType,
+  options = {},
+) {
+  const authors = getAuthors(item)
+  const title = getTitle(item)
+  const shortTitle = getShortTitle(item)
+  const platform = getVideoPlatform(item)
+  const publicationDate =
+    getPublicationDateValue(item)
+  const accessedDate =
+    getAccessedDateValue(item)
+  const year = getYear(item)
+  const url = getAccessText(item)
+  const locator = getLocatorText(
+    item,
+    options,
+  )
+
+  if (outputType === 'full-note') {
+    return `${formatFootnoteAuthors(authors)}, ${quoteTitleForCitation(
+      title,
+      '',
+    )}${platform ? `, ${escapeHtml(platform)} video` : ', video'}${
+      publicationDate
+        ? `, ${escapeHtml(formatLongDate(publicationDate))}`
+        : ''
+    }${locator ? `, ${escapeHtml(locator)}` : ''}${
+      url ? `, ${escapeHtml(url)}` : ''
+    }.`
+  }
+
+  if (outputType === 'short-note') {
+    return `${formatShortFootnoteAuthor(authors)}, ${quoteTitleForCitation(
+      shortTitle,
+    )}${
+      locator
+        ? `, ${escapeHtml(locator)}`
+        : ''
+    }`
+  }
+
+  if (style === 'apa') {
+    return `${formatApaAuthorsForEntry(authors)}. (${publicationDate ? formatApaDate(publicationDate) : 'n.d.'}). ${italic(
+      sentenceCaseTitle(title),
+    )} [Video].${platform ? ` ${escapeHtml(platform)}.` : ''}${
+      url ? ` ${escapeHtml(url)}` : ''
+    }`
+  }
+
+  if (style === 'mla') {
+    return `${ensurePeriod(formatMlaAuthors(authors))} ${quoteTitleForCitation(title)}${
+      platform ? ` ${italic(platform)},` : ''
+    }${publicationDate ? ` ${escapeHtml(formatMlaDate(publicationDate))},` : ''}${
+      url ? ` ${escapeHtml(url)}.` : ''
+    }`
+  }
+
+  if (style === 'harvard') {
+    return `${formatApaAuthors(authors)
+      .replace(/, & /g, ' and ')
+      .replace(/ & /g, ' and ')} (${year || 'no date'}) ${italic(title)} [Video].${
+      platform ? ` ${escapeHtml(platform)}.` : ''
+    }${url ? ` Available at: ${escapeHtml(url)}` : ''}${
+      accessedDate
+        ? ` (Accessed: ${escapeHtml(formatHarvardAccessDate(accessedDate))}).`
+        : '.'
+    }`
+  }
+
+  if (style === 'vancouver') {
+    const authorText =
+      formatVancouverAuthors(authors)
+
+    return `1. ${authorText}. ${escapeHtml(sentenceCaseTitle(title))} [video on the Internet].${
+      platform ? ` ${escapeHtml(platform)}` : ''
+    }${publicationDate ? `; ${escapeHtml(formatVancouverDate(publicationDate))}` : ''}${
+      accessedDate
+        ? ` [cited ${escapeHtml(formatVancouverDate(accessedDate))}]`
+        : ''
+    }.${url ? ` Available from: ${escapeHtml(url)}.` : ''}`
+  }
+
+  return `${ensurePeriod(formatBibliographyAuthors(authors))} ${quoteTitleForCitation(
+    title,
+  )}${platform ? ` ${escapeHtml(platform)} video.` : ' Video.'}${
+    publicationDate
+      ? ` ${escapeHtml(formatLongDate(publicationDate))}.`
+      : ''
+  }${url ? ` ${escapeHtml(url)}.` : ''}`
+}
+
+function generateAuditedCitation(
+  item,
+  style,
+  outputType,
+  options = {},
+) {
+  const sourceType = getSourceType(item)
+  const normalizedStyle =
+    getCitationStyleDefinition(style).id
+
+  if (sourceType === 'book') {
+    return generateAuditedBook(
+      item,
+      normalizedStyle,
+      outputType,
+      options,
+    )
+  }
+
+  if (sourceType === 'article') {
+    return generateAuditedArticle(
+      item,
+      normalizedStyle,
+      outputType,
+      options,
+    )
+  }
+
+  if (
+    sourceType === 'dissertation' ||
+    sourceType === 'thesis'
+  ) {
+    return generateAuditedDissertation(
+      item,
+      normalizedStyle,
+      outputType,
+      options,
+    )
+  }
+
+  if (
+    sourceType === 'website' ||
+    sourceType === 'blog'
+  ) {
+    return generateAuditedWebsite(
+      item,
+      normalizedStyle,
+      outputType,
+      options,
+    )
+  }
+
+  if (sourceType === 'video') {
+    return generateAuditedVideo(
+      item,
+      normalizedStyle,
+      outputType,
+      options,
+    )
+  }
+
+  return ''
 }
 
 function normalizeStyle(style = 'turabian') {
@@ -960,70 +2285,204 @@ export function registerCslLocale(localeId, localeXml) {
   return cleanLocaleId
 }
 
+const MONTH_NUMBER_BY_NAME = {
+  january: 1,
+  jan: 1,
+  february: 2,
+  feb: 2,
+  march: 3,
+  mar: 3,
+  april: 4,
+  apr: 4,
+  may: 5,
+  june: 6,
+  jun: 6,
+  july: 7,
+  jul: 7,
+  august: 8,
+  aug: 8,
+  september: 9,
+  sep: 9,
+  sept: 9,
+  october: 10,
+  oct: 10,
+  november: 11,
+  nov: 11,
+  december: 12,
+  dec: 12,
+}
+
+function validDateParts(year, month, day) {
+  const parts = [Number(year)]
+
+  if (month) parts.push(Number(month))
+  if (day) parts.push(Number(day))
+
+  return parts
+}
+
+function parseDateParts(value) {
+  const text = clean(value)
+  if (!text) return null
+
+  let match = text.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/,
+  )
+
+  if (match) {
+    return validDateParts(
+      match[3],
+      match[1],
+      match[2],
+    )
+  }
+
+  match = text.match(
+    /^(\d{4})(?:[-/](\d{1,2}|[A-Za-z]{3,9}))?(?:[-/](\d{1,2}))?$/,
+  )
+
+  if (match) {
+    const month = match[2]
+      ? MONTH_NUMBER_BY_NAME[
+          match[2].toLowerCase()
+        ] || Number(match[2])
+      : null
+
+    return validDateParts(
+      match[1],
+      month,
+      match[3],
+    )
+  }
+
+  match = text.match(
+    /^([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})$/,
+  )
+
+  if (match) {
+    return validDateParts(
+      match[3],
+      MONTH_NUMBER_BY_NAME[
+        match[1].toLowerCase()
+      ],
+      match[2],
+    )
+  }
+
+  match = text.match(
+    /^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/,
+  )
+
+  if (match) {
+    return validDateParts(
+      match[3],
+      MONTH_NUMBER_BY_NAME[
+        match[2].toLowerCase()
+      ],
+      match[1],
+    )
+  }
+
+  match = text.match(
+    /^([A-Za-z]{3,9})\s+(\d{4})$/,
+  )
+
+  if (match) {
+    return validDateParts(
+      match[2],
+      MONTH_NUMBER_BY_NAME[
+        match[1].toLowerCase()
+      ],
+    )
+  }
+
+  return null
+}
+
 function buildCslDate(value) {
   const text = clean(value)
   if (!text) return undefined
 
-  const match = text.match(/^(\d{4})(?:-(\d{1,2}))?(?:-(\d{1,2}))?$/)
+  const dateParts = parseDateParts(text)
 
-  if (!match) {
+  if (!dateParts) {
     return { literal: text }
   }
-
-  const dateParts = [Number(match[1])]
-
-  if (match[2]) dateParts.push(Number(match[2]))
-  if (match[3]) dateParts.push(Number(match[3]))
 
   return {
     'date-parts': [dateParts],
   }
 }
 
+function getYearFromDate(value) {
+  const parts = parseDateParts(value)
+  return parts?.[0]
+    ? String(parts[0])
+    : clean(value).match(/\b(\d{4})\b/)?.[1] || ''
+}
+
+function normalizeCslItemType(typeId, suggestedType) {
+  const raw = clean(
+    suggestedType || typeId,
+  ).toLowerCase()
+
+  const aliases = {
+    article: 'article-journal',
+    'journal article': 'article-journal',
+    journal_article: 'article-journal',
+    article_journal: 'article-journal',
+    journal: 'periodical',
+    website: 'webpage',
+    web: 'webpage',
+    blog: 'post-weblog',
+    weblog: 'post-weblog',
+    dissertation: 'thesis',
+    video: 'motion_picture',
+    youtube: 'motion_picture',
+    podcast: 'broadcast',
+    communication: 'personal_communication',
+    conference: 'paper-conference',
+    sermon: 'speech',
+  }
+
+  return aliases[raw] || raw || 'document'
+}
+
 function creatorToCslName(creator) {
   if (!creator) return null
 
-  if (typeof creator === 'string') {
-    const literal = clean(creator)
-    return literal ? { literal } : null
-  }
+  const normalized =
+    normalizePerson(creator)
 
-  const literal = clean(
-    creator.literal ||
-      creator.raw ||
-      (
-        creator.creatorType === 'literal'
-          ? creator.name
-          : ''
-      ),
-  )
+  if (!normalized) return null
 
-  if (literal) {
-    return { literal }
+  if (normalized.raw) {
+    return {
+      literal: normalized.raw,
+    }
   }
 
   const given = [
-    creator.firstName || creator.given,
-    creator.middleName || creator.middle,
-    creator.initial,
+    normalized.firstName,
+    normalized.middleName,
+    normalized.initial,
   ]
     .map(clean)
     .filter(Boolean)
     .join(' ')
 
   const family = clean(
-    creator.lastName ||
-      creator.family,
+    normalized.lastName,
   )
 
   const name = {
     given,
     family,
-    suffix: clean(creator.suffix),
+    suffix: clean(
+      normalized.suffix,
+    ),
     'non-dropping-particle': clean(
-      creator.nameParticle ||
-        creator.particle ||
-        creator['non-dropping-particle'],
+      normalized.nameParticle,
     ),
   }
 
@@ -1132,62 +2591,244 @@ export function toCslJson(item = {}) {
       item.metadata?.type,
   )
 
-  const metadata = normalizeResearchMetadata(
-    typeId,
-    item.metadata || item,
+  const rawMetadata =
+    item.metadata || item
+
+  const normalizedMetadata =
+    normalizeResearchMetadata(
+      typeId,
+      rawMetadata,
+    )
+
+  const metadata = mergeMetadata(
+    rawMetadata,
+    normalizedMetadata,
   )
 
-  const citationType =
+  const sourceType = getSourceType({
+    ...item,
+    metadata,
+  })
+
+  const suggestedCitationType =
     metadata.citationType ||
-    getCitationTypeForResearchType(typeId) ||
-    getSourceType(item) ||
-    'document'
+    getCitationTypeForResearchType(
+      typeId,
+    ) ||
+    sourceType
+
+  const citationType =
+    normalizeCslItemType(
+      typeId,
+      suggestedCitationType,
+    )
 
   const id = clean(item.id) ||
     `scholarory-${Math.random().toString(36).slice(2)}`
 
+  const value = (...keys) => {
+    return getMetadataAlias(
+      metadata,
+      keys,
+      '',
+    )
+  }
+
+  const publicationDate = value(
+    'publicationDate',
+    'publishedDate',
+    'date',
+    'publicationYear',
+    'year',
+  )
+
+  const accessedDate = value(
+    'accessedDate',
+    'accessDate',
+    'dateAccessed',
+  )
+
+  let containerTitle = value(
+    'publicationTitle',
+    'containerTitle',
+  )
+
+  if (sourceType === 'article') {
+    containerTitle = value(
+      'publicationTitle',
+      'journalTitle',
+      'journalName',
+      'journal',
+      'periodical',
+      'publication',
+      'containerTitle',
+    )
+  }
+
+  if (
+    sourceType === 'website' ||
+    sourceType === 'blog'
+  ) {
+    containerTitle = value(
+      'siteName',
+      'websiteName',
+      'blogName',
+      'publicationTitle',
+      'containerTitle',
+    )
+  }
+
+  if (
+    sourceType === 'video' ||
+    sourceType === 'podcast'
+  ) {
+    containerTitle = value(
+      'platform',
+      'channelName',
+      'siteName',
+      'websiteName',
+      'publicationTitle',
+      'containerTitle',
+    )
+  }
+
+  let publisher = value('publisher')
+
+  if (
+    sourceType === 'dissertation' ||
+    sourceType === 'thesis'
+  ) {
+    publisher = value(
+      'institution',
+      'university',
+      'school',
+      'publisher',
+    )
+  }
+
+  if (
+    (sourceType === 'video' ||
+      sourceType === 'podcast') &&
+    !publisher
+  ) {
+    publisher = value(
+      'platform',
+      'siteName',
+      'websiteName',
+    )
+  }
+
+  let genre = value(
+    'degree',
+    'genre',
+    'medium',
+    'format',
+  )
+
+  if (sourceType === 'video' && !genre) {
+    genre = 'Video'
+  }
+
+  if (sourceType === 'podcast' && !genre) {
+    genre = 'Podcast episode'
+  }
+
+  const repository = value(
+    'repository',
+    'database',
+    'libraryCatalog',
+    'archive',
+  )
+
   const cslItem = {
     id,
     type: citationType,
-    title: getTitle(item),
-    'title-short': metadata.shortTitle,
-    'container-title': metadata.publicationTitle,
-    publisher: metadata.publisher,
-    'publisher-place': metadata.placeOfPublication,
-    issued: buildCslDate(metadata.publicationDate),
-    accessed: buildCslDate(metadata.accessedDate),
-    'original-date': buildCslDate(metadata.originalPublicationDate),
-    edition: metadata.edition,
-    'collection-title': metadata.seriesTitle,
-    'collection-number': metadata.seriesNumber,
-    volume: metadata.volume,
-    'number-of-volumes': metadata.numberOfVolumes,
-    issue: metadata.issue,
-    page: metadata.pages,
-    'number-of-pages': metadata.pageCount,
-    ISBN: metadata.isbn,
-    ISSN: metadata.issn,
-    DOI: clean(metadata.doi)
+    title: getTitle({
+      ...item,
+      metadata,
+    }),
+    'title-short': value('shortTitle'),
+    'container-title': containerTitle,
+    publisher,
+    'publisher-place': value(
+      'placeOfPublication',
+      'publicationPlace',
+      'place',
+    ),
+    issued: buildCslDate(
+      publicationDate,
+    ),
+    accessed: buildCslDate(
+      accessedDate,
+    ),
+    'original-date': buildCslDate(
+      value('originalPublicationDate'),
+    ),
+    edition: value('edition'),
+    'collection-title': value(
+      'seriesTitle',
+      'series',
+    ),
+    'collection-number': value(
+      'seriesNumber',
+    ),
+    volume: value('volume'),
+    'number-of-volumes': value(
+      'numberOfVolumes',
+    ),
+    issue: value('issue', 'number'),
+    page: value(
+      'pages',
+      'pageRange',
+    ),
+    'number-of-pages': value(
+      'pageCount',
+      'numberOfPages',
+    ),
+    ISBN: value('isbn', 'ISBN'),
+    ISSN: value('issn', 'ISSN'),
+    DOI: clean(value('doi', 'DOI'))
       .replace(/^https?:\/\/doi\.org\//i, '')
       .replace(/^doi:\s*/i, ''),
-    URL: metadata.url,
-    abstract: metadata.abstract,
-    language: metadata.language,
-    archive: metadata.archive,
-    'archive-place': metadata.archiveLocation,
-    'call-number': metadata.callNumber,
-    source: metadata.libraryCatalog || metadata.database || metadata.repository,
-    number: metadata.publicationNumber || metadata.episodeNumber,
-    genre: metadata.degree || metadata.medium || metadata.format,
-    medium: metadata.medium,
-    dimensions: metadata.runningTime,
+    URL: cleanUrl(
+      value('url', 'website', 'link'),
+    ),
+    abstract: value('abstract'),
+    language: value('language'),
+    archive: repository,
+    'archive-place': value(
+      'archiveLocation',
+      'repositoryLocation',
+    ),
+    'call-number': value('callNumber'),
+    source: repository,
+    number: value(
+      'publicationNumber',
+      'documentNumber',
+      'episodeNumber',
+    ),
+    genre,
+    medium:
+      sourceType === 'video'
+        ? ''
+        : value('medium'),
+    dimensions: value(
+      'runningTime',
+      'duration',
+    ),
     note: buildCslNote(metadata),
   }
 
-  const primaryAuthors = getPrimaryAuthors(metadata)
-  if (primaryAuthors.length) cslItem.author = primaryAuthors
+  const primaryAuthors =
+    getPrimaryAuthors(metadata)
 
-  Object.entries(CSL_NAME_ROLE_MAP).forEach(
+  if (primaryAuthors.length) {
+    cslItem.author = primaryAuthors
+  }
+
+  Object.entries(
+    CSL_NAME_ROLE_MAP,
+  ).forEach(
     ([metadataKey, cslRole]) => {
       addNameRole(
         cslItem,
@@ -1197,7 +2838,10 @@ export function toCslJson(item = {}) {
     },
   )
 
-  if (!cslItem.author?.length && cslItem.editor?.length) {
+  if (
+    !cslItem.author?.length &&
+    cslItem.editor?.length
+  ) {
     delete cslItem.author
   }
 
@@ -1429,6 +3073,18 @@ export function generateCitation(
 ) {
   if (!item) return ''
 
+  const auditedOutput =
+    generateAuditedCitation(
+      item,
+      style,
+      'bibliography',
+      options,
+    )
+
+  if (auditedOutput) {
+    return auditedOutput
+  }
+
   const citationJsOutput = tryCitationJs(
     item,
     style,
@@ -1445,12 +3101,383 @@ export function generateCitation(
   )
 }
 
+function getCitationYear(item = {}) {
+  return getYear(item)
+}
+
+function getInTextAuthorLabel(
+  item,
+  style,
+) {
+  const people = getAuthors(item)
+  const normalizedStyle =
+    clean(style).toLowerCase()
+
+  if (!people.length) {
+    const shortTitle = escapeHtml(
+      getShortTitle(item),
+    )
+
+    return getSourceType(item) === 'book'
+      ? `<em>${shortTitle}</em>`
+      : `“${shortTitle}”`
+  }
+
+  const familyName = (person) => {
+    const normalized = normalizePerson(
+      person,
+    )
+
+    return clean(
+      normalized?.lastName ||
+        normalized?.raw ||
+        formatPersonFullName(
+          normalized,
+        ),
+    )
+  }
+
+  if (people.length === 1) {
+    return escapeHtml(
+      familyName(people[0]),
+    )
+  }
+
+  if (people.length === 2) {
+    const joiner =
+      normalizedStyle === 'apa'
+        ? ' & '
+        : ' and '
+
+    return people
+      .map(familyName)
+      .map(escapeHtml)
+      .join(joiner)
+  }
+
+  return `${escapeHtml(
+    familyName(people[0]),
+  )} et al.`
+}
+
+function formatInTextLocator(
+  options = {},
+  style = 'apa',
+) {
+  const locator = clean(
+    options.locator ||
+      options.page ||
+      options.pages,
+  )
+
+  if (!locator) return ''
+
+  const label = clean(
+    options.label,
+  ).toLowerCase()
+
+  if (
+    options.omitLabel ||
+    label === 'timestamp' ||
+    label === 'other'
+  ) {
+    return locator
+  }
+
+  if (clean(style).toLowerCase() === 'mla') {
+    const mlaLabels = {
+      chapter: 'ch.',
+      section: 'sec.',
+      paragraph: 'par.',
+      line: 'line',
+      figure: 'fig.',
+      table: 'table',
+      verse: 'verse',
+      volume: 'vol.',
+      issue: 'no.',
+    }
+
+    return label === 'page'
+      ? locator
+      : `${mlaLabels[label] || label} ${locator}`
+  }
+
+  const range = /[-–,]/.test(locator)
+  const labels = {
+    page: range ? 'pp.' : 'p.',
+    chapter: 'chap.',
+    section: 'sec.',
+    paragraph: 'para.',
+    line: range ? 'lines' : 'line',
+    figure: 'fig.',
+    table: 'table',
+    verse: range ? 'verses' : 'verse',
+    volume: 'vol.',
+    issue: 'no.',
+  }
+
+  return `${labels[label] || label} ${locator}`
+}
+
+function generateAuthorDateInText(
+  item,
+  style,
+  options = {},
+) {
+  const author = getInTextAuthorLabel(
+    item,
+    style,
+  )
+  const year = getCitationYear(item) ||
+    (clean(style).toLowerCase() === 'apa'
+      ? 'n.d.'
+      : 'no date')
+  const locator = formatInTextLocator(
+    options,
+    style,
+  )
+
+  if (options.authorOnly) {
+    return author
+  }
+
+  const parts = []
+
+  if (!options.suppressAuthor) {
+    parts.push(author)
+  }
+
+  parts.push(year)
+
+  if (locator) {
+    parts.push(locator)
+  }
+
+  const prefix = clean(options.prefix)
+  const suffix = clean(options.suffix)
+  const content = parts.join(', ')
+
+  return `(${[
+    prefix,
+    content,
+    suffix,
+  ].filter(Boolean).join(' ')})`
+}
+
+function generateMlaInText(
+  item,
+  options = {},
+) {
+  const author = getInTextAuthorLabel(
+    item,
+    'mla',
+  )
+  const locator = formatInTextLocator(
+    options,
+    'mla',
+  )
+
+  if (options.authorOnly) {
+    return author
+  }
+
+  const parts = []
+
+  if (!options.suppressAuthor) {
+    parts.push(author)
+  }
+
+  if (locator) {
+    parts.push(locator)
+  }
+
+  const prefix = clean(options.prefix)
+  const suffix = clean(options.suffix)
+  const content = parts.join(' ')
+
+  return `(${[
+    prefix,
+    content,
+    suffix,
+  ].filter(Boolean).join(' ')})`
+}
+
+export function getCitationMetadataWarnings(
+  item = {},
+) {
+  const warnings = []
+  const sourceType = getSourceType(item)
+  const authors = getAuthors(item)
+
+  if (!clean(getTitle(item))) {
+    warnings.push('Add a title.')
+  }
+
+  if (!authors.length && !getEditors(item).length) {
+    warnings.push('Add an author, creator, or editor.')
+  }
+
+  const publicationDate = getField(item, [
+    'publicationDate',
+    'publishedDate',
+    'date',
+    'publicationYear',
+    'year',
+  ])
+
+  if (sourceType === 'book') {
+    if (!getField(item, ['publisher'])) {
+      warnings.push('Add the publisher.')
+    }
+
+    if (!publicationDate) {
+      warnings.push('Add the publication year or date.')
+    }
+
+    if (
+      clean(getField(item, ['title'])).endsWith(':') &&
+      !getField(item, ['subtitle'])
+    ) {
+      warnings.push('The title ends with a colon; add the subtitle or remove the colon.')
+    }
+  }
+
+  if (sourceType === 'article') {
+    if (!getField(item, [
+      'publicationTitle',
+      'journalTitle',
+      'journalName',
+      'journal',
+    ])) {
+      warnings.push('Add the journal title.')
+    }
+
+    if (!publicationDate) {
+      warnings.push('Add the article publication year or date.')
+    }
+  }
+
+  if (
+    sourceType === 'dissertation' ||
+    sourceType === 'thesis'
+  ) {
+    if (!getField(item, [
+      'institution',
+      'university',
+      'school',
+    ])) {
+      warnings.push('Add the university or institution.')
+    }
+
+    if (!getField(item, ['degree'])) {
+      warnings.push('Add the degree or dissertation type.')
+    }
+
+    if (!publicationDate) {
+      warnings.push('Add the dissertation or thesis year.')
+    }
+  }
+
+  if (
+    sourceType === 'website' ||
+    sourceType === 'blog'
+  ) {
+    if (!getField(item, [
+      'siteName',
+      'websiteName',
+      'blogName',
+      'publicationTitle',
+      'containerTitle',
+      'publication',
+      'publisher',
+    ])) {
+      warnings.push('Add the website or blog name.')
+    }
+
+    if (!getField(item, ['url', 'website'])) {
+      warnings.push('Add the webpage URL.')
+    }
+  }
+
+  if (sourceType === 'video') {
+    if (!getField(item, [
+      'platform',
+      'channelName',
+      'siteName',
+      'websiteName',
+      'publicationTitle',
+      'containerTitle',
+    ])) {
+      warnings.push('Add the video platform, such as YouTube.')
+    }
+
+    if (!publicationDate) {
+      warnings.push('Add the video publication date.')
+    }
+
+    if (!getField(item, ['url', 'website'])) {
+      warnings.push('Add the video URL.')
+    }
+  }
+
+  const accessedDate = getField(item, [
+    'accessedDate',
+    'accessDate',
+    'dateAccessed',
+  ])
+
+  const accessedParts =
+    parseDateParts(accessedDate)
+
+  if (accessedParts?.length === 3) {
+    const [year, month, day] =
+      accessedParts
+
+    const accessedValue = new Date(
+      year,
+      month - 1,
+      day,
+    )
+
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+
+    if (accessedValue > today) {
+      warnings.push(
+        'The accessed date is in the future.',
+      )
+    }
+  }
+
+  return warnings
+}
+
 export function generateInTextCitation(
   item,
   style = 'apa',
   options = {},
 ) {
   if (!item) return ''
+
+  const definition =
+    getCitationStyleDefinition(style)
+  const normalizedStyle =
+    definition.id
+
+  if (definition.mode === 'author-date') {
+    return generateAuthorDateInText(
+      item,
+      normalizedStyle,
+      options,
+    )
+  }
+
+  if (definition.mode === 'author-page') {
+    return generateMlaInText(
+      item,
+      options,
+    )
+  }
 
   const citationJsOutput = tryCitationJs(
     item,
@@ -1463,20 +3490,14 @@ export function generateInTextCitation(
     return citationJsOutput
   }
 
-  const author = formatShortFootnoteAuthor(
-    getAuthors(item),
+  const author = getInTextAuthorLabel(
+    item,
+    style,
   )
-  const year = clean(
-    getField(item, [
-      'publicationDate',
-      'year',
-      'date',
-    ]),
-  )
-  const locator = clean(
-    options.locator ||
-      options.page ||
-      options.pages,
+  const year = getCitationYear(item)
+  const locator = formatInTextLocator(
+    options,
+    style,
   )
 
   return `(${[
@@ -1501,6 +3522,18 @@ export function generateFullFootnote(
       style,
       options,
     )
+  }
+
+  const auditedOutput =
+    generateAuditedCitation(
+      item,
+      style,
+      'full-note',
+      options,
+    )
+
+  if (auditedOutput) {
+    return auditedOutput
   }
 
   const citationJsOutput = tryCitationJs(
@@ -1538,6 +3571,18 @@ export function generateShortFootnote(
       style,
       options,
     )
+  }
+
+  const auditedOutput =
+    generateAuditedCitation(
+      item,
+      style,
+      'short-note',
+      options,
+    )
+
+  if (auditedOutput) {
+    return auditedOutput
   }
 
   const citationJsOutput = tryCitationJs(
@@ -1653,3 +3698,4 @@ export function generateCitationSet(
 }
 
 export { generateManualCitationSet }
+

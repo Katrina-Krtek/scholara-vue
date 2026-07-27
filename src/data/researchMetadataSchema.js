@@ -1,92 +1,109 @@
 export const RESEARCH_METADATA_SCHEMA_VERSION = 1
 
+const TYPE_ALIASES = {
+  'journal-article': 'article',
+  'academic-article': 'article',
+  'research-article': 'article',
+  webpage: 'website',
+  'web-page': 'website',
+  web: 'website',
+  'blog-post': 'blog',
+  'blog-entry': 'blog',
+  'doctoral-dissertation': 'dissertation',
+  'phd-dissertation': 'dissertation',
+  'masters-thesis': 'thesis',
+  'master-thesis': 'thesis',
+  'conference-paper': 'conference',
+  presentation: 'conference',
+  'personal-communication': 'communication',
+  email: 'communication',
+  letter: 'communication',
+  'book-chapter': 'bookChapter',
+  chapter: 'bookChapter',
+}
+
 export const CREATOR_ROLE_DEFINITIONS = {
   authors: {
     key: 'authors',
     label: 'Authors',
     singularLabel: 'Author',
-    citationRole: 'author',
   },
 
   editors: {
     key: 'editors',
     label: 'Editors',
     singularLabel: 'Editor',
-    citationRole: 'editor',
   },
 
   translators: {
     key: 'translators',
     label: 'Translators',
     singularLabel: 'Translator',
-    citationRole: 'translator',
   },
 
   contributors: {
     key: 'contributors',
     label: 'Contributors',
     singularLabel: 'Contributor',
-    citationRole: 'contributor',
   },
 
   directors: {
     key: 'directors',
     label: 'Directors',
     singularLabel: 'Director',
-    citationRole: 'director',
   },
 
   producers: {
     key: 'producers',
     label: 'Producers',
     singularLabel: 'Producer',
-    citationRole: 'producer',
   },
 
   presenters: {
     key: 'presenters',
     label: 'Presenters',
     singularLabel: 'Presenter',
-    citationRole: 'presenter',
   },
 
   interviewers: {
     key: 'interviewers',
     label: 'Interviewers',
     singularLabel: 'Interviewer',
-    citationRole: 'interviewer',
   },
 
   interviewees: {
     key: 'interviewees',
     label: 'Interviewees',
     singularLabel: 'Interviewee',
-    citationRole: 'interviewee',
-  },
-
-  advisors: {
-    key: 'advisors',
-    label: 'Advisors',
-    singularLabel: 'Advisor',
-    citationRole: 'advisor',
   },
 
   senders: {
     key: 'senders',
     label: 'Senders',
     singularLabel: 'Sender',
-    citationRole: 'author',
   },
 
   recipients: {
     key: 'recipients',
     label: 'Recipients',
     singularLabel: 'Recipient',
-    citationRole: 'recipient',
+  },
+
+  advisors: {
+    key: 'advisors',
+    label: 'Advisors / Committee Members',
+    singularLabel: 'Advisor',
   },
 }
 
 export const FIELD_DEFINITIONS = {
+  subtitle: {
+    key: 'subtitle',
+    label: 'Subtitle',
+    icon: '⌁',
+    placeholder: 'Subtitle',
+  },
+
   shortTitle: {
     key: 'shortTitle',
     label: 'Short Title',
@@ -97,8 +114,8 @@ export const FIELD_DEFINITIONS = {
   publicationTitle: {
     key: 'publicationTitle',
     label: 'Publication / Container Title',
-    icon: '📰',
-    placeholder: 'Journal, website, blog, book, or collection title',
+    icon: '▤',
+    placeholder: 'Journal, website, blog, platform, or container title',
   },
 
   publisher: {
@@ -112,28 +129,49 @@ export const FIELD_DEFINITIONS = {
     key: 'placeOfPublication',
     label: 'Place of Publication',
     icon: '⌖',
-    placeholder: 'City, state, province, or country',
+    placeholder: 'City, State or Country',
   },
 
   publicationDate: {
     key: 'publicationDate',
     label: 'Publication Date',
     icon: '📅',
-    placeholder: 'YYYY, YYYY-MM, or YYYY-MM-DD',
+    placeholder: 'MM-DD-YYYY',
   },
 
-  originalPublicationDate: {
-    key: 'originalPublicationDate',
-    label: 'Original Publication Date',
-    icon: '📅',
-    placeholder: 'Original publication date',
+  publicationYear: {
+    key: 'publicationYear',
+    label: 'Publication Year',
+    icon: '◷',
+    placeholder: '2025',
+  },
+
+  publicationSeason: {
+    key: 'publicationSeason',
+    label: 'Publication Season',
+    icon: '🍂',
+    placeholder: 'Spring, Summer, Fall, or Winter',
   },
 
   accessedDate: {
     key: 'accessedDate',
     label: 'Accessed Date',
     icon: '📅',
-    control: 'date',
+    placeholder: 'MM-DD-YYYY',
+  },
+
+  originalPublicationDate: {
+    key: 'originalPublicationDate',
+    label: 'Original Publication Date',
+    icon: '📅',
+    placeholder: 'MM-DD-YYYY',
+  },
+
+  originalTitle: {
+    key: 'originalTitle',
+    label: 'Original Title',
+    icon: '⌁',
+    placeholder: 'Original-language or earlier title',
   },
 
   edition: {
@@ -153,36 +191,36 @@ export const FIELD_DEFINITIONS = {
   seriesNumber: {
     key: 'seriesNumber',
     label: 'Series Number',
-    icon: '№',
-    placeholder: 'Series number',
+    icon: '#',
+    placeholder: '2',
   },
 
   volume: {
     key: 'volume',
     label: 'Volume',
     icon: 'V',
-    placeholder: 'Volume',
+    placeholder: '22',
   },
 
   numberOfVolumes: {
     key: 'numberOfVolumes',
     label: 'Number of Volumes',
-    icon: '▤',
-    placeholder: 'Total number of volumes',
+    icon: '#',
+    placeholder: '3',
   },
 
   issue: {
     key: 'issue',
     label: 'Issue',
-    icon: '№',
-    placeholder: 'Issue',
+    icon: 'No.',
+    placeholder: '2',
   },
 
   pages: {
     key: 'pages',
     label: 'Pages',
     icon: '☰',
-    placeholder: '45–68',
+    placeholder: '171–183',
   },
 
   pageCount: {
@@ -196,29 +234,29 @@ export const FIELD_DEFINITIONS = {
     key: 'isbn',
     label: 'ISBN',
     icon: '#',
-    placeholder: 'ISBN',
+    placeholder: '978-0-000000-00-0',
   },
 
   issn: {
     key: 'issn',
     label: 'ISSN',
     icon: '#',
-    placeholder: 'ISSN',
+    placeholder: '0000-0000',
   },
 
   doi: {
     key: 'doi',
     label: 'DOI',
-    icon: '🔗',
+    icon: '↗',
     placeholder: '10.xxxx/xxxxx',
   },
 
   url: {
     key: 'url',
     label: 'URL',
-    icon: '🌐',
+    icon: '🔗',
     control: 'url',
-    placeholder: 'https://...',
+    placeholder: 'https://',
   },
 
   abstract: {
@@ -234,14 +272,56 @@ export const FIELD_DEFINITIONS = {
   language: {
     key: 'language',
     label: 'Language',
-    icon: '🗣️',
+    icon: '🌐',
     placeholder: 'English',
+  },
+
+  institution: {
+    key: 'institution',
+    label: 'University / Institution',
+    icon: '🏛️',
+    placeholder: 'Southeastern University',
+  },
+
+  degree: {
+    key: 'degree',
+    label: 'Degree',
+    icon: '🎓',
+    placeholder: 'PhD, DMin, ThM, MA, etc.',
+  },
+
+  department: {
+    key: 'department',
+    label: 'Department / Program',
+    icon: '▦',
+    placeholder: 'School, department, or program',
+  },
+
+  database: {
+    key: 'database',
+    label: 'Database',
+    icon: '▤',
+    placeholder: 'ProQuest Dissertations & Theses Global',
+  },
+
+  repository: {
+    key: 'repository',
+    label: 'Repository',
+    icon: '⌂',
+    placeholder: 'Institutional repository or archive',
+  },
+
+  publicationNumber: {
+    key: 'publicationNumber',
+    label: 'Publication / Document Number',
+    icon: '#',
+    placeholder: '31635562',
   },
 
   archive: {
     key: 'archive',
     label: 'Archive',
-    icon: '🏦',
+    icon: '⌂',
     placeholder: 'Archive or special collection',
   },
 
@@ -249,14 +329,7 @@ export const FIELD_DEFINITIONS = {
     key: 'archiveLocation',
     label: 'Archive Location',
     icon: '⌖',
-    placeholder: 'Box, folder, collection, or physical location',
-  },
-
-  libraryCatalog: {
-    key: 'libraryCatalog',
-    label: 'Library Catalog',
-    icon: '🗄️',
-    placeholder: 'WorldCat, university catalog, or other catalog',
+    placeholder: 'Box, folder, collection, or location',
   },
 
   callNumber: {
@@ -266,63 +339,28 @@ export const FIELD_DEFINITIONS = {
     placeholder: 'Library call number',
   },
 
+  libraryCatalog: {
+    key: 'libraryCatalog',
+    label: 'Library Catalog',
+    icon: '▤',
+    placeholder: 'WorldCat, university catalog, etc.',
+  },
+
   rights: {
     key: 'rights',
     label: 'Rights',
     icon: '©',
-    placeholder: 'Copyright or usage rights',
+    placeholder: 'Copyright or license information',
   },
 
   extra: {
     key: 'extra',
-    label: 'Extra Citation Metadata',
+    label: 'Extra Citation Information',
     icon: '+',
     control: 'textarea',
     rows: 5,
     wide: true,
-    placeholder: 'Additional identifiers, citation fields, or notes',
-  },
-
-  institution: {
-    key: 'institution',
-    label: 'University / Institution',
-    icon: '🏛️',
-    placeholder: 'Liberty University',
-  },
-
-  degree: {
-    key: 'degree',
-    label: 'Degree',
-    icon: '🎓',
-    placeholder: 'Doctor of Ministry, PhD, ThM, MA, etc.',
-  },
-
-  department: {
-    key: 'department',
-    label: 'Department / Program',
-    icon: '🏫',
-    placeholder: 'School, department, or program',
-  },
-
-  database: {
-    key: 'database',
-    label: 'Database',
-    icon: '🗄️',
-    placeholder: 'ProQuest Dissertations & Theses Global',
-  },
-
-  repository: {
-    key: 'repository',
-    label: 'Repository',
-    icon: '🏦',
-    placeholder: 'Institutional repository',
-  },
-
-  publicationNumber: {
-    key: 'publicationNumber',
-    label: 'Publication / Document Number',
-    icon: '#',
-    placeholder: 'Publication or document number',
+    placeholder: 'Additional metadata that does not fit another field.',
   },
 
   platform: {
@@ -332,39 +370,95 @@ export const FIELD_DEFINITIONS = {
     placeholder: 'YouTube, Vimeo, Spotify, Apple Podcasts, etc.',
   },
 
-  medium: {
-    key: 'medium',
-    label: 'Medium',
-    icon: '▣',
-    placeholder: 'Video, audio, film, streaming media, etc.',
+  channelName: {
+    key: 'channelName',
+    label: 'Channel / Account Name',
+    icon: '▶️',
+    placeholder: 'Channel or account name',
   },
 
   runningTime: {
     key: 'runningTime',
     label: 'Running Time',
     icon: '◷',
-    placeholder: '1:24:30',
+    placeholder: '12:34',
   },
 
   episodeNumber: {
     key: 'episodeNumber',
     label: 'Episode Number',
-    icon: '№',
-    placeholder: 'Episode number',
+    icon: '#',
+    placeholder: '42',
   },
 
-  seasonNumber: {
-    key: 'seasonNumber',
-    label: 'Season Number',
-    icon: '№',
-    placeholder: 'Season number',
+  podcastTitle: {
+    key: 'podcastTitle',
+    label: 'Podcast Title',
+    icon: '🎙️',
+    placeholder: 'Podcast or show title',
+  },
+
+  conferenceName: {
+    key: 'conferenceName',
+    label: 'Conference Name',
+    icon: '🎤',
+    placeholder: 'Conference or event name',
+  },
+
+  eventPlace: {
+    key: 'eventPlace',
+    label: 'Event Location',
+    icon: '⌖',
+    placeholder: 'City, venue, or online',
+  },
+
+  meetingName: {
+    key: 'meetingName',
+    label: 'Meeting / Session Name',
+    icon: '🎤',
+    placeholder: 'Panel, session, or meeting name',
+  },
+
+  churchName: {
+    key: 'churchName',
+    label: 'Church / Ministry',
+    icon: '⛪',
+    placeholder: 'Church or ministry name',
+  },
+
+  scripturePassage: {
+    key: 'scripturePassage',
+    label: 'Scripture Passage',
+    icon: '📖',
+    placeholder: 'John 15:1–17',
+  },
+
+  medium: {
+    key: 'medium',
+    label: 'Medium',
+    icon: '▣',
+    placeholder: 'Video, audio, transcript, streaming media, etc.',
   },
 
   format: {
     key: 'format',
     label: 'Format',
     icon: '▣',
-    placeholder: 'Email, letter, interview, text message, etc.',
+    placeholder: 'Email, letter, interview, memo, etc.',
+  },
+
+  date: {
+    key: 'date',
+    label: 'Date',
+    icon: '📅',
+    placeholder: 'MM-DD-YYYY',
+  },
+
+  subject: {
+    key: 'subject',
+    label: 'Subject',
+    icon: '⌁',
+    placeholder: 'Email or communication subject',
   },
 
   body: {
@@ -374,7 +468,7 @@ export const FIELD_DEFINITIONS = {
     control: 'textarea',
     rows: 8,
     wide: true,
-    placeholder: 'Write the note.',
+    placeholder: 'Write or paste the communication.',
   },
 
   definition: {
@@ -425,7 +519,7 @@ export const FIELD_DEFINITIONS = {
     key: 'dueDate',
     label: 'Due Date',
     icon: '📅',
-    control: 'date',
+    placeholder: 'MM-DD-YYYY',
   },
 
   requirements: {
@@ -461,217 +555,281 @@ export const FIELD_DEFINITIONS = {
     icon: '☰',
     placeholder: 'Page number',
   },
+
+  status: {
+    key: 'status',
+    label: 'Status',
+    icon: '◷',
+    placeholder: 'inbox',
+  },
+
+  coverImageUrl: {
+    key: 'coverImageUrl',
+    label: 'Cover Image URL',
+    icon: '🖼️',
+    control: 'url',
+    placeholder: 'https://',
+  },
+
+  bannerImageUrl: {
+    key: 'bannerImageUrl',
+    label: 'Banner Image URL',
+    icon: '🖼️',
+    control: 'url',
+    placeholder: 'https://',
+  },
+
+  bannerObjectPositionY: {
+    key: 'bannerObjectPositionY',
+    label: 'Banner Position',
+    icon: '↕',
+    placeholder: '50',
+  },
 }
+
+const COMMON_CITATION_ADVANCED_FIELDS = [
+  'abstract',
+  'language',
+  'archive',
+  'archiveLocation',
+  'callNumber',
+  'libraryCatalog',
+  'rights',
+  'extra',
+]
 
 export const RESEARCH_TYPE_METADATA = {
   book: {
-    isCitable: true,
+    citable: true,
     citationType: 'book',
-
     creatorRoles: [
       'authors',
       'editors',
       'translators',
       'contributors',
     ],
-
     fields: [
+      'subtitle',
       'shortTitle',
       'publisher',
       'placeOfPublication',
       'publicationDate',
+      'publicationYear',
       'edition',
-      'isbn',
-      'pages',
-      'language',
-    ],
-
-    advancedFields: [
-      'originalPublicationDate',
       'seriesTitle',
       'seriesNumber',
       'volume',
       'numberOfVolumes',
+      'pages',
       'pageCount',
-      'doi',
+      'isbn',
       'url',
-      'accessedDate',
-      'abstract',
-      'archive',
-      'archiveLocation',
-      'libraryCatalog',
-      'callNumber',
-      'rights',
-      'extra',
+    ],
+    advancedFields: [
+      'originalPublicationDate',
+      'originalTitle',
+      'doi',
+      ...COMMON_CITATION_ADVANCED_FIELDS,
     ],
   },
 
-  article: {
-    isCitable: true,
-    citationType: 'article-journal',
-
+  bookChapter: {
+    citable: true,
+    citationType: 'chapter',
     creatorRoles: [
       'authors',
       'editors',
       'translators',
       'contributors',
     ],
+    fields: [
+      'shortTitle',
+      'publicationTitle',
+      'publisher',
+      'placeOfPublication',
+      'publicationDate',
+      'publicationYear',
+      'edition',
+      'seriesTitle',
+      'seriesNumber',
+      'volume',
+      'pages',
+      'isbn',
+      'doi',
+      'url',
+      'accessedDate',
+    ],
+    advancedFields: [
+      'originalPublicationDate',
+      ...COMMON_CITATION_ADVANCED_FIELDS,
+    ],
+  },
 
+  article: {
+    citable: true,
+    citationType: 'article-journal',
+    creatorRoles: [
+      'authors',
+      'editors',
+      'translators',
+      'contributors',
+    ],
     fields: [
       'shortTitle',
       'publicationTitle',
       'publicationDate',
+      'publicationYear',
+      'publicationSeason',
       'volume',
       'issue',
       'pages',
       'doi',
       'url',
-      'abstract',
+      'accessedDate',
       'language',
     ],
-
     advancedFields: [
       'issn',
+      'database',
+      ...COMMON_CITATION_ADVANCED_FIELDS,
+    ],
+  },
+
+  journal: {
+    citable: true,
+    citationType: 'article-journal',
+    creatorRoles: [
+      'editors',
+      'contributors',
+    ],
+    fields: [
+      'shortTitle',
+      'publisher',
+      'publicationDate',
+      'publicationYear',
+      'publicationSeason',
+      'volume',
+      'issue',
+      'issn',
+      'url',
       'accessedDate',
-      'archive',
-      'archiveLocation',
-      'libraryCatalog',
-      'callNumber',
-      'rights',
-      'extra',
+      'language',
+    ],
+    advancedFields: [
+      'placeOfPublication',
+      'database',
+      ...COMMON_CITATION_ADVANCED_FIELDS,
     ],
   },
 
   dissertation: {
-    isCitable: true,
+    citable: true,
     citationType: 'thesis',
-
     creatorRoles: [
       'authors',
       'advisors',
       'contributors',
     ],
-
     fields: [
       'shortTitle',
-      'institution',
       'degree',
+      'institution',
       'department',
       'publicationDate',
+      'publicationYear',
+      'publicationNumber',
       'database',
       'repository',
-      'publicationNumber',
-      'doi',
+      'pages',
       'url',
-      'abstract',
+      'accessedDate',
       'language',
     ],
-
     advancedFields: [
-      'accessedDate',
-      'archive',
-      'archiveLocation',
-      'libraryCatalog',
-      'callNumber',
-      'rights',
-      'extra',
+      ...COMMON_CITATION_ADVANCED_FIELDS,
     ],
   },
 
   thesis: {
-    isCitable: true,
+    citable: true,
     citationType: 'thesis',
-
     creatorRoles: [
       'authors',
       'advisors',
       'contributors',
     ],
-
     fields: [
       'shortTitle',
-      'institution',
       'degree',
+      'institution',
       'department',
       'publicationDate',
+      'publicationYear',
+      'publicationNumber',
       'database',
       'repository',
-      'publicationNumber',
-      'doi',
+      'pages',
       'url',
-      'abstract',
+      'accessedDate',
       'language',
     ],
-
     advancedFields: [
-      'accessedDate',
-      'archive',
-      'archiveLocation',
-      'libraryCatalog',
-      'callNumber',
-      'rights',
-      'extra',
+      ...COMMON_CITATION_ADVANCED_FIELDS,
     ],
   },
 
   website: {
-    isCitable: true,
+    citable: true,
     citationType: 'webpage',
-
     creatorRoles: [
       'authors',
       'editors',
       'translators',
       'contributors',
     ],
-
     fields: [
       'shortTitle',
       'publicationTitle',
       'publicationDate',
+      'publicationYear',
       'accessedDate',
       'url',
       'language',
     ],
-
     advancedFields: [
       'publisher',
-      'abstract',
       'rights',
       'extra',
     ],
   },
 
   blog: {
-    isCitable: true,
+    citable: true,
     citationType: 'post-weblog',
-
     creatorRoles: [
       'authors',
       'editors',
       'contributors',
     ],
-
     fields: [
       'shortTitle',
       'publicationTitle',
       'publicationDate',
+      'publicationYear',
       'accessedDate',
       'url',
       'language',
     ],
-
     advancedFields: [
-      'abstract',
+      'publisher',
       'rights',
       'extra',
     ],
   },
 
   video: {
-    isCitable: true,
+    citable: true,
     citationType: 'motion_picture',
-
     creatorRoles: [
       'authors',
       'directors',
@@ -679,45 +837,151 @@ export const RESEARCH_TYPE_METADATA = {
       'presenters',
       'contributors',
     ],
-
     fields: [
       'shortTitle',
-      'publicationTitle',
       'platform',
+      'channelName',
       'publicationDate',
+      'publicationYear',
       'accessedDate',
+      'runningTime',
       'url',
       'language',
     ],
-
     advancedFields: [
       'medium',
-      'runningTime',
-      'episodeNumber',
-      'seasonNumber',
-      'publisher',
-      'abstract',
       'rights',
       'extra',
     ],
   },
 
-  communication: {
-    isCitable: true,
-    citationType: 'personal_communication',
+  podcast: {
+    citable: true,
+    citationType: 'broadcast',
+    creatorRoles: [
+      'authors',
+      'presenters',
+      'producers',
+      'contributors',
+    ],
+    fields: [
+      'shortTitle',
+      'podcastTitle',
+      'platform',
+      'episodeNumber',
+      'publicationDate',
+      'publicationYear',
+      'accessedDate',
+      'runningTime',
+      'url',
+      'language',
+    ],
+    advancedFields: [
+      'medium',
+      'rights',
+      'extra',
+    ],
+  },
 
+  sermon: {
+    citable: true,
+    citationType: 'speech',
+    creatorRoles: [
+      'authors',
+      'presenters',
+      'contributors',
+    ],
+    fields: [
+      'shortTitle',
+      'churchName',
+      'scripturePassage',
+      'eventPlace',
+      'publicationDate',
+      'publicationYear',
+      'platform',
+      'url',
+      'accessedDate',
+      'language',
+    ],
+    advancedFields: [
+      'medium',
+      'rights',
+      'extra',
+    ],
+  },
+
+  conference: {
+    citable: true,
+    citationType: 'paper-conference',
+    creatorRoles: [
+      'authors',
+      'presenters',
+      'editors',
+      'contributors',
+    ],
+    fields: [
+      'shortTitle',
+      'conferenceName',
+      'meetingName',
+      'eventPlace',
+      'publicationDate',
+      'publicationYear',
+      'publisher',
+      'pages',
+      'doi',
+      'url',
+      'accessedDate',
+      'language',
+    ],
+    advancedFields: [
+      ...COMMON_CITATION_ADVANCED_FIELDS,
+    ],
+  },
+
+  report: {
+    citable: true,
+    citationType: 'report',
+    creatorRoles: [
+      'authors',
+      'editors',
+      'contributors',
+    ],
+    fields: [
+      'shortTitle',
+      'publisher',
+      'placeOfPublication',
+      'publicationDate',
+      'publicationYear',
+      'publicationNumber',
+      'seriesTitle',
+      'seriesNumber',
+      'pages',
+      'doi',
+      'url',
+      'accessedDate',
+      'language',
+    ],
+    advancedFields: [
+      ...COMMON_CITATION_ADVANCED_FIELDS,
+    ],
+  },
+
+  communication: {
+    citable: true,
+    citationType: 'personal_communication',
     creatorRoles: [
       'senders',
       'recipients',
       'interviewers',
       'interviewees',
     ],
-
     fields: [
-      'publicationDate',
+      'subject',
+      'date',
       'format',
+      'body',
+      'language',
     ],
-
     advancedFields: [
       'archive',
       'archiveLocation',
@@ -727,27 +991,34 @@ export const RESEARCH_TYPE_METADATA = {
   },
 
   note: {
-    isCitable: false,
-    citationType: null,
+    citable: false,
+    citationType: 'document',
     creatorRoles: [],
-    fields: ['body'],
-    advancedFields: [],
+    fields: [
+      'body',
+    ],
+    advancedFields: [
+      'sourceId',
+      'pageNumber',
+      'notes',
+    ],
   },
 
   concept: {
-    isCitable: false,
-    citationType: null,
+    citable: false,
+    citationType: 'document',
     creatorRoles: [],
     fields: [
       'definition',
       'relatedIdeas',
+      'notes',
     ],
     advancedFields: [],
   },
 
   person: {
-    isCitable: false,
-    citationType: null,
+    citable: false,
+    citationType: 'document',
     creatorRoles: [],
     fields: [
       'role',
@@ -757,60 +1028,147 @@ export const RESEARCH_TYPE_METADATA = {
   },
 
   assignment: {
-    isCitable: false,
-    citationType: null,
+    citable: false,
+    citationType: 'document',
     creatorRoles: [],
     fields: [
       'course',
       'dueDate',
       'requirements',
+      'notes',
     ],
     advancedFields: [],
   },
 
   quote: {
-    isCitable: false,
-    citationType: null,
+    citable: false,
+    citationType: 'document',
     creatorRoles: [],
     fields: [
       'quoteText',
       'sourceId',
       'pageNumber',
+      'notes',
     ],
     advancedFields: [],
   },
 }
 
-const EMPTY_TYPE_METADATA = {
-  isCitable: false,
-  citationType: null,
+const DEFAULT_METADATA_CONFIG = {
+  citable: false,
+  citationType: 'document',
   creatorRoles: [],
   fields: [],
   advancedFields: [],
 }
 
-export function getResearchMetadataConfig(
-  typeId,
-) {
-  return (
-    RESEARCH_TYPE_METADATA[
-      String(typeId || '')
-    ] ||
-    EMPTY_TYPE_METADATA
+function cleanText(value) {
+  return String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function normalizeTypeId(typeId) {
+  const cleaned = cleanText(typeId)
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-')
+
+  return TYPE_ALIASES[cleaned] || cleaned
+}
+
+function splitCreatorText(value) {
+  return cleanText(value)
+    .split(';')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+}
+
+function hasCreatorValue(creator) {
+  if (!creator) {
+    return false
+  }
+
+  if (typeof creator === 'string') {
+    return Boolean(cleanText(creator))
+  }
+
+  return Boolean(
+    cleanText(
+      creator.literal ||
+      creator.raw ||
+      creator.name ||
+      creator.firstName ||
+      creator.given ||
+      creator.middleName ||
+      creator.middle ||
+      creator.initial ||
+      creator.lastName ||
+      creator.family,
+    ),
   )
 }
 
-export function getFieldDefinition(
-  fieldKey,
-) {
+function cloneValue(value) {
+  if (Array.isArray(value)) {
+    return value.map(cloneValue)
+  }
+
+  if (
+    value &&
+    typeof value === 'object'
+  ) {
+    return Object.fromEntries(
+      Object.entries(value).map(
+        ([key, entry]) => [
+          key,
+          cloneValue(entry),
+        ],
+      ),
+    )
+  }
+
+  return value
+}
+
+export function getResearchMetadataConfig(typeId) {
+  const normalizedTypeId =
+    normalizeTypeId(typeId)
+
+  const config =
+    RESEARCH_TYPE_METADATA[
+      normalizedTypeId
+    ] ||
+    DEFAULT_METADATA_CONFIG
+
+  return {
+    ...DEFAULT_METADATA_CONFIG,
+    ...config,
+    creatorRoles: [
+      ...(config.creatorRoles || []),
+    ],
+    fields: [
+      ...(config.fields || []),
+    ],
+    advancedFields: [
+      ...(config.advancedFields || []),
+    ],
+  }
+}
+
+export function getFieldDefinition(fieldKey) {
   return (
     FIELD_DEFINITIONS[fieldKey] ||
     {
       key: fieldKey,
-      label:
-        formatFieldLabel(
-          fieldKey,
-        ),
+      label: cleanText(fieldKey)
+        .replace(
+          /([a-z])([A-Z])/g,
+          '$1 $2',
+        )
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, (character) => {
+          return character.toUpperCase()
+        }),
       icon: '•',
       placeholder: '',
     }
@@ -819,35 +1177,34 @@ export function getFieldDefinition(
 
 export function getFieldDefinitionsForType(
   typeId,
-  {
-    includeAdvanced = false,
-  } = {},
+  options = {},
 ) {
+  const {
+    includeAdvanced = false,
+  } = options
+
   const config =
-    getResearchMetadataConfig(
-      typeId,
-    )
+    getResearchMetadataConfig(typeId)
 
-  const fieldKeys =
-    includeAdvanced
-      ? [
-          ...config.fields,
-          ...config.advancedFields,
-        ]
-      : config.fields
+  const keys = [
+    ...config.fields,
+    ...(
+      includeAdvanced
+        ? config.advancedFields
+        : []
+    ),
+  ]
 
-  return fieldKeys.map(
-    getFieldDefinition,
-  )
+  return [
+    ...new Set(keys),
+  ].map(getFieldDefinition)
 }
 
 export function getCreatorRoleDefinitionsForType(
   typeId,
 ) {
   const config =
-    getResearchMetadataConfig(
-      typeId,
-    )
+    getResearchMetadataConfig(typeId)
 
   return config.creatorRoles
     .map((roleKey) => {
@@ -855,10 +1212,21 @@ export function getCreatorRoleDefinitionsForType(
         CREATOR_ROLE_DEFINITIONS[
           roleKey
         ] ||
-        null
+        {
+          key: roleKey,
+          label: getFieldDefinition(
+            roleKey,
+          ).label,
+          singularLabel:
+            getFieldDefinition(
+              roleKey,
+            ).label.replace(
+              /s$/,
+              '',
+            ),
+        }
       )
     })
-    .filter(Boolean)
 }
 
 export function isCitableResearchType(
@@ -867,7 +1235,7 @@ export function isCitableResearchType(
   return Boolean(
     getResearchMetadataConfig(
       typeId,
-    ).isCitable,
+    ).citable,
   )
 }
 
@@ -878,7 +1246,7 @@ export function getCitationTypeForResearchType(
     getResearchMetadataConfig(
       typeId,
     ).citationType ||
-    null
+    'document'
   )
 }
 
@@ -892,6 +1260,8 @@ export function createEmptyCreator() {
     nameParticle: '',
     suffix: '',
     literal: '',
+    linkedPersonId: null,
+    linkedOrganizationId: null,
   }
 }
 
@@ -899,362 +1269,305 @@ export function normalizeCreator(
   creator,
 ) {
   if (!creator) {
-    return null
+    return createEmptyCreator()
   }
 
-  if (
-    typeof creator ===
-    'string'
-  ) {
-    const literal =
-      creator.trim()
+  if (typeof creator === 'string') {
+    const text = cleanText(creator)
 
-    if (!literal) {
-      return null
+    if (!text) {
+      return createEmptyCreator()
     }
 
     return {
       ...createEmptyCreator(),
+      literal: text,
       creatorType: 'literal',
-      literal,
     }
   }
 
-  const literal =
-    String(
-      creator.literal ||
-      creator.raw ||
-      creator.name ||
-      '',
-    ).trim()
+  const literal = cleanText(
+    creator.literal ||
+    creator.raw ||
+    (
+      creator.creatorType ===
+        'literal'
+        ? creator.name
+        : ''
+    ),
+  )
 
   const normalized = {
     ...createEmptyCreator(),
 
     creatorType:
-      creator.creatorType ||
-      (
-        literal
-          ? 'literal'
-          : 'person'
-      ),
+      literal ||
+      creator.creatorType ===
+        'literal'
+        ? 'literal'
+        : 'person',
 
-    firstName:
-      String(
-        creator.firstName ||
-        creator.given ||
-        '',
-      ).trim(),
+    firstName: cleanText(
+      creator.firstName ||
+      creator.given,
+    ),
 
-    middleName:
-      String(
-        creator.middleName ||
-        creator.middle ||
-        '',
-      ).trim(),
+    middleName: cleanText(
+      creator.middleName ||
+      creator.middle,
+    ),
 
-    initial:
-      String(
-        creator.initial ||
-        '',
-      ).trim(),
+    initial: cleanText(
+      creator.initial,
+    ),
 
-    lastName:
-      String(
-        creator.lastName ||
-        creator.family ||
-        '',
-      ).trim(),
+    lastName: cleanText(
+      creator.lastName ||
+      creator.family,
+    ),
 
-    nameParticle:
-      String(
-        creator.nameParticle ||
-        creator.particle ||
-        creator[
-          'non-dropping-particle'
-        ] ||
-        '',
-      ).trim(),
+    nameParticle: cleanText(
+      creator.nameParticle ||
+      creator.particle ||
+      creator[
+        'non-dropping-particle'
+      ],
+    ),
 
-    suffix:
-      String(
-        creator.suffix ||
-        '',
-      ).trim(),
+    suffix: cleanText(
+      creator.suffix,
+    ),
 
     literal,
+
+    linkedPersonId:
+      creator.linkedPersonId ||
+      creator.personId ||
+      null,
+
+    linkedOrganizationId:
+      creator.linkedOrganizationId ||
+      creator.organizationId ||
+      null,
   }
 
-  const hasValue =
-    normalized.literal ||
-    normalized.firstName ||
-    normalized.middleName ||
-    normalized.initial ||
-    normalized.lastName ||
-    normalized.nameParticle ||
-    normalized.suffix
-
-  return hasValue
-    ? normalized
-    : null
+  return normalized
 }
 
 export function normalizeCreatorList(
-  value,
+  creators,
 ) {
-  if (!value) {
+  if (!creators) {
     return []
   }
 
-  if (
-    typeof value ===
-    'string'
-  ) {
-    return value
-      .split(';')
-      .map((entry) => {
-        return normalizeCreator(
-          entry,
-        )
-      })
-      .filter(Boolean)
-  }
+  const list =
+    typeof creators === 'string'
+      ? splitCreatorText(creators)
+      : Array.isArray(creators)
+        ? creators
+        : [creators]
 
-  if (
-    Array.isArray(value)
-  ) {
-    return value
-      .map(normalizeCreator)
-      .filter(Boolean)
-  }
-
-  const normalized =
-    normalizeCreator(value)
-
-  return normalized
-    ? [normalized]
-    : []
+  return list.map(normalizeCreator)
 }
 
 export function cleanCreatorList(
-  creators = [],
+  creators,
 ) {
   return normalizeCreatorList(
     creators,
-  )
+  ).filter(hasCreatorValue)
 }
 
 export function cloneCreatorList(
-  creators = [],
-  {
-    ensureOne = false,
-  } = {},
+  creators,
 ) {
-  const cloned =
-    normalizeCreatorList(
-      creators,
-    ).map((creator) => {
-      return {
-        ...creator,
-      }
-    })
+  return cleanCreatorList(
+    creators,
+  ).map((creator) => {
+    return {
+      ...creator,
+    }
+  })
+}
 
-  if (
-    ensureOne &&
-    cloned.length === 0
-  ) {
-    return [
-      createEmptyCreator(),
-    ]
+function applyLegacyAliases(
+  metadata,
+) {
+  const next = {
+    ...metadata,
   }
 
-  return cloned
+  if (
+    !next.publicationTitle
+  ) {
+    next.publicationTitle =
+      next.journalTitle ||
+      next.journalName ||
+      next.journal ||
+      next.websiteName ||
+      next.siteName ||
+      next.blogName ||
+      next.containerTitle ||
+      next.publication ||
+      ''
+  }
+
+  if (
+    !next.publicationYear
+  ) {
+    const legacyYear =
+      next.year ||
+      ''
+
+    if (
+      /^\d{4}$/.test(
+        cleanText(legacyYear),
+      )
+    ) {
+      next.publicationYear =
+        cleanText(legacyYear)
+    }
+  }
+
+  if (
+    !next.publicationDate
+  ) {
+    const legacyDate =
+      next.publishedDate ||
+      next.datePublished ||
+      ''
+
+    if (legacyDate) {
+      next.publicationDate =
+        legacyDate
+    }
+  }
+
+  if (
+    !next.accessedDate &&
+    next.accessDate
+  ) {
+    next.accessedDate =
+      next.accessDate
+  }
+
+  if (
+    !next.placeOfPublication
+  ) {
+    next.placeOfPublication =
+      next.publicationPlace ||
+      next.place ||
+      ''
+  }
+
+  if (
+    !next.pages
+  ) {
+    next.pages =
+      next.pageRange ||
+      ''
+  }
+
+  if (
+    !next.pageCount
+  ) {
+    next.pageCount =
+      next.numberOfPages ||
+      ''
+  }
+
+  if (
+    !next.repository
+  ) {
+    next.repository =
+      next.archive ||
+      ''
+  }
+
+  return next
 }
 
 export function normalizeResearchMetadata(
   typeId,
-  metadata = {},
+  rawMetadata = {},
+  options = {},
 ) {
-  const source =
-    metadata &&
-    typeof metadata ===
-      'object'
-      ? metadata
-      : {}
+  const {
+    includeAdvanced = true,
+  } = options
 
-  const normalized = {
-    ...source,
+  const normalizedTypeId =
+    normalizeTypeId(typeId)
 
-    schemaVersion:
-      RESEARCH_METADATA_SCHEMA_VERSION,
-
-    citationType:
-      getCitationTypeForResearchType(
-        typeId,
-      ),
-  }
-
-  if (
-    !normalized.publicationTitle
-  ) {
-    normalized.publicationTitle =
-      source.journal ||
-      source.journalTitle ||
-      source.siteName ||
-      source.blogName ||
-      source.containerTitle ||
-      ''
-  }
-
-  if (
-    !normalized.publicationDate
-  ) {
-    normalized.publicationDate =
-      source.publishedDate ||
-      source.year ||
-      source.date ||
-      ''
-  }
-
-  if (
-    !normalized.accessedDate
-  ) {
-    normalized.accessedDate =
-      source.accessDate ||
-      ''
-  }
-
-  if (!normalized.pages) {
-    normalized.pages =
-      source.pageRange ||
-      ''
-  }
-
-  if (
-    !normalized.placeOfPublication
-  ) {
-    normalized.placeOfPublication =
-      source.place ||
-      ''
-  }
-
-  if (
-    !Array.isArray(
-      normalized.authors,
-    )
-  ) {
-    normalized.authors =
-      normalizeCreatorList(
-        source.author ||
-        source.creator,
-      )
-  } else {
-    normalized.authors =
-      normalizeCreatorList(
-        normalized.authors,
-      )
-  }
-
-  normalized.editors =
-    normalizeCreatorList(
-      source.editors ||
-      source.editor,
+  const config =
+    getResearchMetadataConfig(
+      normalizedTypeId,
     )
 
-  normalized.translators =
-    normalizeCreatorList(
-      source.translators ||
-      source.translator,
-    )
+  const metadata =
+    applyLegacyAliases({
+      ...(rawMetadata || {}),
+    })
 
-  normalized.contributors =
-    normalizeCreatorList(
-      source.contributors ||
-      source.contributor,
-    )
+  metadata.schemaVersion =
+    RESEARCH_METADATA_SCHEMA_VERSION
 
-  normalized.advisors =
-    normalizeCreatorList(
-      source.advisors ||
-      source.advisor,
-    )
+  metadata.citationType =
+    metadata.citationType ||
+    config.citationType
 
-  normalized.senders =
-    normalizeCreatorList(
-      source.senders ||
-      source.sender,
-    )
+  config.creatorRoles.forEach(
+    (roleKey) => {
+      const legacySingular =
+        roleKey.endsWith('s')
+          ? roleKey.slice(0, -1)
+          : roleKey
 
-  normalized.recipients =
-    normalizeCreatorList(
-      source.recipients ||
-      source.recipient,
-    )
+      const source =
+        metadata[roleKey] ??
+        metadata[legacySingular] ??
+        []
 
-  return normalized
+      metadata[roleKey] =
+        cleanCreatorList(source)
+    },
+  )
+
+  const fieldKeys = [
+    ...config.fields,
+    ...(
+      includeAdvanced
+        ? config.advancedFields
+        : []
+    ),
+  ]
+
+  fieldKeys.forEach((fieldKey) => {
+    if (
+      metadata[fieldKey] ===
+        undefined ||
+      metadata[fieldKey] ===
+        null
+    ) {
+      metadata[fieldKey] = ''
+    }
+  })
+
+  return metadata
 }
 
 export function createMetadataForType(
   typeId,
   existingMetadata = {},
-  {
-    includeAdvanced = true,
-  } = {},
+  options = {},
 ) {
-  const normalized =
-    normalizeResearchMetadata(
-      typeId,
-      existingMetadata,
-    )
-
-  const fieldDefinitions =
-    getFieldDefinitionsForType(
-      typeId,
-      {
-        includeAdvanced,
-      },
-    )
-
-  fieldDefinitions.forEach(
-    (field) => {
-      if (
-        normalized[field.key] ===
-          undefined ||
-        normalized[field.key] ===
-          null
-      ) {
-        normalized[field.key] =
-          ''
-      }
-    },
-  )
-
-  getCreatorRoleDefinitionsForType(
+  return normalizeResearchMetadata(
     typeId,
-  ).forEach((role) => {
-    normalized[role.key] =
-      normalizeCreatorList(
-        normalized[role.key],
-      )
-  })
-
-  return normalized
+    cloneValue(
+      existingMetadata || {},
+    ),
+    options,
+  )
 }
 
-function formatFieldLabel(
-  value,
-) {
-  return String(value || '')
-    .replace(
-      /([a-z])([A-Z])/g,
-      '$1 $2',
-    )
-    .replace(/[_-]+/g, ' ')
-    .replace(
-      /\b\w/g,
-      (character) => {
-        return character
-          .toUpperCase()
-      },
-    )
-}
