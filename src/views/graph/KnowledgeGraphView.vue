@@ -15,17 +15,27 @@
           class="left-sidebar"
         >
           <GraphFilters
-            :node-types="graphNodeTypes"
-            :nodes="nodes"
-            :stats="visibleStats"
-            @update:search="searchQuery = $event"
-            @update:type="selectedType = $event"
-            @update:tag="selectedTag = $event"
-            @update:course="selectedCourse = $event"
-            @update:density="graphDensity = $event"
-            @update:todayOnly="todayOnly = $event"
-            @update:connectedContext="showConnectedContext = $event"
-          />
+  :node-types="graphNodeTypes"
+  :nodes="nodes"
+  :stats="visibleStats"
+  :search="searchQuery"
+  :selected-type="selectedType"
+  :selected-tag="selectedTag"
+  :selected-course="selectedCourse"
+  :density="graphDensity"
+  :today-only="todayOnly"
+  :connected-context="showConnectedContext"
+  @update:search="searchQuery = $event"
+  @update:type="selectedType = $event"
+  @update:tag="selectedTag = $event"
+  @update:course="selectedCourse = $event"
+  @update:density="graphDensity = $event"
+  @update:todayOnly="todayOnly = $event"
+  @update:connectedContext="
+    showConnectedContext = $event
+  "
+  @reset="handleResetFilters"
+/>
 
           <GraphDiscoveryPanel
             :items="discoveryItems"
@@ -38,12 +48,18 @@
             <header class="graph-toolbar">
               <div class="graph-counts">
                 <span>
-                  <strong>{{ filteredNodes.length }}</strong>
+                  <strong>
+                    {{ filteredNodes.length }}
+                  </strong>
+
                   Nodes
                 </span>
 
                 <span>
-                  <strong>{{ visibleRelationshipCount }}</strong>
+                  <strong>
+                    {{ visibleRelationshipCount }}
+                  </strong>
+
                   Relationships
                 </span>
               </div>
@@ -62,7 +78,10 @@
               <div class="view-toggle">
                 <button
                   class="view-toggle-btn"
-                  :class="{ active: graphViewMode === 'card' }"
+                  :class="{
+                    active:
+                      graphViewMode === 'card',
+                  }"
                   type="button"
                   @click="graphViewMode = 'card'"
                 >
@@ -71,7 +90,10 @@
 
                 <button
                   class="view-toggle-btn"
-                  :class="{ active: graphViewMode === 'brain' }"
+                  :class="{
+                    active:
+                      graphViewMode === 'brain',
+                  }"
                   type="button"
                   @click="graphViewMode = 'brain'"
                 >
@@ -84,7 +106,11 @@
                   type="button"
                   @click="focusMode = !focusMode"
                 >
-                  {{ focusMode ? 'Exit Focus' : 'Focus Mode' }}
+                  {{
+                    focusMode
+                      ? 'Exit Focus'
+                      : 'Focus Mode'
+                  }}
                 </button>
               </div>
 
@@ -101,13 +127,16 @@
               v-if="filteredNodes.length === 0"
               class="graph-empty-state"
             >
-              <div class="empty-icon">🕸️</div>
+              <div class="empty-icon">
+                🕸️
+              </div>
 
               <h2>No matching nodes</h2>
 
               <p>
-                Clear the current filters or adjust your search to show more
-                knowledge records.
+                Clear the current filters or adjust
+                your search to show more knowledge
+                records.
               </p>
 
               <button
@@ -124,7 +153,9 @@
               ref="graphCanvasRef"
               :graph-nodes="filteredNodes"
               :graph-links="filteredLinks"
-              :selected-node-id="selectedNode?.id || null"
+              :selected-node-id="
+                selectedNode?.id || null
+              "
               :view-mode="graphViewMode"
               :density="graphDensity"
               @select-node="selectNode"
@@ -138,18 +169,24 @@
         >
           <GraphNodePreview
             :node="selectedNode"
-            :relationships="selectedRelationships"
+            :relationships="
+              selectedRelationships
+            "
             :all-nodes="nodes"
             @close="clearSelection"
             @select-node="revealNode"
             @open-node="openNode"
-            @attach-node="attachNodeToDailyPage"
+            @attach-node="
+              attachNodeToDailyPage
+            "
             @link-note="createLinkedNote"
           />
 
           <GraphRelatedItems
             :selected-node="selectedNode"
-            :related-nodes="selectedRelatedNodes"
+            :related-nodes="
+              selectedRelatedNodes
+            "
             @select-node="revealNode"
           />
         </aside>
@@ -172,7 +209,9 @@ import GraphNodePreview from '@/components/knowledge/GraphNodePreview.vue'
 import GraphRelatedItems from '@/components/knowledge/GraphRelatedItems.vue'
 import KnowledgeGraphCanvas from '@/components/knowledge/KnowledgeGraphCanvas.vue'
 
-import { useKnowledgeGraph } from '@/composables/useKnowledgeGraph'
+import {
+  useKnowledgeGraph,
+} from '@/composables/useKnowledgeGraph'
 
 const router = useRouter()
 const graphCanvasRef = ref(null)
@@ -222,7 +261,9 @@ const hasActiveFilters = computed(() => {
 })
 
 function handleDiscoveryClick(discovery) {
-  const node = getNodeById(discovery?.relatedNodeId)
+  const node = getNodeById(
+    discovery?.relatedNodeId,
+  )
 
   if (!node) {
     return
@@ -245,6 +286,7 @@ function openNode(node) {
     window.alert(
       'This record does not have a dedicated Scholarory page yet.',
     )
+
     return
   }
 
@@ -256,30 +298,43 @@ function attachNodeToDailyPage(node) {
     return
   }
 
-  const storageKey = 'scholarory-daily-page-attachments'
+  const storageKey =
+    'scholarory-daily-page-attachments'
 
   let attachments = []
 
   try {
     attachments =
-      JSON.parse(localStorage.getItem(storageKey)) || []
+      JSON.parse(
+        localStorage.getItem(storageKey),
+      ) || []
   } catch {
     attachments = []
   }
 
-  const alreadyAttached = attachments.some((item) => {
-    return item.nodeId === node.id
-  })
+  const alreadyAttached =
+    attachments.some((item) => {
+      return item.nodeId === node.id
+    })
 
   if (!alreadyAttached) {
     attachments.push({
-      id: `daily-attachment-${Date.now()}`,
+      id:
+        `daily-attachment-${Date.now()}`,
+
       nodeId: node.id,
-      entityId: node.entityId || node.id,
+
+      entityId:
+        node.entityId || node.id,
+
       type: node.type,
       title: node.title,
-      route: node.route || null,
-      attachedAt: new Date().toISOString(),
+
+      route:
+        node.route || null,
+
+      attachedAt:
+        new Date().toISOString(),
     })
 
     localStorage.setItem(
@@ -300,26 +355,43 @@ function createLinkedNote(node) {
     return
   }
 
-  const storageKey = 'scholarory-linked-notes'
+  const storageKey =
+    'scholarory-linked-notes'
 
   let linkedNotes = []
 
   try {
     linkedNotes =
-      JSON.parse(localStorage.getItem(storageKey)) || []
+      JSON.parse(
+        localStorage.getItem(storageKey),
+      ) || []
   } catch {
     linkedNotes = []
   }
 
   const note = {
-    id: `linked-note-${Date.now()}`,
-    title: `Notes for ${node.title}`,
+    id:
+      `linked-note-${Date.now()}`,
+
+    title:
+      `Notes for ${node.title}`,
+
     content: '',
-    linkedNodeId: node.id,
-    linkedEntityId: node.entityId || node.id,
-    linkedEntityType: node.type,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+
+    linkedNodeId:
+      node.id,
+
+    linkedEntityId:
+      node.entityId || node.id,
+
+    linkedEntityType:
+      node.type,
+
+    createdAt:
+      new Date().toISOString(),
+
+    updatedAt:
+      new Date().toISOString(),
   }
 
   linkedNotes.unshift(note)
@@ -345,7 +417,10 @@ function createLinkedNote(node) {
 
 .graph-layout {
   display: grid;
-  grid-template-columns: 300px minmax(420px, 1fr) 340px;
+  grid-template-columns:
+    300px
+    minmax(420px, 1fr)
+    340px;
   gap: 1rem;
   align-items: start;
 }
@@ -379,7 +454,8 @@ function createLinkedNote(node) {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom:
+    1px solid var(--border-color);
   padding: 1rem;
 }
 
@@ -400,7 +476,8 @@ function createLinkedNote(node) {
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom:
+    1px solid var(--border-color);
   padding: 0.75rem 1rem;
 }
 
@@ -414,7 +491,8 @@ function createLinkedNote(node) {
 .reset-layout-btn,
 .clear-filter-btn,
 .primary-btn {
-  border: 1px solid var(--border-color);
+  border:
+    1px solid var(--border-color);
   border-radius: 8px;
   background: var(--btn-bg);
   color: var(--text-primary);

@@ -6,18 +6,20 @@
       <button
         class="reset-btn"
         type="button"
-        @click="resetFilters"
+        @click="emit('reset')"
       >
         Reset
       </button>
     </div>
 
     <div class="filter-section">
-      <label for="graph-search">Search</label>
+      <label for="graph-search">
+        Search
+      </label>
 
       <input
         id="graph-search"
-        v-model="localSearch"
+        v-model="searchModel"
         type="search"
         placeholder="Search titles, descriptions, tags..."
         class="filter-input"
@@ -25,34 +27,42 @@
     </div>
 
     <div class="filter-section">
-      <label for="graph-node-type">Node Type</label>
+      <label for="graph-node-type">
+        Node Type
+      </label>
 
       <select
         id="graph-node-type"
-        v-model="localType"
+        v-model="typeModel"
         class="filter-select"
       >
-        <option value="all">All Types</option>
+        <option value="all">
+          All Types
+        </option>
 
         <option
-          v-for="type in nodeTypes"
-          :key="type"
-          :value="type"
+          v-for="nodeType in nodeTypes"
+          :key="nodeType"
+          :value="nodeType"
         >
-          {{ formatLabel(type) }}
+          {{ formatLabel(nodeType) }}
         </option>
       </select>
     </div>
 
     <div class="filter-section">
-      <label for="graph-tag">Tag</label>
+      <label for="graph-tag">
+        Tag
+      </label>
 
       <select
         id="graph-tag"
-        v-model="localTag"
+        v-model="tagModel"
         class="filter-select"
       >
-        <option value="all">All Tags</option>
+        <option value="all">
+          All Tags
+        </option>
 
         <option
           v-for="tag in availableTags"
@@ -65,14 +75,18 @@
     </div>
 
     <div class="filter-section">
-      <label for="graph-course">Course</label>
+      <label for="graph-course">
+        Course
+      </label>
 
       <select
         id="graph-course"
-        v-model="localCourse"
+        v-model="courseModel"
         class="filter-select"
       >
-        <option value="all">All Courses</option>
+        <option value="all">
+          All Courses
+        </option>
 
         <option
           v-for="course in courses"
@@ -91,7 +105,7 @@
 
       <input
         id="graph-density"
-        v-model.number="localDensity"
+        v-model.number="densityModel"
         type="range"
         min="1"
         max="10"
@@ -100,29 +114,33 @@
       />
 
       <div class="density-value">
-        {{ localDensity }}
+        {{ densityModel }}
       </div>
     </div>
 
     <div class="filter-section">
       <label class="checkbox-label">
         <input
-          v-model="showTodayOnly"
+          v-model="todayOnlyModel"
           type="checkbox"
         />
 
-        <span>Show Today’s Learning Map</span>
+        <span>
+          Show Today’s Learning Map
+        </span>
       </label>
     </div>
 
     <div class="filter-section">
       <label class="checkbox-label">
         <input
-          v-model="showConnectedContext"
+          v-model="connectedContextModel"
           type="checkbox"
         />
 
-        <span>Show Connected Context</span>
+        <span>
+          Show Connected Context
+        </span>
       </label>
 
       <p class="filter-help">
@@ -132,13 +150,23 @@
 
     <div class="filter-summary">
       <div class="summary-item">
-        <span>Visible Nodes</span>
-        <strong>{{ stats.nodeCount || 0 }}</strong>
+        <span>
+          Visible Nodes
+        </span>
+
+        <strong>
+          {{ stats.nodeCount || 0 }}
+        </strong>
       </div>
 
       <div class="summary-item">
-        <span>Relationships</span>
-        <strong>{{ stats.relationshipCount || 0 }}</strong>
+        <span>
+          Relationships
+        </span>
+
+        <strong>
+          {{ stats.relationshipCount || 0 }}
+        </strong>
       </div>
     </div>
   </div>
@@ -147,8 +175,6 @@
 <script setup>
 import {
   computed,
-  ref,
-  watch,
 } from 'vue'
 
 const props = defineProps({
@@ -169,9 +195,45 @@ const props = defineProps({
       relationshipCount: 0,
     }),
   },
+
+  search: {
+    type: String,
+    default: '',
+  },
+
+  selectedType: {
+    type: String,
+    default: 'all',
+  },
+
+  selectedTag: {
+    type: String,
+    default: 'all',
+  },
+
+  selectedCourse: {
+    type: String,
+    default: 'all',
+  },
+
+  density: {
+    type: Number,
+    default: 5,
+  },
+
+  todayOnly: {
+    type: Boolean,
+    default: false,
+  },
+
+  connectedContext: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
+  'reset',
   'update:search',
   'update:type',
   'update:tag',
@@ -181,23 +243,113 @@ const emit = defineEmits([
   'update:connectedContext',
 ])
 
-const localSearch = ref('')
-const localType = ref('all')
-const localTag = ref('all')
-const localCourse = ref('all')
-const localDensity = ref(5)
-const showTodayOnly = ref(false)
-const showConnectedContext = ref(false)
+const searchModel = computed({
+  get() {
+    return props.search
+  },
+
+  set(value) {
+    emit(
+      'update:search',
+      String(value || ''),
+    )
+  },
+})
+
+const typeModel = computed({
+  get() {
+    return props.selectedType
+  },
+
+  set(value) {
+    emit(
+      'update:type',
+      value || 'all',
+    )
+  },
+})
+
+const tagModel = computed({
+  get() {
+    return props.selectedTag
+  },
+
+  set(value) {
+    emit(
+      'update:tag',
+      value || 'all',
+    )
+  },
+})
+
+const courseModel = computed({
+  get() {
+    return props.selectedCourse
+  },
+
+  set(value) {
+    emit(
+      'update:course',
+      value || 'all',
+    )
+  },
+})
+
+const densityModel = computed({
+  get() {
+    return props.density
+  },
+
+  set(value) {
+    emit(
+      'update:density',
+      Number(value) || 5,
+    )
+  },
+})
+
+const todayOnlyModel = computed({
+  get() {
+    return props.todayOnly
+  },
+
+  set(value) {
+    emit(
+      'update:todayOnly',
+      Boolean(value),
+    )
+  },
+})
+
+const connectedContextModel = computed({
+  get() {
+    return props.connectedContext
+  },
+
+  set(value) {
+    emit(
+      'update:connectedContext',
+      Boolean(value),
+    )
+  },
+})
 
 const availableTags = computed(() => {
   const tags = new Map()
 
   props.nodes.forEach((node) => {
     ;(node.tags || []).forEach((tag) => {
-      const cleanName = String(tag || '').trim()
-      const key = normalizeTag(cleanName)
+      const cleanName =
+        String(tag || '').trim()
 
-      if (!cleanName || !key || tags.has(key)) {
+      const key =
+        normalizeTag(cleanName)
+
+      if (
+        !cleanName ||
+        !key ||
+        tags.has(key)
+      ) {
         return
       }
 
@@ -208,9 +360,13 @@ const availableTags = computed(() => {
     })
   })
 
-  return [...tags.values()].sort((a, b) => {
-    return a.name.localeCompare(b.name)
-  })
+  return [...tags.values()].sort(
+    (a, b) => {
+      return a.name.localeCompare(
+        b.name,
+      )
+    },
+  )
 })
 
 const courses = computed(() => {
@@ -219,49 +375,13 @@ const courses = computed(() => {
       return node.type === 'course'
     })
     .sort((a, b) => {
-      return String(a.title || '').localeCompare(
+      return String(
+        a.title || '',
+      ).localeCompare(
         String(b.title || ''),
       )
     })
 })
-
-watch(localSearch, (value) => {
-  emit('update:search', value)
-})
-
-watch(localType, (value) => {
-  emit('update:type', value)
-})
-
-watch(localTag, (value) => {
-  emit('update:tag', value)
-})
-
-watch(localCourse, (value) => {
-  emit('update:course', value)
-})
-
-watch(localDensity, (value) => {
-  emit('update:density', Number(value) || 5)
-})
-
-watch(showTodayOnly, (value) => {
-  emit('update:todayOnly', value)
-})
-
-watch(showConnectedContext, (value) => {
-  emit('update:connectedContext', value)
-})
-
-function resetFilters() {
-  localSearch.value = ''
-  localType.value = 'all'
-  localTag.value = 'all'
-  localCourse.value = 'all'
-  localDensity.value = 5
-  showTodayOnly.value = false
-  showConnectedContext.value = false
-}
 
 function normalizeTag(value) {
   return String(value || '')
