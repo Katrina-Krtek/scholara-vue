@@ -100,11 +100,15 @@ const STORAGE_KEY = 'zeyteo_full_width'
 const LEGACY_STORAGE_KEY = 'scholarory_full_width'
 const isFullWidth = ref(false)
 
+// Canvas identity must be unique per actual page/record. Banner keys are intentionally
+// reusable presentation keys (for example every Course Detail uses "course-detail"),
+// so they must not be the primary persistence key for page content/layout.
 const canvasPageKey = computed(() => {
   if (props.canvasKey) return props.canvasKey
+  if (route.name) return `route:${String(route.name)}:${route.path}`
+  if (route.path) return `path:${route.path}`
   if (props.bannerKey) return `banner:${props.bannerKey}`
-  if (route.name) return `route:${String(route.name)}:${route.fullPath}`
-  return `path:${route.fullPath || route.path || props.title || 'page'}`
+  return `title:${props.title || 'page'}`
 })
 
 onMounted(() => {
