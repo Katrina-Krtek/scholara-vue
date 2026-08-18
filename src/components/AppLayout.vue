@@ -51,18 +51,24 @@
       </header>
 
       <section class="app-content" :class="{ 'full-width': isFullWidth }">
-        <slot />
+        <UniversalPageCanvas :page-key="canvasPageKey">
+          <template #system>
+            <slot />
+          </template>
+        </UniversalPageCanvas>
       </section>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import AppSidebar from './AppSidebar.vue'
 import PageBanner from './PageBanner.vue'
+import UniversalPageCanvas from './universal/UniversalPageCanvas.vue'
 
-defineProps({
+const props = defineProps({
   title: {
     type: String,
     default: '',
@@ -82,23 +88,34 @@ defineProps({
     type: String,
     default: '📄',
   },
+
+  canvasKey: {
+    type: String,
+    default: '',
+  },
 })
 
-const STORAGE_KEY = 'scholarory_full_width'
+const route = useRoute()
+const STORAGE_KEY = 'zeyteo_full_width'
+const LEGACY_STORAGE_KEY = 'scholarory_full_width'
 const isFullWidth = ref(false)
 
+const canvasPageKey = computed(() => {
+  if (props.canvasKey) return props.canvasKey
+  if (props.bannerKey) return `banner:${props.bannerKey}`
+  if (route.name) return `route:${String(route.name)}:${route.fullPath}`
+  return `path:${route.fullPath || route.path || props.title || 'page'}`
+})
+
 onMounted(() => {
-  isFullWidth.value =
-    localStorage.getItem(STORAGE_KEY) === 'true'
+  const stored = localStorage.getItem(STORAGE_KEY)
+  const legacyStored = localStorage.getItem(LEGACY_STORAGE_KEY)
+  isFullWidth.value = (stored ?? legacyStored) === 'true'
 })
 
 function toggleFullWidth() {
   isFullWidth.value = !isFullWidth.value
-
-  localStorage.setItem(
-    STORAGE_KEY,
-    String(isFullWidth.value),
-  )
+  localStorage.setItem(STORAGE_KEY, String(isFullWidth.value))
 }
 </script>
 
@@ -182,18 +199,14 @@ function toggleFullWidth() {
 
 .app-content {
   width: 100%;
-  max-width: 1120px;
-  margin: 0 auto;
+  margin: 0;
   padding: 1.5rem 2rem 4rem;
   box-sizing: border-box;
 }
 
 .app-content.full-width {
-  max-width: none;
-  width: 100%;
-  margin: 0;
-  padding-left: 2rem;
-  padding-right: 2rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 .app-content.full-width :deep(.notion-page),
